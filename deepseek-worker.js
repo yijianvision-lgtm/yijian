@@ -16,7 +16,7 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin": origin && allowed ? origin : "https://yijianvision-lgtm.github.io",
       "Vary": "Origin",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Content-Type": "application/json; charset=utf-8"
     };
@@ -48,8 +48,71 @@ export default {
         return new Response(JSON.stringify({ ok:true, shareId, title:data.title || "DeepSeek 分享对话", messageCount:messages.length, transcript }), { headers:cors });
       } catch(e) { return new Response(JSON.stringify({ error:String(e.message || e) }), { status:500, headers:cors }); }
     }
-    if (url.pathname !== "/analyze" || request.method !== "POST")
-      return new Response(JSON.stringify({ error: "POST /analyze only" }), { status: 404, headers: cors });
+    const supportedPath = ["/analyze", "/coach", "/mnemonic", "/research"].includes(url.pathname);
+    if (!supportedPath) return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: cors });
+    if (url.pathname === "/research" && request.method !== "GET")
+      return new Response(JSON.stringify({ error: "GET /research only" }), { status: 405, headers: cors });
+    if (url.pathname !== "/research" && request.method !== "POST")
+      return new Response(JSON.stringify({ error: "POST required" }), { status: 405, headers: cors });
+    if (!env.NEBULA_SYNC_TOKEN)
+      return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
+    if (request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
+      return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
+
+    if (url.pathname === "/research") {
+      try {
+        const q = (new URL(request.url)).searchParams.get("q")?.trim().slice(0, 240);
+        if (!q) return new Response(JSON.stringify({ error: "Missing search query q" }), { status: 400, headers: cors });
+        const upstream = await fetch("https://api.crossref.org/works?rows=10&query=" + encodeURIComponent(q), {
+          headers: { "Accept": "application/json", "User-Agent": "NEBULA-Knowledge/1.0 (mailto:contact@example.invalid)" }
+        });
+        if (!upstream.ok) return new Response(JSON.stringify({ error: "Crossref unavailable", status: upstream.status }), { status: 502, headers: cors });
+        const payload = await upstream.json();
+        const items = (payload.message?.items || []).map(x => ({
+          title: x.title?.[0] || "",
+          authors: (x.author || []).slice(0, 8).map(a => [a.given, a.family].filter(Boolean).join(" ")),
+          year: x.published?.["date-parts"]?.[0]?.[0] || x.created?.["date-parts"]?.[0]?.[0] || null,
+          doi: x.DOI || null, url: x.URL || null, type: x.type || null,
+          publisher: x.publisher || null, journal: x["container-title"]?.[0] || null
+        }));
+        return new Response(JSON.stringify({ ok: true, provider: "Crossref", items }), { headers: cors });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers: cors });
+      }
+    }
+
+    if (url.pathname === "/coach" || url.pathname === "/mnemonic") {
+      if (!env.DEEPSEEK_API_KEY)
+        return new Response(JSON.stringify({ error: "Worker secret DEEPSEEK_API_KEY is missing." }), { status: 503, headers: cors });
+      try {
+        const body = await request.json();
+        const sourceText = String(body.sourceText || "").slice(0, 60000);
+        const userInput = String(body.userInput || body.answer || body.mnemonic || "").slice(0, 12000);
+        if (!sourceText.trim() && !userInput.trim())
+          return new Response(JSON.stringify({ error: "Provide a question, answer, mnemonic or source text." }), { status: 400, headers: cors });
+        const mnemonicMode = url.pathname === "/mnemonic";
+        const system = mnemonicMode
+          ? `你是 NEBULA 记忆口诀教练。检查用户口诀与给定讲义是否一致，指出错漏、歧义和不适用条件。必须保留用户原文，不得覆盖或擅自改写。给出可选优化版本并解释改动。证据不足时标记 needsReview。只返回 JSON：{verdict,original,mistakes,missingPoints,suggestedVersion,explanation,sourceEvidence,needsReview}。`
+          : `你是 NEBULA 知识学习教练。逐项对照讲义和用户回答，判断正确性；区分讲义明确内容、可验证基础事实和推论。指出错误、遗漏、概念混淆、适用边界，提供更准确精炼的建议版本。不得编造出处或结论。四维为前瞻(前置/起源)、顾后(后续/影响)、左顾(横向关联)、右盼(反例/限制/矛盾)。生成逻辑链和可用于口头考核的追问。原文不得覆盖，证据不足标记 needsReview。只返回 JSON：{verdict,corrected,concise,fourDimensions:{foresight,aftermath,lateral,counterview},logicChain,evidenceGaps,sourceEvidence,quiz,needsReview}。`;
+        const upstream = await fetch("https://api.deepseek.com/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + env.DEEPSEEK_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: env.DEEPSEEK_MODEL || "deepseek-v4-pro",
+            messages: [{ role: "system", content: system }, { role: "user", content:
+              "用户回答/口诀：\\n" + userInput + "\\n\\n用户选定的讲义文字：\\n" + sourceText +
+              "\\n\\n已有知识上下文：\\n" + JSON.stringify(Array.isArray(body.context) ? body.context.slice(0, 60) : []) }],
+            response_format: { type: "json_object" }, max_tokens: 7000, stream: false
+          })
+        });
+        const data = await upstream.json();
+        if (!upstream.ok) return new Response(JSON.stringify({ error: data.error?.message || "DeepSeek request failed" }), { status: 502, headers: cors });
+        const result = JSON.parse(data.choices?.[0]?.message?.content || "{}");
+        return new Response(JSON.stringify({ ok: true, result, usage: data.usage || null }), { headers: cors });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers: cors });
+      }
+    }
     if (!env.DEEPSEEK_API_KEY || !env.NEBULA_SYNC_TOKEN)
       return new Response(JSON.stringify({ error: "Worker secrets DEEPSEEK_API_KEY and NEBULA_SYNC_TOKEN must both be configured." }), { status: 503, headers: cors });
     if (request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
