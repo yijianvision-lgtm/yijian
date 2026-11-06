@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 
 const local = await readFile(new URL("../nebula-local.js", import.meta.url), "utf8");
 const worker = await readFile(new URL("../deepseek-worker.js", import.meta.url), "utf8");
+const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 
 for (const store of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations"]) {
   assert.match(local, new RegExp('"'+store+'"'), "Missing IndexedDB store: "+store);
@@ -21,4 +23,14 @@ assert.match(local, /protocol!==\"https:\"/);
 assert.match(local, /BACKUP_LOCAL_STORAGE_KEYS/);
 assert.match(worker, /DEEPSEEK_API_KEY/);
 assert.match(worker, /NEBULA_SYNC_TOKEN/);
+
+const inlineScripts = [...html.matchAll(/<script(?:\\s+type="module")?>([\\s\\S]*?)<\\/script>/g)];
+assert.ok(inlineScripts.length >= 2, "Expected the app bootstrap and main module scripts.");
+for (const match of inlineScripts) {
+  const isModule = match[0].startsWith('<script type="module">');
+  const args = isModule ? ["--input-type=module", "--check"] : ["--check"];
+  const checked = spawnSync(process.execPath, args, { input: match[1], encoding: "utf8" });
+  assert.equal(checked.status, 0, "Inline script syntax error: " + checked.stderr);
+}
+
 console.log("NEBULA backend contract checks passed.");
