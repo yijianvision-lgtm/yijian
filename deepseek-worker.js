@@ -64,7 +64,7 @@ export default {
         const q = (new URL(request.url)).searchParams.get("q")?.trim().slice(0, 240);
         if (!q) return new Response(JSON.stringify({ error: "Missing search query q" }), { status: 400, headers: cors });
         const upstream = await fetch("https://api.crossref.org/works?rows=10&query=" + encodeURIComponent(q), {
-          headers: { "Accept": "application/json", "User-Agent": "NEBULA-Knowledge/1.0 (mailto:contact@example.invalid)" }
+          headers: { "Accept": "application/json", "User-Agent": "NEBULA-Knowledge/1.0" }
         });
         if (!upstream.ok) return new Response(JSON.stringify({ error: "Crossref unavailable", status: upstream.status }), { status: 502, headers: cors });
         const payload = await upstream.json();
