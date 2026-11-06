@@ -19,5 +19,9 @@ jobs:
         run: |
           node --input-type=module --check < nebula-local.js
           node --input-type=module --check < deepseek-worker.js
+      - name: Install IndexedDB test shim
+        run: npm install --no-save fake-indexeddb@6.2.4
       - name: Check backend contracts
         run: node tests/backend-contract.test.mjs
+      - name: Test local database workflows
+        run: node tests/backend-runtime.test.mjs
