@@ -34,4 +34,4 @@ NEBULA 采用 **Local-first**：不要求注册、登录、Clerk、Supabase、D1
 - 语音识别、语音合成和图片 OCR 是独立的前端/浏览器能力，尚需在 UI 接入后逐项测试。
 
 ## 部署与下一步
-本地知识库不需要部署任何账户或云数据库服务。DeepSeek Worker 若已部署，可继续使用；若要新增 AI 端点，需要更新并部署该 Worker，配置 `DEEPSEEK_API_KEY` 和仅供用户主动调用的访问令牌 `NEBULA_SYNC_TOKEN`。切勿把 DeepSeek API Key 放进网页代码。
+本地知识库不需要部署任何账户或云数据库服务。DeepSeek Worker 若已部署，需将仓库新版 `deepseek-worker.js` 部署到原 Worker（保留原 Worker 名称与原有两个 secrets），即可启用新增 AI 端点。仓库的 `wrangler.toml` 仅部署无状态 DeepSeek Worker，不含 D1/R2。需要命令行部署时，在仓库目录执行：\n\n```bash\nnpx wrangler login\nnpx wrangler secret put DEEPSEEK_API_KEY\nnpx wrangler secret put NEBULA_SYNC_TOKEN\nnpx wrangler deploy\n```\n\n按提示填入你自己原有的密钥；不要把密钥发给我或写进仓库。若 Worker 已有同名 secrets，确认仍保留即可，不要为了重新部署而更换令牌。
