@@ -23,11 +23,28 @@ function openDB() {
 async function request(store, mode, action) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(store, mode);
-    const req = action(tx.objectStore(store));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-    tx.onabort = () => reject(tx.error || new Error("本地数据库操作失败"));
+    let result, settled = false;
+    let tx;
+    const fail = error => {
+      if (settled) return;
+      settled = true;
+      try { db.close(); } catch {}
+      reject(error || new Error("本地数据库操作失败"));
+    };
+    try {
+      tx = db.transaction(store, mode);
+      const req = action(tx.objectStore(store));
+      req.onsuccess = () => { result = req.result; };
+      req.onerror = () => fail(req.error);
+      tx.oncomplete = () => {
+        if (settled) return;
+        settled = true;
+        db.close();
+        resolve(result);
+      };
+      tx.onerror = () => fail(tx.error);
+      tx.onabort = () => fail(tx.error || new Error("本地数据库操作已中止"));
+    } catch (error) { fail(error); }
   });
 }
 const makeId = () => "ref_" + Date.now().toString(36) + "_" + crypto.randomUUID().replace(/-/g, "");
@@ -303,8 +320,9 @@ async function getAllEntries(storeName) {
   return new Promise((resolve,reject)=>{
     const tx=db.transaction(storeName,"readonly"), store=tx.objectStore(storeName);
     const keys=store.getAllKeys(), values=store.getAll();
-    tx.oncomplete=()=>resolve(values.result.map((value,i)=>({key:keys.result[i],value})));
-    tx.onerror=()=>reject(tx.error);
+    tx.oncomplete=()=>{db.close();resolve(values.result.map((value,i)=>({key:keys.result[i],value})));};
+    tx.onerror=()=>{db.close();reject(tx.error);};
+    tx.onabort=()=>{db.close();reject(tx.error||new Error("读取本地数据失败"));};
   });
 }
 async function putRecord(storeName, record) {
@@ -369,6 +387,7 @@ async function sha256Hex(text) {
   const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(text));
   return Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,"0")).join("");
 }
+const BACKUP_LOCAL_STORAGE_KEYS = ["nebula_nodes","nebula_links","nebula_data_generation","nebula_deepseek_worker_url","nebula_sync_history"];
 async function backupPayload() {
   const stores={};
   for(const name of STORES) {
@@ -379,9 +398,11 @@ async function backupPayload() {
     }
     stores[name]=rows;
   }
-  return {format:"NEBULA_FULL_BACKUP",schemaVersion:3,exportedAt:nowISO(),stores,
+  const local={};
+  try { for(const key of BACKUP_LOCAL_STORAGE_KEYS) { const value=localStorage.getItem(key); if(value!==null)local[key]=value; } } catch {}
+  return {format:"NEBULA_FULL_BACKUP",schemaVersion:4,exportedAt:nowISO(),stores,localStorage:local,
     manifest:Object.fromEntries(Object.entries(stores).map(([k,v])=>[k,{records:v.length}])),
-    notes:["原始讲义与 AI 对话分别备份。","本地文件夹授权句柄不会导出，恢复后需重新授权。"]};
+    notes:["原始讲义与 AI 对话分别备份，包含原始文件 Blob。","仅备份非敏感的 NEBULA 本地设置；访问令牌和 API 密钥不会导出。","本地文件夹授权句柄不会导出，恢复后需重新授权。"]};
 }
 async function makeFullBackup() {
   const payload=await backupPayload();
@@ -392,7 +413,7 @@ async function makeFullBackup() {
 }
 async function validateFullBackup(input) {
   const parsed=typeof input==="string"?JSON.parse(input):input;
-  if(!parsed||parsed.format!=="NEBULA_FULL_BACKUP"||!parsed.stores||typeof parsed.stores!=="object") throw new Error("这不是有效的 NEBULA 完整备份文件。");
+  if(!parsed||parsed.format!=="NEBULA_FULL_BACKUP"||!parsed.stores||typeof parsed.stores!=="object"||![3,4].includes(Number(parsed.schemaVersion))) throw new Error("这不是有效或受支持的 NEBULA 完整备份文件。");
   const supported=new Set(STORES);
   for(const [name,rows] of Object.entries(parsed.stores)) {
     if(!supported.has(name)||!Array.isArray(rows)) throw new Error("备份包含不支持的数据表："+name);
@@ -414,26 +435,55 @@ async function previewFullBackup(fileOrObject) {
 async function restoreFullBackup(fileOrObject, options={}) {
   const raw=typeof fileOrObject?.text==="function"?await fileOrObject.text():fileOrObject;
   const parsed=await validateFullBackup(raw);
-  const mode=options.mode||"replace";
+  const mode=options.mode||"merge";
   if(!["replace","merge"].includes(mode)) throw new Error("恢复模式只能是 replace 或 merge。");
+  const storeNames=mode==="replace"?STORES:Object.keys(parsed.stores).filter(n=>STORES.includes(n));
   const db=await openDB();
-  const storeNames=Object.keys(parsed.stores).filter(n=>STORES.includes(n));
-  return new Promise((resolve,reject)=>{
+  const restored={};
+  await new Promise((resolve,reject)=>{
     const tx=db.transaction(storeNames,"readwrite");
     for(const name of storeNames) {
-      const store=tx.objectStore(name);
+      const store=tx.objectStore(name), rows=parsed.stores[name]||[];
+      restored[name]={imported:0,skipped:0};
       if(mode==="replace") store.clear();
-      for(const row of parsed.stores[name]) {
+      for(const row of rows) {
         const key=decodeBackupValue(row.key), value=decodeBackupValue(row.value);
         if(name==="meta" && key==="lectureFolder") continue;
-        if(store.keyPath) store.put(value);
-        else store.put(value,key);
+        if(mode==="replace") {
+          if(store.keyPath) store.put(value); else store.put(value,key);
+          restored[name].imported++;
+        } else if(name==="graph" && key==="main") {
+          const get=store.get(key);
+          get.onsuccess=()=>{
+            const current=get.result;
+            if(!current) { store.put(value,key); restored[name].imported++; return; }
+            const unique=(a,b)=>{const map=new Map();for(const item of [...(a||[]),...(b||[])])if(item?.id!=null&&!map.has(String(item.id)))map.set(String(item.id),item);return [...map.values()];};
+            store.put({...value,...current,nodes:unique(current.nodes,value.nodes),links:unique(current.links,value.links),savedAt:Date.now()},key);
+            restored[name].imported++;
+          };
+        } else {
+          const lookup=store.keyPath?store.get(value?.[store.keyPath]):store.get(key);
+          lookup.onsuccess=()=>{
+            if(lookup.result===undefined) {
+              if(store.keyPath)store.put(value);else store.put(value,key);
+              restored[name].imported++;
+            } else restored[name].skipped++;
+          };
+        }
       }
     }
-    tx.oncomplete=()=>resolve({mode,restoredStores:storeNames,manifest:Object.fromEntries(Object.entries(parsed.stores).map(([k,v])=>[k,v.length]))});
-    tx.onerror=()=>reject(tx.error||new Error("恢复失败，原数据库事务已回滚。"));
-    tx.onabort=()=>reject(tx.error||new Error("恢复已中止，原数据库事务已回滚。"));
-  });
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error||new Error("恢复失败，数据库事务已回滚。"));
+    tx.onabort=()=>reject(tx.error||new Error("恢复已中止，数据库事务已回滚。"));
+  }).finally(()=>db.close());
+  if(mode==="replace" && parsed.localStorage && typeof parsed.localStorage==="object") {
+    try {
+      for(const key of BACKUP_LOCAL_STORAGE_KEYS) {
+        if(Object.prototype.hasOwnProperty.call(parsed.localStorage,key))localStorage.setItem(key,String(parsed.localStorage[key]));
+      }
+    } catch(error) { throw new Error("数据库已恢复，但部分旧版浏览器本地缓存未能同步；重新打开页面会从 IndexedDB 读取知识图谱。"+error.message); }
+  }
+  return {mode,restoredStores:storeNames,restored,manifest:Object.fromEntries(Object.entries(parsed.stores).map(([k,v])=>[k,v.length])),folderPermission:"需重新授权"};
 }
 async function createKnowledgeProposal(record) {
   const allowed=new Set(["create","update","merge","split","reparent","relation"]);
