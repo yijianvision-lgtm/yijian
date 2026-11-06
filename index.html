@@ -360,6 +360,10 @@ document.querySelector('#saveNode').onclick=()=>{
 };
 
 
+/* Shared DeepSeek sync state/helpers must exist before any handlers reference them. */
+let deepseekPending=null;
+const dsEl=id=>document.getElementById(id);
+
 /* Batch import DeepSeek public share URLs through the secured Worker. */
 dsEl('fetchDeepSeekShares').onclick=async()=>{
  const base=dsEl('deepseekWorkerUrl').value.trim().replace(/\\/$/,'').replace(/\\/(analyze|share)$/,'');
@@ -393,8 +397,6 @@ dsEl('fetchDeepSeekShares').onclick=async()=>{
 };
 
 /* DeepSeek bridge: archive-first migration; no account credentials are collected. */
-let deepseekPending=null;
-const dsEl=id=>document.getElementById(id);
 dsEl('syncDeepSeekBtn').onclick=()=>{dsEl('deepseekSync').style.display='flex';dsEl('deepseekWorkerUrl').value=localStorage.getItem('nebula_deepseek_worker_url')||'';};
 dsEl('closeDeepSeekSync').onclick=()=>{dsEl('deepseekSync').style.display='none';};
 dsEl('analyzeDeepSeekArchive').onclick=async()=>{
