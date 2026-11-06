@@ -88,9 +88,25 @@ function build(){normalizeHierarchy();while(group.children.length)group.remove(g
  document.querySelector('#stats').textContent=nodes.length+' KNOWLEDGE NODES  ·  XYZ SPACE  ·  LOCAL SAVE';
  renderLogical();renderTimeline();}
 function renderTimeline(){const ev=document.querySelector('#events');ev.innerHTML='';nodes.filter(n=>n.date).slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(n=>{const e=document.createElement('div');e.className='event'+(selected?.id===n.id?' active':'');e.innerHTML='<span>'+n.date+'</span>';e.title=n.name;e.onclick=()=>select(n);ev.append(e);});}
-function levelOf(n){const raw=n.level??n.depth??n.tier??n.rank;if(raw!==undefined){const m=String(raw).match(/[123]/);if(m)return Math.max(1,Math.min(3,Number(m[0])));}const t=String(n.name||'');const m=t.match(/^\\s*(?:(\\d+)[.、)）]|(一级|二级|三级|第一层|第二层|第三层))/);if(m){const v=m[1]?Number(m[1]):({'一级':1,'第一层':1,'二级':2,'第二层':2,'三级':3,'第三层':3}[m[2]]);return Math.max(1,Math.min(3,v));}return 1;}
-function parentOf(n){const p=n.parentId??n.parent_id??n.parent; if(p!==undefined&&p!==null&&p!==''){return nodes.find(x=>x.id===p||x.name===p)||null;}return null;}
-function childrenOf(parent){const targetLevel=parent?levelOf(parent)+1:1;let list=nodes.filter(n=>levelOf(n)===targetLevel&&(parentOf(n)?.id===(parent?.id||null)));if(parent&&list.length===0){const linked=links.map(l=>Array.isArray(l)?l:[l.source||l.from,l.target||l.to]).filter(l=>l[0]===parent.id).map(l=>l[1]);list=nodes.filter(n=>linked.includes(n.id)&&levelOf(n)===targetLevel);}return list.sort((a,b)=>String(a.name).localeCompare(String(b.name),'zh-CN'));}
+function levelOf(n,seen=new Set()){
+ const p=n.parentId?nodes.find(x=>x.id===n.parentId):null;
+ if(p&&!seen.has(n.id)){seen.add(n.id);return Math.min(3,levelOf(p,seen)+1);}
+ const raw=n.level??n.depth??n.tier??n.rank;
+ if(raw!==undefined){const m=String(raw).match(/[123]/);if(m)return Math.max(1,Math.min(3,Number(m[0])));}
+ const t=String(n.name||'');const m=t.match(/^\s*(?:(\d+)[.、)）]|(一级|二级|三级|第一层|第二层|第三层))/);
+ if(m){const v=m[1]?Number(m[1]):({'一级':1,'第一层':1,'二级':2,'第二层':2,'三级':3,'第三层':3}[m[2]]);return Math.max(1,Math.min(3,v));}
+ return 1;
+}
+function parentOf(n){return n.parentId?nodes.find(x=>x.id===n.parentId)||null:null;}
+function childrenOf(parent){
+ const list=parent?nodes.filter(n=>n.parentId===parent.id):nodes.filter(n=>!n.parentId);
+ return list.sort((a,b)=>String(a.name).localeCompare(String(b.name),'zh-CN'));
+}
+function normalizeHierarchy(){
+ const byName=new Map(nodes.map(n=>[n.name,n]));
+ nodes.forEach(n=>{const legacy=n.parentId??n.parent_id??n.parent;if(legacy!==undefined&&legacy!==null&&legacy!==''){const p=nodes.find(x=>x.id===legacy)||byName.get(String(legacy));n.parentId=p&&p.id!==n.id?p.id:null;}else n.parentId=null;});
+ nodes.forEach(n=>{const p=parentOf(n);if(p)n.level=Math.min(3,levelOf(p)+1);else n.level=Math.max(1,Math.min(3,Number(n.level)||1));});
+}
 function hierarchyPath(){const path=[];let n=currentParentId?nodes.find(x=>x.id===currentParentId):null;while(n){path.unshift(n);n=parentOf(n);}return path;}
 function navigateInto(n){const kids=childrenOf(n);if(!kids.length){toast('这个节点目前没有下一层逻辑链');return;}currentParentId=n.id;renderLogical();}
 function showThoughts(n){select(n);showPanels(n);toast('已展开「'+n.name+'」的四向思考');}
