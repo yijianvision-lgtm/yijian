@@ -661,10 +661,41 @@ Object.assign(NEBULA_LOCAL,{
   async saveResearchSession(record){return putRecord("researchSessions",{...record,id:record.id||makeRecordId("research"),updatedAt:Date.now(),createdAt:record.createdAt||Date.now()});},
   async listResearchSessions(){return (await request("researchSessions","readonly",s=>s.getAll())).sort((a,b)=>b.updatedAt-a.updatedAt);},
   async findDuplicateCandidates(nodes,options){return duplicateCandidates(nodes||[],options||{});},
+  async detectKnowledgeGaps(nodeId){
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    const targets=nodeId?nodes.filter(n=>String(n.id)===String(nodeId)):nodes;
+    const [sources,links,learning]=await Promise.all([this.listSources(),request("nodeSourceLinks","readonly",s=>s.getAll()),this.listLearningRecords()]);
+    const gaps=[];
+    for(const node of targets){
+      const evidence=links.filter(x=>String(x.nodeId)===String(node.id));
+      const records=learning.filter(x=>String(x.nodeId)===String(node.id));
+      const missing=[];
+      const check=(key,label)=>{if(!String(node[key]||"").trim())missing.push({key,label});};
+      check("desc","核心定义与解释");
+      check("mechanism","运行机制与因果过程");
+      check("before","起源、前置条件与背景");
+      check("after","后续影响与演化");
+      check("left","横向关联与跨领域联系");
+      check("right","反例、限制与竞争解释");
+      if(!Array.isArray(node.examples)||!node.examples.length)missing.push({key:"examples",label:"具体案例"});
+      if(!Array.isArray(node.counterexamples)||!node.counterexamples.length)missing.push({key:"counterexamples",label:"反例或边界案例"});
+      if(!evidence.length)missing.push({key:"evidence",label:"可追溯来源与证据定位"});
+      if(node.needsReview||node.status==="needs_review")missing.push({key:"verification",label:"事实核验"});
+      if(!records.length)missing.push({key:"recall",label:"主动回忆与口头复述记录"});
+      if(!records.some(x=>["application","transfer","case-analysis"].includes(x.activityType)))missing.push({key:"transfer",label:"迁移应用与案例分析记录"});
+      if(missing.length)gaps.push({nodeId:node.id,title:node.name||node.coreWord||String(node.id),missing,missingCount:missing.length,priority:(node.needsReview||node.status==="needs_review"?4:0)+Math.min(missing.length,8),evidenceCount:evidence.length,learningCount:records.length});
+    }
+    return gaps.sort((a,b)=>b.priority-a.priority||b.missingCount-a.missingCount);
+  },
+  async buildLearningQueue(limit=30){
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[],gaps=await this.detectKnowledgeGaps();
+    const byId=new Map(nodes.map(n=>[String(n.id),n]));
+    return gaps.slice(0,Math.max(1,Math.min(200,Number(limit)||30))).map(g=>({node:byId.get(String(g.nodeId)),...g,nextAction:g.missing.some(x=>x.key==="verification"||x.key==="evidence")?"核验来源与事实":g.missing.some(x=>x.key==="recall")?"进行主动回忆与口头复述":g.missing.some(x=>x.key==="transfer")?"完成一个迁移应用案例":"补齐知识结构缺口"}));
+  },
   async getCognitiveDashboard(){
-    const [sources,proposals,learning,research,graph]=await Promise.all([this.listSources(),this.listProposals("pending"),this.listLearningRecords(),this.listResearchSessions(),this.loadGraph()]);
+    const [sources,proposals,learning,research,graph,gaps]=await Promise.all([this.listSources(),this.listProposals("pending"),this.listLearningRecords(),this.listResearchSessions(),this.loadGraph(),this.detectKnowledgeGaps()]);
     const nodes=graph?.nodes||[];
-    return {nodeCount:nodes.length,sourceCount:sources.length,pendingReviews:proposals.length,learningRecords:learning.length,researchSessions:research.length,needsReviewCount:nodes.filter(n=>n.needsReview||n.status==="needs_review").length,generatedAt:Date.now()};
+    return {nodeCount:nodes.length,sourceCount:sources.length,pendingReviews:proposals.length,learningRecords:learning.length,researchSessions:research.length,needsReviewCount:nodes.filter(n=>n.needsReview||n.status==="needs_review").length,knowledgeGapCount:gaps.length,missingEvidenceCount:gaps.filter(g=>g.missing.some(x=>x.key==="evidence")).length,generatedAt:Date.now()};
   }
 });
 
