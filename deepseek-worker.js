@@ -17,7 +17,7 @@ export default {
       "Access-Control-Allow-Origin": origin && allowed ? origin : "https://yijianvision-lgtm.github.io",
       "Vary": "Origin",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Content-Type": "application/json; charset=utf-8"
     };
     if (!allowed) return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: cors });
@@ -25,8 +25,10 @@ export default {
     const url = new URL(request.url);
     if (url.pathname !== "/analyze" || request.method !== "POST")
       return new Response(JSON.stringify({ error: "POST /analyze only" }), { status: 404, headers: cors });
-    if (!env.DEEPSEEK_API_KEY)
-      return new Response(JSON.stringify({ error: "Worker secret DEEPSEEK_API_KEY is not configured." }), { status: 503, headers: cors });
+    if (!env.DEEPSEEK_API_KEY || !env.NEBULA_SYNC_TOKEN)
+      return new Response(JSON.stringify({ error: "Worker secrets DEEPSEEK_API_KEY and NEBULA_SYNC_TOKEN must both be configured." }), { status: 503, headers: cors });
+    if (request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
+      return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
     try {
       const body = await request.json();
       const text = String(body.text || "").slice(0, 90000);
