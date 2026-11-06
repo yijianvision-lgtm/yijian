@@ -647,7 +647,10 @@ Object.assign(NEBULA_LOCAL,{
   async listSources(){return (await request("sources","readonly",s=>s.getAll())).sort((a,b)=>(b.updatedAt||b.createdAt)-(a.updatedAt||a.createdAt));},
   async linkNodeSource(record){
     if(!record?.nodeId||!record?.sourceId)throw new Error("节点与来源 ID 均为必填。");
-    const exists=(await request("nodeSourceLinks","readonly",s=>s.getAll())).find(x=>x.nodeId===record.nodeId&&x.sourceId===record.sourceId&&x.evidenceLocator===record.evidenceLocator);
+    const graph=await this.loadGraph();
+    if(!(graph?.nodes||[]).some(n=>String(n.id)===String(record.nodeId)))throw new Error("目标知识节点不存在，不能建立来源关联。");
+    if(!(await this.getSource(record.sourceId)))throw new Error("来源记录不存在，不能建立来源关联。");
+    const exists=(await request("nodeSourceLinks","readonly",s=>s.getAll())).find(x=>String(x.nodeId)===String(record.nodeId)&&String(x.sourceId)===String(record.sourceId)&&x.evidenceLocator===record.evidenceLocator);
     if(exists)return exists;
     return putRecord("nodeSourceLinks",{...record,id:makeRecordId("evidence"),linkedAt:Date.now()});
   },
@@ -748,7 +751,9 @@ NEBULA_LOCAL.saveConversation = async function(record) {
 };
 Object.assign(NEBULA_LOCAL,{
   async saveKnowledgeRelation(record) {
-    if(!record?.sourceNodeId||!record?.targetNodeId||record.sourceNodeId===record.targetNodeId)throw new Error("关系两端节点必须有效且不能相同。");
+    if(!record?.sourceNodeId||!record?.targetNodeId||String(record.sourceNodeId)===String(record.targetNodeId))throw new Error("关系两端节点必须有效且不能相同。");
+    const graph=await this.loadGraph(),ids=new Set((graph?.nodes||[]).map(n=>String(n.id)));
+    if(!ids.has(String(record.sourceNodeId))||!ids.has(String(record.targetNodeId)))throw new Error("关系引用了不存在的知识节点。");
     return putRecord("knowledgeRelations",{...record,id:record.id||makeRecordId("relation"),createdAt:record.createdAt||Date.now()});
   },
   async listKnowledgeRelations(nodeId) {
