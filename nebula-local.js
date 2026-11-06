@@ -549,3 +549,19 @@ Object.assign(NEBULA_LOCAL,{
   },
   async deleteKnowledgeRelation(id){return deleteRecord("knowledgeRelations",id);}
 });
+
+async function backfillSourceCatalog() {
+  try {
+    const [lectures,conversations,known]=await Promise.all([NEBULA_LOCAL.listReferences(),NEBULA_LOCAL.listConversations(),NEBULA_LOCAL.listSources()]);
+    const ids=new Set(known.map(x=>x.id));
+    for(const item of lectures) {
+      const id="src_"+item.id;
+      if(!ids.has(id)) await NEBULA_LOCAL.saveSource({id,sourceType:"lecture",title:item.name,referenceId:item.id,fileName:item.name,mime:item.mime,size:item.size,parserWarnings:item.warnings||[],createdAt:item.savedAt||Date.now()});
+    }
+    for(const item of conversations) {
+      const id="src_"+item.id;
+      if(!ids.has(id)) await NEBULA_LOCAL.saveSource({id,sourceType:"ai_conversation",title:item.title,referenceId:item.id,fileName:item.fileName||"",origin:item.source||"manual-import",createdAt:item.savedAt||Date.now()});
+    }
+  } catch(error) { console.warn("NEBULA source catalog backfill deferred:",error); }
+}
+backfillSourceCatalog();
