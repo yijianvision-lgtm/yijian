@@ -93,11 +93,11 @@ h1{font-size:15px;letter-spacing:.22em;margin:0;font-weight:650}.sub{font-size:9
 <body>
 <div id="scene"></div>
 <header class="top"><div class="brand"><div class="orb"></div><div><h1>NEBULA</h1><div class="sub">3D KNOWLEDGE UNIVERSE · v0.7</div></div></div>
-<div class="tools"><input id="search" class="search" placeholder="搜索知识节点…"><button class="btn" id="viewBtn">逻辑视图</button><button class="btn" id="addBtn">＋ 新节点</button><button class="btn" id="editSelectedBtn">编辑选中</button><button class="btn" id="multiSelectBtn">多选模式</button><button class="btn" id="deleteSelectedBtn">批量删除</button><button class="btn" id="knowledgeBtn">输入知识</button><button class="btn" id="importBtn">导入知识</button><input id="importFile" type="file" accept=".json,application/json" hidden><button class="btn" id="exportBtn">导出 JSON</button><button class="btn" id="resetBtn">重置视角</button></div></header>
+<div class="tools"><input id="search" class="search" placeholder="搜索知识节点…"><button class="btn" id="viewBtn">逻辑视图</button><button class="btn" id="addBtn">＋ 新节点</button><button class="btn" id="editSelectedBtn">编辑选中</button><button class="btn" id="multiSelectBtn">多选模式</button><button class="btn" id="deleteSelectedBtn">批量删除</button><button class="btn" id="syncDeepSeekBtn">DeepSeek 同步</button><button class="btn" id="knowledgeBtn">输入知识</button><button class="btn" id="importBtn">导入知识</button><input id="importFile" type="file" accept=".json,application/json" hidden><button class="btn" id="exportBtn">导出 JSON</button><button class="btn" id="resetBtn">重置视角</button></div></header>
 <div class="hint">拖拽 · 旋转空间　 滚轮 · 缩放　 点击星体 · 探索知识<br>节点在真实 XYZ 空间分布，可从不同深度观察</div>
 <div class="stats" id="stats"></div><div id="panels"></div><div id="logical"></div><div id="toast"></div>
 <div id="timeline"><div class="timehead"><span>KNOWLEDGE TIMELINE</span><span>点击事件定位节点</span></div><div class="events" id="events"></div></div>
-<div id="knowledgeEditor" style="position:fixed;z-index:9;inset:0;background:#02040be8;display:none;align-items:center;justify-content:center"><div class="dialog"><h2>输入新知识 · 自动整理进知识宇宙</h2><label>粘贴一段知识、文章摘录或学习笔记（可分段）</label><textarea id="knowledgeText" style="height:210px" placeholder="请粘贴知识内容；可用换行分隔不同主题。"></textarea><div class="actions"><button class="btn" id="cancelKnowledge">取消</button><button class="btn" id="processKnowledge">整理并加入宇宙</button></div><p style="font-size:10px;color:#8794b8;line-height:1.6">当前版本在浏览器本地按段落与句子拆分知识节点，生成四向思考初稿，并按关键词重合建立初步关系；不调用云端 AI，结果可继续编辑。</p></div></div><div id="importDialog" style="position:fixed;z-index:10;inset:0;background:#02040be8;display:none;align-items:center;justify-content:center"><div class="dialog"><h2>导入知识结构</h2><p class="help">选择导入内容类型。支持 JSON 文件；混合导入会尝试匹配节点、层级、逻辑关系和四向思维线。</p><div class="import-options"><label><input type="radio" name="importMode" value="logic" checked> <span><b>只导入逻辑链</b><br><small>知识节点、一级/二级/三级层级、父子与逻辑连线</small></span></label><label><input type="radio" name="importMode" value="thought"> <span><b>只导入思维线</b><br><small>前瞻、顾后、左顾、右盼，并匹配已有节点</small></span></label><label><input type="radio" name="importMode" value="mixed"> <span><b>混合导入</b><br><small>同时导入逻辑链和思维线，自动识别层级并建立对应关系</small></span></label></div><div class="actions"><button class="btn" id="cancelImport">取消</button><button class="btn" id="chooseImportFile">选择 JSON 文件</button></div></div></div><div id="editor"><div class="dialog"><h2 id="editorTitle">创建知识节点</h2><label>节点名称</label><input id="nodeName" placeholder="例如：系统思维"><label>简短描述</label><textarea id="nodeDesc" placeholder="这个知识点的核心是什么？"></textarea><label>所属上级节点（留空即一级主干）</label><select id="nodeParent"><option value="">无上级 · 一级主干</option></select><label>前瞻 · 前置知识</label><textarea id="nodeBefore"></textarea><label>顾后 · 后续影响</label><textarea id="nodeAfter"></textarea><label>左顾 · 横向关联</label><textarea id="nodeLeft"></textarea><label>右盼 · 反向思考</label><textarea id="nodeRight"></textarea><div class="actions"><button class="btn" id="cancelEdit">取消</button><button class="btn" id="saveNode">保存节点</button></div></div></div>
+<div id="deepseekSync" style="position:fixed;z-index:12;inset:0;background:#02040bf0;display:none;align-items:center;justify-content:center;overflow:auto;padding:18px"><div class="dialog" style="width:min(680px,96vw);max-height:92vh;overflow:auto"><h2>DeepSeek 历史对话同步中心</h2><p class="help">保留 DeepSeek 网页版原有使用方式。先从 DeepSeek 导出/复制历史对话，再在这里批量分析；本工具不会索取你的 DeepSeek 密码或 Cookie。</p><label>NEBULA DeepSeek Worker 地址（部署 Worker 后填写）</label><input id="deepseekWorkerUrl" placeholder="https://你的-worker.workers.dev/analyze"><label>导入历史对话文件（JSON / TXT / MD）</label><input id="deepseekArchiveFile" type="file" accept=".json,.txt,.md,.markdown,application/json,text/plain,text/markdown"><label>或者直接粘贴 DeepSeek 对话内容</label><textarea id="deepseekArchiveText" style="height:160px" placeholder="粘贴一段或多段 DeepSeek 对话……"></textarea><p class="help">分析时会将当前知识节点摘要发送给你配置的 Worker，用于识别重复知识和建议合并。API Key 只放在 Worker Secret，不放在这里。</p><div id="deepseekSyncStatus" class="help"></div><div id="deepseekSyncPreview" class="help" style="white-space:pre-wrap;margin-top:10px"></div><div class="actions"><button class="btn" id="closeDeepSeekSync">关闭</button><button class="btn" id="analyzeDeepSeekArchive">分析历史内容</button><button class="btn" id="applyDeepSeekArchive" disabled>确认合并并导入</button></div></div></div><div id="knowledgeEditor" style="position:fixed;z-index:9;inset:0;background:#02040be8;display:none;align-items:center;justify-content:center"><div class="dialog"><h2>输入新知识 · 自动整理进知识宇宙</h2><label>粘贴一段知识、文章摘录或学习笔记（可分段）</label><textarea id="knowledgeText" style="height:210px" placeholder="请粘贴知识内容；可用换行分隔不同主题。"></textarea><div class="actions"><button class="btn" id="cancelKnowledge">取消</button><button class="btn" id="processKnowledge">整理并加入宇宙</button></div><p style="font-size:10px;color:#8794b8;line-height:1.6">当前版本在浏览器本地按段落与句子拆分知识节点，生成四向思考初稿，并按关键词重合建立初步关系；不调用云端 AI，结果可继续编辑。</p></div></div><div id="importDialog" style="position:fixed;z-index:10;inset:0;background:#02040be8;display:none;align-items:center;justify-content:center"><div class="dialog"><h2>导入知识结构</h2><p class="help">选择导入内容类型。支持 JSON 文件；混合导入会尝试匹配节点、层级、逻辑关系和四向思维线。</p><div class="import-options"><label><input type="radio" name="importMode" value="logic" checked> <span><b>只导入逻辑链</b><br><small>知识节点、一级/二级/三级层级、父子与逻辑连线</small></span></label><label><input type="radio" name="importMode" value="thought"> <span><b>只导入思维线</b><br><small>前瞻、顾后、左顾、右盼，并匹配已有节点</small></span></label><label><input type="radio" name="importMode" value="mixed"> <span><b>混合导入</b><br><small>同时导入逻辑链和思维线，自动识别层级并建立对应关系</small></span></label></div><div class="actions"><button class="btn" id="cancelImport">取消</button><button class="btn" id="chooseImportFile">选择 JSON 文件</button></div></div></div><div id="editor"><div class="dialog"><h2 id="editorTitle">创建知识节点</h2><label>节点名称</label><input id="nodeName" placeholder="例如：系统思维"><label>简短描述</label><textarea id="nodeDesc" placeholder="这个知识点的核心是什么？"></textarea><label>所属上级节点（留空即一级主干）</label><select id="nodeParent"><option value="">无上级 · 一级主干</option></select><label>前瞻 · 前置知识</label><textarea id="nodeBefore"></textarea><label>顾后 · 后续影响</label><textarea id="nodeAfter"></textarea><label>左顾 · 横向关联</label><textarea id="nodeLeft"></textarea><label>右盼 · 反向思考</label><textarea id="nodeRight"></textarea><div class="actions"><button class="btn" id="cancelEdit">取消</button><button class="btn" id="saveNode">保存节点</button></div></div></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
@@ -358,6 +358,50 @@ document.querySelector('#saveNode').onclick=()=>{
  else{const a=Math.random()*Math.PI*2,r=12+Math.random()*12;nodes.push({id:'n'+Date.now(),name:v('nodeName'),desc:v('nodeDesc'),before:v('nodeBefore'),after:v('nodeAfter'),left:v('nodeLeft'),right:v('nodeRight'),parentId:parent?.id||null,level:parent?levelOf(parent)+1:1,x:parent?parent.x+Math.cos(a)*8:Math.cos(a)*r,y:parent?parent.y+(Math.random()-.5)*8:(Math.random()-.5)*20,z:parent?parent.z+Math.sin(a)*8:Math.sin(a)*r,color:[0x76dfff,0xb59aff,0x78a8ff,0x78e2c2][Math.floor(Math.random()*4)],date:'未标注'});}
  normalizeHierarchy();persist();document.querySelector('#editor').style.display='none';build();renderLogical();toast('节点已保存，父子层级已更新');
 };
+
+/* DeepSeek bridge: archive-first migration; no account credentials are collected. */
+let deepseekPending=null;
+const dsEl=id=>document.getElementById(id);
+dsEl('syncDeepSeekBtn').onclick=()=>{dsEl('deepseekSync').style.display='flex';dsEl('deepseekWorkerUrl').value=localStorage.getItem('nebula_deepseek_worker_url')||'';};
+dsEl('closeDeepSeekSync').onclick=()=>{dsEl('deepseekSync').style.display='none';};
+dsEl('analyzeDeepSeekArchive').onclick=async()=>{
+ const endpoint=dsEl('deepseekWorkerUrl').value.trim();
+ if(!/^https:\/\//i.test(endpoint))return toast('请先部署 Worker，并填写 HTTPS /analyze 地址');
+ let text=dsEl('deepseekArchiveText').value.trim();
+ const file=dsEl('deepseekArchiveFile').files?.[0];
+ if(file){
+  const raw=await file.text();
+  if(/\.json$/i.test(file.name)){
+   try{
+    const obj=JSON.parse(raw),parts=[];
+    const walk=(v,path='')=>{if(v==null)return;if(typeof v==='string'){if(v.trim().length>20)parts.push((path?path+': ':'')+v.trim());return;}if(Array.isArray(v)){v.forEach((x,i)=>walk(x,path+'['+i+']'));return;}if(typeof v==='object'){const role=v.role||v.author||v.speaker||'';const label=role?String(role):path;for(const k of ['content','text','message','prompt','response','title'])if(typeof v[k]==='string')walk(v[k],label);for(const [k,x] of Object.entries(v))if(!['content','text','message','prompt','response','title'].includes(k))walk(x,k);}};
+    walk(obj);text=parts.join('\n\n');
+   }catch(e){return toast('JSON 文件解析失败：'+e.message);}
+  } else text=raw;
+ }
+ if(!text.trim())return toast('请上传历史导出文件或粘贴对话内容');
+ localStorage.setItem('nebula_deepseek_worker_url',endpoint);
+ dsEl('analyzeDeepSeekArchive').disabled=true;dsEl('deepseekSyncStatus').textContent='正在调用 DeepSeek 分析；较大的档案建议分批导入……';
+ dsEl('deepseekSyncPreview').textContent='';dsEl('applyDeepSeekArchive').disabled=true;deepseekPending=null;
+ try{
+  const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,existingNodes:nodes.map(n=>({id:n.id,name:n.name,coreWord:n.coreWord,desc:n.desc,parentId:n.parentId}))})});
+  const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||('HTTP '+res.status));
+  deepseekPending=data.result||{};
+  const ns=deepseekPending.nodes||[],ls=deepseekPending.links||[],ms=deepseekPending.mergeSuggestions||[],us=deepseekPending.uncertain||[];
+  dsEl('deepseekSyncStatus').textContent='分析完成：识别 '+ns.length+' 个候选节点、'+ls.length+' 条关联、'+ms.length+' 条合并建议、'+us.length+' 项待核对。尚未写入知识库。';
+  dsEl('deepseekSyncPreview').textContent=ns.slice(0,30).map((n,i)=>(i+1)+'. '+(n.coreWord||n.name||'未命名')+'｜'+(n.parentId?'有上级':'暂定主干')+(n.needsReview?'｜待核对':'')).join('\n')+(ns.length>30?'\n……其余 '+(ns.length-30)+' 个节点':'')+(ms.length?'\n\n合并建议：\n'+JSON.stringify(ms.slice(0,12),null,2):'')+(us.length?'\n\n待核对：\n'+JSON.stringify(us.slice(0,8),null,2):'');
+  dsEl('applyDeepSeekArchive').disabled=!ns.length;
+ }catch(e){dsEl('deepseekSyncStatus').textContent='同步分析失败：'+e.message;toast('DeepSeek 同步失败');}
+ finally{dsEl('analyzeDeepSeekArchive').disabled=false;}
+};
+dsEl('applyDeepSeekArchive').onclick=()=>{
+ if(!deepseekPending)return;
+ const payload={nodes:deepseekPending.nodes||[],links:deepseekPending.links||[]};
+ const result=importKnowledgeData(payload,'mixed');persist();build();renderLogical();
+ dsEl('deepseekSyncStatus').textContent='已写入知识库：新增 '+result.added+'，合并/更新 '+result.merged+'。';
+ dsEl('applyDeepSeekArchive').disabled=true;deepseekPending=null;toast('DeepSeek 分析结果已合并导入');
+};
+
 window.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelector('#editor').style.display='none';});
 window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 try{currentParentId=null;selected=null;logical=false;document.querySelector('#logical').style.display='none';document.querySelector('#scene').style.opacity='1';document.querySelector('#viewBtn').textContent='逻辑视图';build();}catch(err){console.error('NEBULA 初始化失败',err);toast('3D 初始化失败：请刷新页面或检查网络');}function animate(){requestAnimationFrame(animate);controls.update();group.children.forEach(o=>{if(o.isGroup){o.rotation.y+=.0015;const halo=o.children[1],outer=o.children[2];if(halo&&outer){const pulse=1+Math.sin(performance.now()*.0012+o.position.x)*.035;halo.scale.setScalar(pulse);outer.scale.setScalar(pulse*1.025);}}});renderer.render(scene,camera);}animate();
