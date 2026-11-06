@@ -528,14 +528,33 @@ Object.assign(NEBULA_LOCAL,{
 // Source catalog adapters: original files and conversations remain in their own stores.
 const originalSaveReference = NEBULA_LOCAL.saveReference.bind(NEBULA_LOCAL);
 const originalSaveConversation = NEBULA_LOCAL.saveConversation.bind(NEBULA_LOCAL);
+async function sha256BufferHex(buffer) {
+  const digest=await crypto.subtle.digest("SHA-256",buffer);
+  return Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,"0")).join("");
+}
 NEBULA_LOCAL.saveReference = async function(file) {
+  const fileHash=await sha256BufferHex(await file.arrayBuffer());
+  const previous=(await this.listReferences()).find(x=>x.fileHash===fileHash);
+  if(previous) return {...previous,duplicate:true,blob:undefined};
   const item=await originalSaveReference(file);
-  await this.saveSource({id:"src_"+item.id,sourceType:"lecture",title:item.name,referenceId:item.id,fileName:item.name,mime:item.mime,size:item.size,parserWarnings:item.warnings||[],createdAt:item.savedAt});
+  const stored=await this.getReference(item.id);
+  stored.fileHash=fileHash;
+  await request("lectureSources","readwrite",s=>s.put(stored));
+  item.fileHash=fileHash;
+  await this.saveSource({id:"src_"+item.id,sourceType:"lecture",title:item.name,referenceId:item.id,fileName:item.name,mime:item.mime,size:item.size,fileHash,parserWarnings:item.warnings||[],createdAt:item.savedAt});
   return item;
 };
 NEBULA_LOCAL.saveConversation = async function(record) {
+  const transcript=String(record?.transcript||record?.text||"");
+  const contentHash=await sha256Hex(transcript);
+  const previous=(await this.listConversations()).find(x=>x.contentHash===contentHash);
+  if(previous && !record?.id) return {...previous,duplicate:true};
   const item=await originalSaveConversation(record);
-  await this.saveSource({id:"src_"+item.id,sourceType:"ai_conversation",title:item.title,referenceId:item.id,fileName:item.fileName||"",origin:item.source||"manual-import",createdAt:item.savedAt||Date.now()});
+  const stored=await this.getConversation(item.id);
+  stored.contentHash=contentHash;
+  await request("aiConversations","readwrite",s=>s.put(stored));
+  item.contentHash=contentHash;
+  await this.saveSource({id:"src_"+item.id,sourceType:"ai_conversation",title:item.title,referenceId:item.id,fileName:item.fileName||"",origin:item.source||"manual-import",contentHash,createdAt:item.savedAt||Date.now()});
   return item;
 };
 Object.assign(NEBULA_LOCAL,{
