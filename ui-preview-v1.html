@@ -275,8 +275,8 @@ function showView(v){document.querySelectorAll('.nav').forEach(b=>b.classList.to
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'))));
 document.getElementById('overviewBtn').onclick=()=>document.getElementById('overview').classList.add('open');document.getElementById('fourD').onclick=()=>toast('四维思考：前瞻 · 顾后 · 左顾 · 右盼');document.getElementById('profileBtn').onclick=()=>toast('本机知识空间 · 本地优先模式（预览）');
 document.getElementById('openNodeDetail').onclick=()=>document.getElementById('nodeDetail').classList.add('open');
-document.querySelectorAll('.direction-row').forEach(b=>b.onclick=()=>{const d=b.dataset.direction;const titles={前瞻:'前瞻 · 起源与前置',顾后:'顾后 · 后续与影响',左顾:'左顾 · 横向与跨学科',右盼:'右盼 · 反向与边界'};const qs={前瞻:'这个概念从哪里产生？它依赖哪些前置知识？',顾后:'它会产生什么结果？后续有哪些发展与影响？',左顾:'它与哪些概念有关？能否跨学科建立类比？',右盼:'有哪些反例、相反观点与适用边界？'};document.getElementById('directionTitle').textContent=titles[d];document.getElementById('directionQuestion').textContent=qs[d];document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'));document.getElementById('directionDetail').classList.add('open')});
-document.getElementById('fourD').onclick=()=>document.getElementById('nodeDetail').classList.add('open');
+document.querySelectorAll('.direction-row').forEach(b=>b.onclick=()=>{const d=({前瞻:'forward',顾后:'backward',左顾:'left',右盼:'right'})[b.dataset.direction];if(!focusHistory.length)selectNode(selected,true);navigateContinuum(d)});
+document.getElementById('fourD').onclick=()=>{if(!focusHistory.length)selectNode(selected,true);else document.getElementById('continuumFocus').classList.add('open')};
 document.getElementById('directionDraft').onclick=()=>toast('思考草稿入口已触发（演示，不写入正式知识）');
 
 document.querySelectorAll('.time-point').forEach((p,i)=>p.onclick=()=>{document.querySelectorAll('.time-point').forEach(x=>x.classList.remove('active'));p.classList.add('active');toast('时间维度：'+p.textContent)});
