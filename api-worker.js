@@ -51,7 +51,7 @@ async function authenticate(request, env) {
   if (parts.length !== 3) return null;
   try {
     const header = JSON.parse(b64url(parts[0]));
-    const claims = JSON.parse(b64url(parts[1]));
+    const claims = JSON.parse(new TextDecoder().decode(Uint8Array.from(b64url(parts[1]), c => c.charCodeAt(0))));
     if (header.alg !== "RS256" || !header.kid) return null;
     const keys = await getJwks(env);
     const jwk = keys.find(k => k.kid === header.kid && k.kty === "RSA" && (!k.use || k.use === "sig"));
@@ -61,7 +61,7 @@ async function authenticate(request, env) {
     const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, signature, encoder.encode(parts[0] + "." + parts[1]));
     const now = Math.floor(Date.now() / 1000);
     const audOk = Array.isArray(claims.aud) ? claims.aud.includes(env.OIDC_AUDIENCE) : claims.aud === env.OIDC_AUDIENCE;
-    if (!valid || !audOk || claims.iss !== env.OIDC_ISSUER || !claims.sub || claims.exp <= now || (claims.nbf && claims.nbf > now + 30)) return null;
+    if (!valid || !env.OIDC_AUDIENCE || !env.OIDC_ISSUER || !audOk || claims.iss !== env.OIDC_ISSUER || typeof claims.sub !== "string" || !claims.sub || !Number.isFinite(claims.exp) || claims.exp <= now || (claims.nbf && claims.nbf > now + 30)) return null;
     return { id: String(claims.sub), email: claims.email || null };
   } catch { return null; }
 }
@@ -125,7 +125,7 @@ export default {
         const rows = await env.DB.prepare("SELECT id, payload, updated_at FROM knowledge WHERE owner_id = ? ORDER BY updated_at DESC LIMIT 500").bind(user.id).all();
         return json({ ok: true, items: rows.results || [] }, 200, cors);
       }
-      if (url.pathname === "/v1/knowledge" && request.method === "PUT") {
+      if (url.pathname === "/v1/knowledge" && request.method === "DELETE") {\n        const id = url.searchParams.get("id");\n        if (!safeId(id)) return json({ error: "Invalid id" }, 400, cors);\n        await env.DB.prepare("DELETE FROM knowledge WHERE id = ? AND owner_id = ?").bind(id, user.id).run();\n        return json({ ok: true, deleted: true }, 200, cors);\n      }\n      if (url.pathname === "/v1/knowledge" && request.method === "PUT") {
         const body = await request.json();
         if (!safeId(body.id) || typeof body.encryptedPayload !== "string" || body.encryptedPayload.length > 1500000) return json({ error: "Invalid encrypted knowledge payload" }, 400, cors);
         await env.DB.prepare("INSERT INTO knowledge (id, owner_id, payload, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(id, owner_id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(body.id, user.id, body.encryptedPayload, Date.now()).run();
@@ -163,12 +163,12 @@ export default {
           return json({ ok: true, deleted: true }, 200, cors);
         }
       }
-      if (url.pathname === "/v1/ai/analyze" && request.method === "POST") return await aiAnalyze(await request.json(), env, cors);
+      if (url.pathname === "/v1/ai/analyze" && request.method === "POST") return await aiAnalyze(await request.json(), env, cors);\n      if (url.pathname === "/v1/ai/mnemonic" && request.method === "POST") {\n        const body = await request.json();\n        const prompt = String(body.mnemonic || body.userInput || "").slice(0, 6000);\n        if (!prompt.trim()) return json({ error: "Please provide a mnemonic or knowledge point" }, 400, cors);\n        const task = { ...body, userInput: "请检查并帮助优化这条记忆口诀。保留用户原文，不要擅自替换。请判断口诀是否准确、是否遗漏关键点、是否容易记忆，并给出优化候选。用户口诀：\\n" + prompt, sourceText: String(body.sourceText || "").slice(0, 30000) };\n        return await aiAnalyze(task, env, cors);\n      }
       if (url.pathname === "/v1/research" && request.method === "GET") {
         const q = String(url.searchParams.get("q") || "").trim().slice(0, 240);
         if (!q) return json({ error: "Missing q" }, 400, cors);
         const api = "https://api.crossref.org/works?rows=8&query=" + encodeURIComponent(q);
-        const upstream = await fetch(api, { headers: { "User-Agent": "NEBULA-Knowledge/1.0 (mailto:contact@example.invalid)" } });
+        const upstream = await fetch(api, { headers: { "User-Agent": "NEBULA-Knowledge/1.0" } });
         if (!upstream.ok) return json({ error: "Research provider unavailable" }, 502, cors);
         const data = await upstream.json();
         const items = (data.message?.items || []).map(x => ({ title: x.title?.[0] || "", authors: (x.author || []).slice(0, 5).map(a => [a.given, a.family].filter(Boolean).join(" ")), year: x.published?.["date-parts"]?.[0]?.[0] || null, doi: x.DOI || null, url: x.URL || null, type: x.type || null }));
