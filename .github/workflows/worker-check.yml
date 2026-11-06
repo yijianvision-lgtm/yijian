@@ -3,11 +3,13 @@ on:
   push:
     branches: [main]
     paths:
+      - "index.html"
       - "nebula-local.js"
       - "deepseek-worker.js"
       - ".github/workflows/worker-check.yml"
   pull_request:
     paths:
+      - "index.html"
       - "nebula-local.js"
       - "deepseek-worker.js"
       - ".github/workflows/worker-check.yml"
@@ -23,3 +25,15 @@ jobs:
         run: node --check nebula-local.js
       - name: Check DeepSeek Worker
         run: node --check deepseek-worker.js
+      - name: Extract and check inline application script
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script(?![^>]*\\bsrc=)[^>]*>([\\s\\S]*?)</script>", html, re.I)
+          if not scripts:
+              raise SystemExit("No inline application script found")
+          Path("/tmp/nebula-inline.js").write_text(scripts[-1], encoding="utf-8")
+          PY
+          node --check /tmp/nebula-inline.js
