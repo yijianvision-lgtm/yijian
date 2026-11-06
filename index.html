@@ -16,7 +16,7 @@ h1{font-size:15px;letter-spacing:.22em;margin:0;font-weight:650}.sub{font-size:9
 .stats{position:fixed;z-index:3;right:25px;bottom:85px;color:#8794b8;font-size:10px;text-align:right;line-height:1.8;pointer-events:none}
 #panels{position:fixed;inset:0;pointer-events:none;z-index:4}
 .panel{position:absolute;width:min(250px,27vw);padding:13px 15px;border:1px solid rgba(135,160,255,.3);border-radius:13px;background:linear-gradient(135deg,rgba(18,27,58,.92),rgba(8,13,29,.84));backdrop-filter:blur(18px);box-shadow:0 10px 40px #0008,inset 0 1px #ffffff0c;pointer-events:auto;transition:opacity .2s}
-.panel h3{font-size:11px;letter-spacing:.12em;margin:0 0 9px;color:var(--cyan)}.panel p{font-size:11px;line-height:1.65;color:#c2cbe7;margin:0}.thought-content{display:flex;flex-direction:column;gap:7px}.thought-main{font-size:13px;line-height:1.65;font-weight:750;color:#f2f6ff;text-shadow:0 0 12px #ffffff18}.thought-detail{font-size:10px;line-height:1.7;color:#9eaccd;font-weight:400;border-left:1px solid #ffffff24;padding-left:9px}.thought-detail p{font-size:10px;color:#9eaccd;margin:0 0 4px}.panel .tag{font-size:9px;color:#7383ae;margin-top:8px}
+.panel h3{font-size:11px;letter-spacing:.12em;margin:0 0 9px;color:var(--cyan)}.panel p{font-size:11px;line-height:1.65;color:#c2cbe7;margin:0}.thought-content{display:flex;flex-direction:column;gap:7px}.thought-main{font-size:13px;line-height:1.65;font-weight:750;color:#f2f6ff;text-shadow:0 0 12px #ffffff18}.thought-detail{font-size:10px;line-height:1.7;color:#9eaccd;font-weight:400;border-left:1px solid #ffffff24;padding-left:9px}.thought-detail p{font-size:10px;color:#9eaccd;font-weight:350;margin:0 0 4px}.thought-main strong{font-size:14px;font-weight:800;color:#fff;text-shadow:0 0 14px #ffffff30}.thought-detail .detail-label{display:block;color:#d3dcf5;font-weight:650;font-size:9px;letter-spacing:.06em;margin-bottom:2px}.thought-detail p span{font-weight:400;color:#aab7d5}.panel .tag{font-size:9px;color:#7383ae;margin-top:8px}
 /* Four clear cardinal directions around the selected knowledge node; deliberately flat and readable. */
 .panel.dir-up{left:50%;top:calc(50% - 225px);transform:translateX(-50%)}
 .panel.dir-down{left:50%;top:calc(50% + 80px);transform:translateX(-50%)}
@@ -40,7 +40,7 @@ h1{font-size:15px;letter-spacing:.22em;margin:0;font-weight:650}.sub{font-size:9
 .logic-tools{position:sticky;top:-20px;background:#0b1228f2;padding:13px 10px;z-index:3;display:flex;gap:9px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #ffffff18}
 .logic-crumbs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%;font-size:11px;color:#9aa9ce;padding:3px 0 8px}.logic-crumb{cursor:pointer;color:#83dcff}.logic-crumb.current{color:#fff;cursor:default}
 .logic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:18px 2px}
-.logic-card{border:1px solid #53658f66;border-radius:13px;padding:15px;background:linear-gradient(145deg,#121d3b,#090f22);min-height:132px;display:flex;flex-direction:column;gap:9px;position:relative}
+.logic-card{border:1px solid #53658f66;border-radius:13px;padding:15px;background:linear-gradient(145deg,#121d3b,#090f22);min-height:132px;display:flex;flex-direction:column;gap:9px;position:relative;box-shadow:0 0 14px #ffffff08,inset 0 0 12px #ffffff05}
 .logic-card.level-1{border-color:#63cfe788;box-shadow:inset 3px 0 #73e4ff}.logic-card.level-2{border-color:#a88cff88;box-shadow:inset 3px 0 #b49aff}.logic-card.level-3{border-color:#75d9b188;box-shadow:inset 3px 0 #78e2c2}
 .logic-card-head{display:flex;gap:9px;align-items:flex-start}.logic-card-head input{margin-top:4px;accent-color:#73e4ff}.logic-card-main{flex:1;min-width:0}.logic-card strong{font-size:13px;line-height:1.5}.logic-card small{display:block;color:#8c9bc0;font-size:10px;line-height:1.6;margin-top:5px}
 .logic-card-actions{display:flex;gap:7px;margin-top:auto;flex-wrap:wrap}.logic-card-actions button{font-size:10px;padding:7px 9px}
@@ -53,7 +53,7 @@ h1{font-size:15px;letter-spacing:.22em;margin:0;font-weight:650}.sub{font-size:9
 </head>
 <body>
 <div id="scene"></div>
-<header class="top"><div class="brand"><div class="orb"></div><div><h1>NEBULA</h1><div class="sub">3D KNOWLEDGE UNIVERSE · v0.5</div></div></div>
+<header class="top"><div class="brand"><div class="orb"></div><div><h1>NEBULA</h1><div class="sub">3D KNOWLEDGE UNIVERSE · v0.6</div></div></div>
 <div class="tools"><input id="search" class="search" placeholder="搜索知识节点…"><button class="btn" id="viewBtn">逻辑视图</button><button class="btn" id="addBtn">＋ 新节点</button><button class="btn" id="editSelectedBtn">编辑选中</button><button class="btn" id="multiSelectBtn">多选模式</button><button class="btn" id="deleteSelectedBtn">批量删除</button><button class="btn" id="knowledgeBtn">输入知识</button><button class="btn" id="importBtn">导入知识</button><input id="importFile" type="file" accept=".json,application/json" hidden><button class="btn" id="exportBtn">导出 JSON</button><button class="btn" id="resetBtn">重置视角</button></div></header>
 <div class="hint">拖拽 · 旋转空间　 滚轮 · 缩放　 点击星体 · 探索知识<br>节点在真实 XYZ 空间分布，可从不同深度观察</div>
 <div class="stats" id="stats"></div><div id="panels"></div><div id="logical"></div><div id="toast"></div>
@@ -81,10 +81,10 @@ scene.add(new THREE.AmbientLight(0x7788bb,1.3));const light=new THREE.PointLight
 const starGeo=new THREE.BufferGeometry(),starPos=[];for(let i=0;i<1800;i++)starPos.push((Math.random()-.5)*180,(Math.random()-.5)*130,(Math.random()-.5)*180);starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starPos,3));scene.add(new THREE.Points(starGeo,new THREE.PointsMaterial({color:0x8299d9,size:.13,transparent:true,opacity:.72})));
 const group=new THREE.Group();scene.add(group);const nodeMeshes=new Map(),ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=null,logical=false,editing=null,multiSelectMode=false,currentParentId=null;const selectedIds=new Set();
 function persist(){localStorage.setItem('nebula_nodes',JSON.stringify(nodes));localStorage.setItem('nebula_links',JSON.stringify(links));}
-function build(){normalizeHierarchy();while(group.children.length)group.remove(group.children[0]);nodeMeshes.clear();
+function build(){normalizeHierarchy();layoutHierarchy3D();while(group.children.length)group.remove(group.children[0]);nodeMeshes.clear();
  const byId=Object.fromEntries(nodes.map(n=>[n.id,n]));
- links.forEach(l=>{const a=Array.isArray(l)?l[0]:(l.source||l.from),b=Array.isArray(l)?l[1]:(l.target||l.to);if(!byId[a]||!byId[b])return;const pts=[new THREE.Vector3(byId[a].x,byId[a].y,byId[a].z),new THREE.Vector3(byId[b].x,byId[b].y,byId[b].z)];const geo=new THREE.BufferGeometry().setFromPoints(pts);group.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x667eea,transparent:true,opacity:.36})));});
- nodes.forEach((n,i)=>{const g=new THREE.Group();g.position.set(n.x,n.y,n.z);const core=new THREE.Mesh(new THREE.SphereGeometry(n.id===selected?.id?1.55:1.08,32,32),new THREE.MeshStandardMaterial({color:n.color,emissive:n.color,emissiveIntensity:.3,roughness:.28,metalness:.18}));g.add(core);const halo=new THREE.Mesh(new THREE.SphereGeometry(1.72,24,24),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.065,side:THREE.BackSide,depthWrite:false}));g.add(halo);const outerGlow=new THREE.Mesh(new THREE.SphereGeometry(2.05,20,20),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.022,side:THREE.BackSide,depthWrite:false}));g.add(outerGlow);const ring=new THREE.Mesh(new THREE.TorusGeometry(1.48,.018,6,80),new THREE.MeshBasicMaterial({color:n.color,transparent:true,opacity:.65}));ring.rotation.x=Math.PI/2.7;g.add(ring);g.userData.node=n;group.add(g);nodeMeshes.set(n.id,g);});
+ const drawnEdges=new Set();const drawEdge=(a,b,hier=false)=>{if(!byId[a]||!byId[b]||a===b)return;const key=[a,b].sort().join('|');if(drawnEdges.has(key))return;drawnEdges.add(key);const pts=[new THREE.Vector3(byId[a].x,byId[a].y,byId[a].z),new THREE.Vector3(byId[b].x,byId[b].y,byId[b].z)];const geo=new THREE.BufferGeometry().setFromPoints(pts);group.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:hier?0xcbd8ff:0x667eea,transparent:true,opacity:hier?.52:.2})));};nodes.forEach(n=>{if(n.parentId)drawEdge(n.parentId,n.id,true);});links.forEach(l=>{const a=Array.isArray(l)?l[0]:(l.source||l.from),b=Array.isArray(l)?l[1]:(l.target||l.to);if(!byId[a]||!byId[b])return;drawEdge(a,b,byId[b].parentId===a);});
+ nodes.forEach((n,i)=>{const g=new THREE.Group();g.position.set(n.x,n.y,n.z);const core=new THREE.Mesh(new THREE.SphereGeometry(n.id===selected?.id?1.55:1.08,32,32),new THREE.MeshStandardMaterial({color:n.color,emissive:n.color,emissiveIntensity:.3,roughness:.28,metalness:.18}));g.add(core);const halo=new THREE.Mesh(new THREE.SphereGeometry(1.72,24,24),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.085,side:THREE.BackSide,depthWrite:false}));g.add(halo);const outerGlow=new THREE.Mesh(new THREE.SphereGeometry(2.35,20,20),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.032,side:THREE.BackSide,depthWrite:false}));g.add(outerGlow);const ring=new THREE.Mesh(new THREE.TorusGeometry(1.48,.018,6,80),new THREE.MeshBasicMaterial({color:n.color,transparent:true,opacity:.65}));ring.rotation.x=Math.PI/2.7;g.add(ring);g.userData.node=n;group.add(g);nodeMeshes.set(n.id,g);});
  document.querySelector('#stats').textContent=nodes.length+' KNOWLEDGE NODES  ·  XYZ SPACE  ·  LOCAL SAVE';
  renderLogical();renderTimeline();}
 function renderTimeline(){const ev=document.querySelector('#events');ev.innerHTML='';nodes.filter(n=>n.date).slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(n=>{const e=document.createElement('div');e.className='event'+(selected?.id===n.id?' active':'');e.innerHTML='<span>'+n.date+'</span>';e.title=n.name;e.onclick=()=>select(n);ev.append(e);});}
@@ -103,9 +103,18 @@ function childrenOf(parent){
  return list.sort((a,b)=>String(a.name).localeCompare(String(b.name),'zh-CN'));
 }
 function normalizeHierarchy(){
- const byName=new Map(nodes.map(n=>[n.name,n]));
- nodes.forEach(n=>{const legacy=n.parentId??n.parent_id??n.parent;if(legacy!==undefined&&legacy!==null&&legacy!==''){const p=nodes.find(x=>x.id===legacy)||byName.get(String(legacy));n.parentId=p&&p.id!==n.id?p.id:null;}else n.parentId=null;});
- nodes.forEach(n=>{const p=parentOf(n);if(p)n.level=Math.min(3,levelOf(p)+1);else n.level=Math.max(1,Math.min(3,Number(n.level)||1));});
+ const byName=new Map(nodes.map(n=>[String(n.name),n]));
+ nodes.forEach(n=>{const legacy=n.parentId??n.parent_id??n.parent;if(legacy!==undefined&&legacy!==null&&legacy!==''){const p=nodes.find(x=>String(x.id)===String(legacy))||byName.get(String(legacy));n.parentId=p&&p.id!==n.id?p.id:null;}else n.parentId=null;});
+ // Remove invalid links and break accidental cycles before calculating levels.
+ nodes.forEach(n=>{let p=parentOf(n),seen=new Set([n.id]);while(p){if(seen.has(p.id)){n.parentId=null;break;}seen.add(p.id);p=parentOf(p);}});
+ nodes.forEach(n=>{if(!n.parentId)n.level=1;});
+ const depthOf=(n,seen=new Set())=>{if(!n.parentId)return 1;if(seen.has(n.id))return 1;seen.add(n.id);const p=parentOf(n);return p?Math.min(3,depthOf(p,seen)+1):1;};
+ nodes.forEach(n=>n.level=depthOf(n));
+}
+function layoutHierarchy3D(){
+ const roots=nodes.filter(n=>!n.parentId);
+ const place=(parent,depth)=>{const kids=childrenOf(parent),count=kids.length;if(!count)return;const radius=depth===1?Math.max(7,Math.min(15,count*2.5)):Math.max(4.5,Math.min(9,count*1.8));kids.forEach((child,i)=>{const angle=(Math.PI*2*i/Math.max(count,1))+(depth*.37);child.x=parent.x+Math.cos(angle)*radius;child.y=parent.y+(depth===1?(i%2?3:-3):(i%2?2:-2));child.z=parent.z+Math.sin(angle)*radius;place(child,depth+1);});};
+ roots.forEach(root=>place(root,1));
 }
 function hierarchyPath(){const path=[];let n=currentParentId?nodes.find(x=>x.id===currentParentId):null;while(n){path.unshift(n);n=parentOf(n);}return path;}
 function navigateInto(n){const kids=childrenOf(n);if(!kids.length){toast('这个节点目前没有下一层逻辑链');return;}currentParentId=n.id;renderLogical();}
@@ -125,12 +134,12 @@ function renderLogical(){
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function select(n){selected=n;build();showPanels(n);const obj=nodeMeshes.get(n.id);if(obj){const p=obj.position.clone();controls.target.copy(p);}}
 function formatThought(raw){
- const lines=String(raw||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);
+ const lines=String(raw||'').split(/\\n+/).map(x=>x.trim()).filter(Boolean);
  if(!lines.length)return '<p class="thought-detail">尚未填写</p>';
- let lead=lines.shift();
- if(lead.startsWith('【重点】'))lead=lead.replace(/^【重点】/,'');
+ let lead=lines.shift().replace(/^【重点】/,'').trim();
  if(lines.length===0){const parts=lead.split(/(?<=[。！？.!?；;])/).map(x=>x.trim()).filter(Boolean);if(parts.length>1){lead=parts.shift();lines.push(...parts);}}
- return '<div class="thought-content"><div class="thought-main">'+esc(lead)+'</div>'+(lines.length?'<div class="thought-detail">'+lines.map(x=>'<p>'+esc(x.replace(/^【细分】/,''))+'</p>').join('')+'</div>':'')+'</div>';
+ const detail=lines.map(x=>{const clean=x.replace(/^【细分】/,'').trim();const split=clean.match(/^([^：:]{2,14}[：:])(.*)$/);return '<p>'+(split?'<span class="detail-label">'+esc(split[1])+'</span><span>'+esc(split[2])+'</span>':'<span>'+esc(clean)+'</span>')+'</p>';}).join('');
+ return '<div class="thought-content"><div class="thought-main"><strong>'+esc(lead)+'</strong></div>'+(detail?'<div class="thought-detail">'+detail+'</div>':'')+'</div>';
 }
 function showPanels(n){
  const root=document.querySelector('#panels');root.innerHTML='';if(!n)return;
@@ -154,12 +163,17 @@ function toast(t){const el=document.querySelector('#toast');el.textContent=t;el.
 document.querySelector('#resetBtn').onclick=()=>{camera.position.set(0,8,48);controls.target.set(0,0,0);controls.update();};
 document.querySelector('#viewBtn').onclick=toggleView;
 document.querySelector('#search').oninput=e=>{const q=e.target.value.trim().toLowerCase();if(!q)return;const n=nodes.find(x=>x.name.toLowerCase().includes(q)||x.desc?.toLowerCase().includes(q));if(n)select(n);};
-document.querySelector('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:'0.3',nodes,links,thoughtLines:nodes.map(n=>({nodeId:n.id,nodeName:n.name,before:n.before,after:n.after,left:n.left,right:n.right})),hierarchy:nodes.map(n=>({id:n.id,name:n.name,level:levelOf(n)}))},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nebula-knowledge.json';a.click();URL.revokeObjectURL(a.href);toast('知识数据已导出');};
+document.querySelector('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:'0.6',nodes,links,thoughtLines:nodes.map(n=>({nodeId:n.id,nodeName:n.name,before:n.before,after:n.after,left:n.left,right:n.right})),hierarchy:nodes.map(n=>({id:n.id,name:n.name,parentId:n.parentId||null,level:levelOf(n)}))},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nebula-knowledge.json';a.click();URL.revokeObjectURL(a.href);toast('知识数据已导出');};
 document.querySelector('#importBtn').onclick=()=>document.querySelector('#importDialog').style.display='flex';
 document.querySelector('#cancelImport').onclick=()=>document.querySelector('#importDialog').style.display='none';
 document.querySelector('#chooseImportFile').onclick=()=>document.querySelector('#importFile').click();
 function normDirection(raw){const map={before:'before',prerequisite:'before',prerequisites:'before',前瞻:'before',前置:'before',after:'after',consequence:'after',consequences:'after',顾后:'after',后续:'after',left:'left',lateral:'left',左顾:'left',right:'right',counterpoint:'right',反向:'right',右盼:'right'};return map[String(raw||'').toLowerCase()]||null;}
-function collectRecords(parsed){const raw=Array.isArray(parsed)?parsed:(parsed.nodes||parsed.logicChain||parsed.logicalChains||parsed.items||[]);return Array.isArray(raw)?raw:[];}
+function collectRecords(parsed){
+ const raw=Array.isArray(parsed)?parsed:(parsed.nodes||parsed.logicChain||parsed.logicalChains||parsed.items||parsed.hierarchy||[]);
+ if(!Array.isArray(raw))return [];
+ const flat=[];const walk=(items,parentId=null)=>items.forEach(item=>{if(!item||typeof item!=='object')return;const copy={...item};delete copy.children;if(parentId&&copy.parentId==null&&copy.parent_id==null&&copy.parent==null)copy.parentId=parentId;flat.push(copy);const id=copy.id||copy.name||copy.title||copy.label;if(Array.isArray(item.children))walk(item.children,id);});
+ walk(raw);return flat;
+}
 function importKnowledgeData(parsed,mode){
  const incoming=collectRecords(parsed),thoughts=parsed.thoughtLines||parsed.mindLines||parsed.thoughts||[];
  const findNode=(t)=>nodes.find(n=>n.id===t.nodeId||n.id===t.node_id||n.name===t.nodeName||n.name===t.node||n.name===t.name);
@@ -216,5 +230,5 @@ document.querySelector('#saveNode').onclick=()=>{
 };
 window.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelector('#editor').style.display='none';});
 window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-try{build();select(nodes[0]);logical=true;document.querySelector('#logical').style.display='block';document.querySelector('#scene').style.opacity='.18';document.querySelector('#viewBtn').textContent='返回 3D 宇宙';renderLogical();}catch(err){console.error('NEBULA 初始化失败',err);toast('3D 初始化失败：请刷新页面或检查网络');}function animate(){requestAnimationFrame(animate);controls.update();group.children.forEach((o,i)=>{if(o.isGroup)o.rotation.y+=.0015;});renderer.render(scene,camera);}animate();
+try{build();select(nodes[0]);logical=true;document.querySelector('#logical').style.display='block';document.querySelector('#scene').style.opacity='.18';document.querySelector('#viewBtn').textContent='返回 3D 宇宙';renderLogical();}catch(err){console.error('NEBULA 初始化失败',err);toast('3D 初始化失败：请刷新页面或检查网络');}function animate(){requestAnimationFrame(animate);controls.update();group.children.forEach(o=>{if(o.isGroup){o.rotation.y+=.0015;const halo=o.children[1],outer=o.children[2];if(halo&&outer){const pulse=1+Math.sin(performance.now()*.0012+o.position.x)*.035;halo.scale.setScalar(pulse);outer.scale.setScalar(pulse*1.025);}}});renderer.render(scene,camera);}animate();
 </script></body></html>
