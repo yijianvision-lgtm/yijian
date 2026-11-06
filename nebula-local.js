@@ -565,3 +565,47 @@ async function backfillSourceCatalog() {
   } catch(error) { console.warn("NEBULA source catalog backfill deferred:",error); }
 }
 backfillSourceCatalog();
+
+async function callNebulaWorker(endpoint,token,path,options={}) {
+  if(!endpoint||!token)throw new Error("请先填写 Worker 地址和访问令牌。");
+  const base=String(endpoint).trim().replace(/\/+$/,"").replace(/\/(analyze|coach|mnemonic|research|share)$/,"");
+  const url=base+path;
+  const headers={"Authorization":"Bearer "+token};
+  if(options.body!==undefined)headers["Content-Type"]="application/json";
+  const response=await fetch(url,{method:options.method||"POST",headers,body:options.body===undefined?undefined:JSON.stringify(options.body)});
+  let data;try{data=await response.json();}catch{throw new Error("Worker 返回了无法识别的响应。");}
+  if(!response.ok)throw new Error(data.error||("Worker 请求失败（"+response.status+"）"));
+  return data;
+}
+Object.assign(NEBULA_LOCAL,{
+  async analyzeConversation(endpoint,token,text,existingNodes=[]) {
+    if(!String(text||"").trim())throw new Error("待分析对话不能为空。");
+    return callNebulaWorker(endpoint,token,"/analyze",{body:{text:String(text).slice(0,90000),existingNodes:existingNodes.slice(0,300)}});
+  },
+  async coachKnowledge(endpoint,token,payload) {
+    return callNebulaWorker(endpoint,token,"/coach",{body:payload||{}});
+  },
+  async checkMnemonic(endpoint,token,payload) {
+    return callNebulaWorker(endpoint,token,"/mnemonic",{body:payload||{}});
+  },
+  async searchResearch(endpoint,token,query) {
+    if(!String(query||"").trim())throw new Error("请输入论文检索关键词。");
+    return callNebulaWorker(endpoint,token,"/research?q="+encodeURIComponent(String(query).slice(0,240)),{method:"GET"});
+  },
+  async fetchDeepSeekShare(endpoint,token,shareUrl) {
+    return callNebulaWorker(endpoint,token,"/share",{body:{url:shareUrl}});
+  },
+  async getNodeEvidence(nodeId) {
+    const links=await this.listNodeSources(nodeId);
+    const result=[];
+    for(const link of links) result.push({link,source:await this.getSource(link.sourceId)});
+    return result;
+  },
+  async getSourceContent(sourceId) {
+    const source=await this.getSource(sourceId);
+    if(!source)return null;
+    if(source.sourceType==="lecture")return {source,record:await this.getReference(source.referenceId)};
+    if(source.sourceType==="ai_conversation")return {source,record:await this.getConversation(source.referenceId)};
+    return {source,record:null};
+  }
+});
