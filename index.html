@@ -348,13 +348,18 @@ function importKnowledgeData(parsed,mode){
  }
  return {added,updated,merged,thoughtUpdated,pending};
 }
-document.querySelector('#importFile').onchange=async e=>{const file=e.target.files?.[0];if(!file)return;const mode=document.querySelector('input[name="importMode"]:checked').value;try{const parsed=JSON.parse(await file.text());if(parsed.format==='NEBULA_FULL_BACKUP'){if(!window.NEBULA_LOCAL)throw new Error('本地数据模块尚未加载');const preview=await window.NEBULA_LOCAL.previewFullBackup(parsed);if(!confirm('备份校验通过。导出时间：'+preview.exportedAt+'。记录总数：'+preview.totalRecords+'。\n\n恢复将替换当前浏览器中的 NEBULA 数据。建议先导出当前备份。确定继续吗？'))return;await window.NEBULA_LOCAL.restoreFullBackup(parsed,{mode:'replace'});const restoredGraph=await window.NEBULA_LOCAL.loadGraph();nodes=restoredGraph?.nodes||[];links=restoredGraph?.links||[];persist();build();renderLogical();document.querySelector('#importDialog').style.display='none';toast('完整知识库恢复成功');return;}if(!Array.isArray(parsed)&&!parsed.nodes&&!parsed.items&&!parsed.logicChain&&!parsed.logicalChains&&!parsed.thoughtLines&&!parsed.mindLines&&!parsed.thoughts)throw new Error('文件中未识别到节点、逻辑链或思维线数据');const result=importKnowledgeData(parsed,mode);persist();build();if(nodes.length)select(nodes[nodes.length-1]);document.querySelector('#importDialog').style.display='none';toast('导入完成：新增 '+result.added+'，合并/更新 '+result.merged+'，思维线匹配 '+result.thoughtUpdated+(result.pending?.length?'；有 '+result.pending.length+' 组相似名称需核对':''));}catch(err){alert('导入失败：'+err.message);}finally{e.target.value='';}};
-function openEditor(n=null,parent=null){
+document.querySelector('#importFile').onchange=async e=>{const file=e.target.files?.[0];if(!file)return;const mode=document.querySelector('input[name="importMode"]:checked').value;try{const parsed=JSON.parse(await file.text());if(parsed.format==='NEBULA_FULL_BACKUP'){if(!window.NEBULA_LOCAL)throw new Error('本地数据模块尚未加载');const preview=await window.NEBULA_LOCAL.previewFullBackup(parsed);const summary=Object.entries(preview.manifest).map(([k,v])=>k+'：'+v).join('\n');const replace=confirm('备份校验通过。导出时间：'+preview.exportedAt+'。共 '+preview.totalRecords+' 条记录。\n\n'+summary+'\n\n点击“确定”执行完整替换（会先清空当前 NEBULA 数据）；点击“取消”则可选择安全合并。');let mode='replace';if(!replace){if(!confirm('是否改为安全合并？合并会保留现有记录，遇到相同 ID 时优先保留当前数据。'))return;mode='merge';}await window.NEBULA_LOCAL.restoreFullBackup(parsed,{mode});const restoredGraph=await window.NEBULA_LOCAL.loadGraph();nodes=restoredGraph?.nodes||[];links=restoredGraph?.links||[];persist();build();renderLogical();document.querySelector('#importDialog').style.display='none';toast(mode==='replace'?'完整知识库恢复成功':'备份数据已安全合并');return;}if(!Array.isArray(parsed)&&!parsed.nodes&&!parsed.items&&!parsed.logicChain&&!parsed.logicalChains&&!parsed.thoughtLines&&!parsed.mindLines&&!parsed.thoughts)throw new Error('文件中未识别到节点、逻辑链或思维线数据');const result=importKnowledgeData(parsed,mode);persist();build();if(nodes.length)select(nodes[nodes.length-1]);document.querySelector('#importDialog').style.display='none';toast('导入完成：新增 '+result.added+'，合并/更新 '+result.merged+'，思维线匹配 '+result.thoughtUpdated+(result.pending?.length?'；有 '+result.pending.length+' 组相似名称需核对':''));}catch(err){alert('导入失败：'+err.message);}finally{e.target.value='';}};
+async function openEditor(n=null,parent=null){
  editing=n;document.querySelector('#editorTitle').textContent=n?'编辑知识节点':(parent?'创建下级知识节点':'创建知识节点');
  [['nodeName','name'],['nodeDesc','desc'],['nodeBefore','before'],['nodeAfter','after'],['nodeLeft','left'],['nodeRight','right']].forEach(([id,k])=>document.getElementById(id).value=n?.[k]||'');
  const sel=document.querySelector('#nodeParent');
  sel.innerHTML='<option value="">无上级 · 一级主干</option>'+nodes.filter(x=>x.id!==(n?.id)).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'（第 '+levelOf(x)+' 级）</option>').join('');
- sel.value=n?.parentId||(parent?.id||'');document.querySelector('#editor').style.display='flex';
+ sel.value=n?.parentId||(parent?.id||'');
+ const sourceSelect=document.querySelector('#nodeSourceSelect');
+ if(sourceSelect&&window.NEBULA_LOCAL){
+  try{const [sources,linked]=await Promise.all([window.NEBULA_LOCAL.listSources(),n?.id?window.NEBULA_LOCAL.listNodeSources(n.id):Promise.resolve([])]);const selected=new Set(linked.map(x=>x.sourceId));sourceSelect.innerHTML='';sources.forEach(source=>{const option=document.createElement('option');option.value=source.id;option.textContent=(source.sourceType||'source')+' · '+(source.title||source.fileName||source.id);option.selected=selected.has(source.id);sourceSelect.appendChild(option);});}catch(error){console.warn('NEBULA source selector unavailable:',error);}
+ }
+ document.querySelector('#editor').style.display='flex';
 }
 document.querySelector('#addBtn').onclick=()=>openEditor();document.querySelector('#cancelEdit').onclick=()=>document.querySelector('#editor').style.display='none';
 document.querySelector('#editSelectedBtn').onclick=()=>{if(!selected)return toast('请先点击一个知识节点');openEditor(selected);};
@@ -374,16 +379,19 @@ function ingestKnowledge(raw){
  persist();build();select(created[0]);return created.length;
 }
 document.querySelector('#processKnowledge').onclick=()=>{try{const count=ingestKnowledge(document.querySelector('#knowledgeText').value.trim());document.querySelector('#knowledgeText').value='';document.querySelector('#knowledgeEditor').style.display='none';toast('已整理 '+count+' 个知识节点并加入 3D 宇宙');}catch(err){toast(err.message);}};
-document.querySelector('#saveNode').onclick=()=>{
+document.querySelector('#saveNode').onclick=async()=>{
  const v=id=>document.getElementById(id).value.trim(),parentId=document.querySelector('#nodeParent').value;
  if(!v('nodeName'))return toast('请填写节点名称');
  const parent=nodes.find(x=>x.id===parentId);
  if(parent&&editing?.id===parent.id)return toast('节点不能把自己设为上级');
  let ancestor=parent;while(ancestor){if(ancestor.id===editing?.id)return toast('不能把节点移动到自己的下级中');ancestor=parentOf(ancestor);}
- 
- if(editing){Object.assign(editing,{name:v('nodeName'),desc:v('nodeDesc'),before:v('nodeBefore'),after:v('nodeAfter'),left:v('nodeLeft'),right:v('nodeRight'),parentId:parent?.id||null,level:parent?levelOf(parent)+1:1});}
- else{const a=Math.random()*Math.PI*2,r=12+Math.random()*12;nodes.push({id:'n'+Date.now(),name:v('nodeName'),desc:v('nodeDesc'),before:v('nodeBefore'),after:v('nodeAfter'),left:v('nodeLeft'),right:v('nodeRight'),parentId:parent?.id||null,level:parent?levelOf(parent)+1:1,x:parent?parent.x+Math.cos(a)*8:Math.cos(a)*r,y:parent?parent.y+(Math.random()-.5)*8:(Math.random()-.5)*20,z:parent?parent.z+Math.sin(a)*8:Math.sin(a)*r,color:[0x76dfff,0xb59aff,0x78a8ff,0x78e2c2][Math.floor(Math.random()*4)],date:'未标注'});}
- normalizeHierarchy();persist();document.querySelector('#editor').style.display='none';build();renderLogical();toast('节点已保存，父子层级已更新');
+ let node;
+ if(editing){node=editing;Object.assign(node,{name:v('nodeName'),desc:v('nodeDesc'),before:v('nodeBefore'),after:v('nodeAfter'),left:v('nodeLeft'),right:v('nodeRight'),parentId:parent?.id||null,level:parent?levelOf(parent)+1:1,updatedAt:Date.now()});}
+ else{const a=Math.random()*Math.PI*2,r=12+Math.random()*12;node={id:'n'+Date.now(),name:v('nodeName'),desc:v('nodeDesc'),before:v('nodeBefore'),after:v('nodeAfter'),left:v('nodeLeft'),right:v('nodeRight'),parentId:parent?.id||null,level:parent?levelOf(parent)+1:1,x:parent?parent.x+Math.cos(a)*8:Math.cos(a)*r,y:parent?parent.y+(Math.random()-.5)*8:(Math.random()-.5)*20,z:parent?parent.z+Math.sin(a)*8:Math.sin(a)*r,color:[0x76dfff,0xb59aff,0x78a8ff,0x78e2c2][Math.floor(Math.random()*4)],date:'未标注',createdAt:Date.now()};nodes.push(node);}
+ normalizeHierarchy();persist();
+ try{if(window.NEBULA_LOCAL){await window.NEBULA_LOCAL.saveNodeVersion(node,editing?'用户编辑节点':'创建知识节点','user');const chosen=new Set(Array.from(document.querySelector('#nodeSourceSelect')?.selectedOptions||[]).map(x=>x.value));const existing=await window.NEBULA_LOCAL.listNodeSources(node.id);for(const link of existing)if(!chosen.has(link.sourceId))await window.NEBULA_LOCAL.unlinkNodeSource(link.id);for(const sourceId of chosen)await window.NEBULA_LOCAL.linkNodeSource({nodeId:node.id,sourceId,evidenceLocator:v('nodeEvidenceLocator')||''});await window.NEBULA_LOCAL.saveGraph(nodes,links);persist();}}
+ catch(error){console.warn('NEBULA version/source metadata save:',error);toast('节点已保存；版本或来源记录未能全部写入：'+error.message);}
+ document.querySelector('#editor').style.display='none';build();renderLogical();toast('节点已保存，版本与来源追溯已更新');
 };
 
 
