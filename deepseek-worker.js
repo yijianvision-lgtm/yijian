@@ -6,12 +6,21 @@
  */
 export default {
   async fetch(request, env) {
+    const origin = request.headers.get("Origin") || "";
+    const allowedOrigins = new Set([
+      "https://yijianvision-lgtm.github.io",
+      "http://localhost:8000",
+      "http://127.0.0.1:8000"
+    ]);
+    const allowed = !origin || allowedOrigins.has(origin);
     const cors = {
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": origin && allowed ? origin : "https://yijianvision-lgtm.github.io",
+      "Vary": "Origin",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Content-Type": "application/json; charset=utf-8"
     };
+    if (!allowed) return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: cors });
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(request.url);
     if (url.pathname !== "/analyze" || request.method !== "POST")
