@@ -206,6 +206,51 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
 #continuumFocus .continuum-axis:after{left:-48vw;right:-48vw}
 }
 @media(prefers-reduced-motion:reduce){#continuumFocus,#continuumFocus *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* V14 — quiet, gradual directions; remove the oversized central medallion */
+#continuumFocus .continuum-core{
+ width:auto!important;height:auto!important;min-height:0!important;max-width:260px;
+ padding:12px 18px!important;border:0!important;border-radius:0!important;
+ background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;
+}
+#continuumFocus .continuum-core:before,#continuumFocus .continuum-core:after{display:none!important;content:none!important}
+#continuumFocus .continuum-core-label{font-size:6px!important;letter-spacing:.2em;color:rgba(164,181,193,.58)!important}
+#continuumFocus .continuum-core-title{font-size:clamp(16px,1.45vw,20px)!important;font-weight:400!important;letter-spacing:.045em!important;margin-top:7px!important}
+#continuumFocus .continuum-core p{font-size:9px!important;line-height:1.7!important;color:rgba(174,188,199,.66)!important;margin:7px auto 5px!important}
+#continuumFocus .continuum-core-meta{font-size:7px!important;color:rgba(139,155,167,.52)!important}
+#continuumFocus .continuum-core button{font-size:8px!important;color:rgba(192,207,217,.7)!important;border-top:1px solid rgba(200,216,226,.1)!important;margin-top:8px!important;padding-top:7px!important}
+#continuumFocus .continuum-stage:after{display:none!important;content:none!important}
+#continuumFocus .continuum-orbit{opacity:.38!important;border-color:rgba(188,211,227,.045)!important;box-shadow:none!important}
+#continuumFocus .continuum-quadrant{
+ width:min(260px,24vw)!important;min-height:72px!important;padding:10px 12px!important;
+ opacity:0!important;filter:blur(2px)!important;
+ animation:none!important;transition:color .7s ease!important;
+}
+#continuumFocus .continuum-quadrant b{font-size:11px!important;font-weight:400!important;letter-spacing:.045em!important;margin-top:5px!important}
+#continuumFocus .continuum-quadrant small{font-size:8px!important;line-height:1.65!important;color:rgba(177,194,205,.58)!important}
+#continuumFocus .continuum-quadrant i{font-size:7px!important;color:rgba(198,214,224,.52)!important;margin-top:5px!important}
+#continuumFocus .cq-kicker{font-size:6px!important;letter-spacing:.16em!important;color:rgba(162,184,199,.55)!important}
+#continuumFocus.arriving .continuum-quadrant{
+ opacity:0!important;filter:blur(2px)!important;
+ animation:nebulaDirectionSoft 3.6s cubic-bezier(.2,.55,.25,1) both!important;
+}
+#continuumFocus.arriving .q-forward{animation-delay:.45s!important}
+#continuumFocus.arriving .q-left{animation-delay:1.05s!important}
+#continuumFocus.arriving .q-right{animation-delay:1.65s!important}
+#continuumFocus.arriving .q-backward{animation-delay:2.25s!important}
+#continuumFocus:not(.arriving) .continuum-quadrant{opacity:.88!important;filter:blur(0)!important}
+@keyframes nebulaDirectionSoft{
+ 0%{opacity:0;filter:blur(3px)}
+ 22%{opacity:.08;filter:blur(2.4px)}
+ 62%{opacity:.48;filter:blur(1px)}
+ 100%{opacity:.88;filter:blur(0)}
+}
+@media(max-width:760px){
+ #continuumFocus .continuum-quadrant{width:44vw!important;min-height:65px!important}
+ #continuumFocus .continuum-core{max-width:205px;padding:9px!important}
+ #continuumFocus .continuum-core-title{font-size:16px!important}
+}
+
 </style>
 </head>
 <body>
