@@ -26,7 +26,7 @@ h1{font-size:15px;letter-spacing:.22em;margin:0;font-weight:650}.sub{font-size:9
 <body>
 <div id="scene"></div>
 <header class="top"><div class="brand"><div class="orb"></div><div><h1>NEBULA</h1><div class="sub">3D KNOWLEDGE UNIVERSE · v0.1</div></div></div>
-<div class="tools"><input id="search" class="search" placeholder="搜索知识节点…"><button class="btn" id="viewBtn">逻辑视图</button><button class="btn" id="addBtn">＋ 新节点</button><button class="btn" id="exportBtn">导出 JSON</button><button class="btn" id="resetBtn">重置视角</button></div></header>
+<div class="tools"><input id="search" class="search" placeholder="搜索知识节点…"><button class="btn" id="viewBtn">逻辑视图</button><button class="btn" id="addBtn">＋ 新节点</button><button class="btn" id="importBtn">导入知识</button><input id="importFile" type="file" accept=".json,application/json" hidden><button class="btn" id="exportBtn">导出 JSON</button><button class="btn" id="resetBtn">重置视角</button></div></header>
 <div class="hint">拖拽 · 旋转空间　 滚轮 · 缩放　 点击星体 · 探索知识<br>节点在真实 XYZ 空间分布，可从不同深度观察</div>
 <div class="stats" id="stats"></div><div id="panels"></div><div id="logical"></div><div id="toast"></div>
 <div id="timeline"><div class="timehead"><span>KNOWLEDGE TIMELINE</span><span>点击事件定位节点</span></div><div class="events" id="events"></div></div>
@@ -70,6 +70,33 @@ document.querySelector('#resetBtn').onclick=()=>{camera.position.set(0,8,48);con
 document.querySelector('#viewBtn').onclick=toggleView;
 document.querySelector('#search').oninput=e=>{const q=e.target.value.trim().toLowerCase();if(!q)return;const n=nodes.find(x=>x.name.toLowerCase().includes(q)||x.desc?.toLowerCase().includes(q));if(n)select(n);};
 document.querySelector('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:'0.1',nodes,links},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nebula-knowledge.json';a.click();URL.revokeObjectURL(a.href);toast('知识数据已导出');};
+document.querySelector('#importBtn').onclick=()=>document.querySelector('#importFile').click();
+document.querySelector('#importFile').onchange=async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ try{
+  const parsed=JSON.parse(await file.text());
+  const incoming=Array.isArray(parsed)?parsed:parsed.nodes;
+  if(!Array.isArray(incoming)||incoming.length===0)throw new Error('文件中没有可导入的知识节点');
+  const valid=incoming.filter(n=>n&&typeof n==='object'&&typeof n.name==='string'&&n.name.trim());
+  if(valid.length!==incoming.length)throw new Error('部分节点缺少有效名称，已取消导入');
+  if(!confirm('检测到 '+valid.length+' 个节点。将与当前知识合并；相同 ID 的节点会更新，其他节点会新增。继续吗？'))return;
+  const byId=new Map(nodes.map((n,i)=>[n.id,i]));
+  let added=0,updated=0;
+  valid.forEach((raw,i)=>{
+   const n={...raw};
+   if(!n.id)n.id='import-'+Date.now()+'-'+i;
+   if(byId.has(n.id)){nodes[byId.get(n.id)]={...nodes[byId.get(n.id)],...n};updated++;}
+   else{byId.set(n.id,nodes.length);nodes.push(n);added++;}
+  });
+  const incomingLinks=Array.isArray(parsed.links)?parsed.links:[];
+  const signature=l=>Array.isArray(l)?l.slice(0,2).join('::'):((l.source||l.from||'')+'::'+(l.target||l.to||''));
+  const seen=new Set(links.map(signature));
+  incomingLinks.forEach(l=>{if((Array.isArray(l)&&l.length>=2)||(!Array.isArray(l)&&(l.source||l.from)&&(l.target||l.to))){const k=signature(l);if(!seen.has(k)){links.push(l);seen.add(k);}}});
+  persist();build();if(nodes.length)select(nodes[nodes.length-1]);
+  toast('导入完成：新增 '+added+'，更新 '+updated);
+ }catch(err){alert('导入失败：'+err.message);}
+ finally{e.target.value='';}
+};
 function openEditor(n=null){editing=n;document.querySelector('#editorTitle').textContent=n?'编辑知识节点':'创建知识节点';[['nodeName','name'],['nodeDesc','desc'],['nodeBefore','before'],['nodeAfter','after'],['nodeLeft','left'],['nodeRight','right']].forEach(([id,k])=>document.getElementById(id).value=n?.[k]||'');document.querySelector('#editor').style.display='flex';}
 document.querySelector('#addBtn').onclick=()=>openEditor();document.querySelector('#cancelEdit').onclick=()=>document.querySelector('#editor').style.display='none';
 document.querySelector('#saveNode').onclick=()=>{const v=id=>document.getElementById(id).value.trim();if(!v('nodeName'))return toast('请填写节点名称');if(editing){Object.assign(editing,{name:v('nodeName'),desc:v('nodeDesc'),before:v('nodeBefore'),after:v('nodeAfter'),left:v('nodeLeft'),right:v('nodeRight')});}else{const a=Math.random()*Math.PI*2,r=12+Math.random()*12;nodes.push({id:'n'+Date.now(),name:v('nodeName'),desc:v('nodeDesc'),before:v('nodeBefore'),after:v('nodeAfter'),left:v('nodeLeft'),right:v('nodeRight'),x:Math.cos(a)*r,y:(Math.random()-.5)*20,z:Math.sin(a)*r,color:[0x76dfff,0xb59aff,0x78a8ff,0x78e2c2][Math.floor(Math.random()*4)],date:'未标注'});}persist();document.querySelector('#editor').style.display='none';build();toast('节点已保存到此浏览器');};
