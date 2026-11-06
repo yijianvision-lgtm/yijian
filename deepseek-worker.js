@@ -23,6 +23,31 @@ export default {
     if (!allowed) return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: cors });
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(request.url);
+    if (url.pathname === "/share" && request.method === "POST") {
+      if (!env.NEBULA_SYNC_TOKEN || request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
+        return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
+      try {
+        const body = await request.json();
+        const match = String(body.url || "").match(/^https:\/\/chat\.deepseek\.com\/share\/([a-z0-9]+)\/?$/i);
+        if (!match) return new Response(JSON.stringify({ error: "无效的 DeepSeek 分享链接" }), { status: 400, headers: cors });
+        const shareId = match[1];
+        const upstream = await fetch("https://chat.deepseek.com/api/v0/share/content?share_id=" + encodeURIComponent(shareId), {
+          headers: { "Accept":"application/json", "Referer":"https://chat.deepseek.com/share/"+shareId, "User-Agent":"Mozilla/5.0", "X-Client-Platform":"web", "X-Client-Locale":"zh-CN" }
+        });
+        if (!upstream.ok) return new Response(JSON.stringify({ error:"DeepSeek 分享接口请求失败", upstreamStatus:upstream.status }), { status:502, headers:cors });
+        const payload = await upstream.json();
+        const data = payload?.data?.biz_data || payload?.data;
+        const messages = data?.messages || data?.chat_messages || [];
+        if (!Array.isArray(messages) || !messages.length) return new Response(JSON.stringify({ error:"分享接口没有返回可识别的消息。可能链接权限、接口结构或分享内容发生变化。", upstreamCode:payload?.data?.biz_code ?? payload?.code }), { status:422, headers:cors });
+        const transcript = messages.map(m => {
+          const role = String(m.role || m.sender || "").toUpperCase();
+          const who = role.includes("USER") ? "用户" : "DeepSeek";
+          const content = typeof m.content === "string" ? m.content : (m.content?.text || m.text || JSON.stringify(m.content || ""));
+          return content ? who+"：\n"+content : "";
+        }).filter(Boolean).join("\n\n");
+        return new Response(JSON.stringify({ ok:true, shareId, title:data.title || "DeepSeek 分享对话", messageCount:messages.length, transcript }), { headers:cors });
+      } catch(e) { return new Response(JSON.stringify({ error:String(e.message || e) }), { status:500, headers:cors }); }
+    }
     if (url.pathname !== "/analyze" || request.method !== "POST")
       return new Response(JSON.stringify({ error: "POST /analyze only" }), { status: 404, headers: cors });
     if (!env.DEEPSEEK_API_KEY || !env.NEBULA_SYNC_TOKEN)
