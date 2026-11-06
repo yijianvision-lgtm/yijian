@@ -25,8 +25,8 @@ h1{font-size:15px;letter-spacing:.22em;margin:0;font-weight:650}.sub{font-size:9
 </head>
 <body>
 <div id="scene"></div>
-<header class="top"><div class="brand"><div class="orb"></div><div><h1>NEBULA</h1><div class="sub">3D KNOWLEDGE UNIVERSE · v0.1</div></div></div>
-<div class="tools"><input id="search" class="search" placeholder="搜索知识节点…"><button class="btn" id="viewBtn">逻辑视图</button><button class="btn" id="addBtn">＋ 新节点</button><button class="btn" id="knowledgeBtn">输入知识</button><button class="btn" id="importBtn">导入知识</button><input id="importFile" type="file" accept=".json,application/json" hidden><button class="btn" id="exportBtn">导出 JSON</button><button class="btn" id="resetBtn">重置视角</button></div></header>
+<header class="top"><div class="brand"><div class="orb"></div><div><h1>NEBULA</h1><div class="sub">3D KNOWLEDGE UNIVERSE · v0.2</div></div></div>
+<div class="tools"><input id="search" class="search" placeholder="搜索知识节点…"><button class="btn" id="viewBtn">逻辑视图</button><button class="btn" id="addBtn">＋ 新节点</button><button class="btn" id="editSelectedBtn">编辑选中</button><button class="btn" id="deleteSelectedBtn">删除选中</button><button class="btn" id="knowledgeBtn">输入知识</button><button class="btn" id="importBtn">导入知识</button><input id="importFile" type="file" accept=".json,application/json" hidden><button class="btn" id="exportBtn">导出 JSON</button><button class="btn" id="resetBtn">重置视角</button></div></header>
 <div class="hint">拖拽 · 旋转空间　 滚轮 · 缩放　 点击星体 · 探索知识<br>节点在真实 XYZ 空间分布，可从不同深度观察</div>
 <div class="stats" id="stats"></div><div id="panels"></div><div id="logical"></div><div id="toast"></div>
 <div id="timeline"><div class="timehead"><span>KNOWLEDGE TIMELINE</span><span>点击事件定位节点</span></div><div class="events" id="events"></div></div>
@@ -70,7 +70,7 @@ function toast(t){const el=document.querySelector('#toast');el.textContent=t;el.
 document.querySelector('#resetBtn').onclick=()=>{camera.position.set(0,8,48);controls.target.set(0,0,0);controls.update();};
 document.querySelector('#viewBtn').onclick=toggleView;
 document.querySelector('#search').oninput=e=>{const q=e.target.value.trim().toLowerCase();if(!q)return;const n=nodes.find(x=>x.name.toLowerCase().includes(q)||x.desc?.toLowerCase().includes(q));if(n)select(n);};
-document.querySelector('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:'0.1',nodes,links},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nebula-knowledge.json';a.click();URL.revokeObjectURL(a.href);toast('知识数据已导出');};
+document.querySelector('#exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:'0.2',nodes,links},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nebula-knowledge.json';a.click();URL.revokeObjectURL(a.href);toast('知识数据已导出');};
 document.querySelector('#importBtn').onclick=()=>document.querySelector('#importFile').click();
 document.querySelector('#importFile').onchange=async e=>{
  const file=e.target.files?.[0];if(!file)return;
@@ -100,6 +100,8 @@ document.querySelector('#importFile').onchange=async e=>{
 };
 function openEditor(n=null){editing=n;document.querySelector('#editorTitle').textContent=n?'编辑知识节点':'创建知识节点';[['nodeName','name'],['nodeDesc','desc'],['nodeBefore','before'],['nodeAfter','after'],['nodeLeft','left'],['nodeRight','right']].forEach(([id,k])=>document.getElementById(id).value=n?.[k]||'');document.querySelector('#editor').style.display='flex';}
 document.querySelector('#addBtn').onclick=()=>openEditor();document.querySelector('#cancelEdit').onclick=()=>document.querySelector('#editor').style.display='none';
+document.querySelector('#editSelectedBtn').onclick=()=>{if(!selected)return toast('请先点击一个知识节点');openEditor(selected);};
+document.querySelector('#deleteSelectedBtn').onclick=()=>{if(!selected)return toast('请先选择要删除的节点');if(!confirm('确定删除「'+selected.name+'」？'))return;const id=selected.id;nodes=nodes.filter(n=>n.id!==id);links=links.filter(l=>(Array.isArray(l)?l[0]:l.source||l.from)!==id&&(Array.isArray(l)?l[1]:l.target||l.to)!==id);selected=null;persist();build();showPanels(null);if(nodes.length)select(nodes[0]);toast('节点已删除');};
 document.querySelector('#knowledgeBtn').onclick=()=>document.querySelector('#knowledgeEditor').style.display='flex';document.querySelector('#cancelKnowledge').onclick=()=>document.querySelector('#knowledgeEditor').style.display='none';
 function keywords(s){return (s.match(/[\u4e00-\u9fff]{2,}|[A-Za-z0-9]{3,}/g)||[]).map(x=>x.toLowerCase()).filter(x=>!['这个','因为','所以','我们','他们','以及','可以','通过','一个','进行','对于','这种','如果','但是','the','and','that','with'].includes(x));}
 function ingestKnowledge(raw){
