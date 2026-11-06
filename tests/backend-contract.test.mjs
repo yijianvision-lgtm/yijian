@@ -10,7 +10,7 @@ for (const store of ["graph","references","lectureSources","aiConversations","as
 for (const api of ["exportFullBackup","previewFullBackup","restoreFullBackup","saveSource","linkNodeSource","createProposal","applyProposal","saveNodeVersion","saveLearningRecord","saveResearchSession","saveKnowledgeRelation","analyzeConversation","coachKnowledge","checkMnemonic","proposeCoachReview","proposeMnemonicReview","detectKnowledgeGaps","buildLearningQueue","searchResearch","fetchDeepSeekShare"]) {
   assert.ok(local.includes(api), "Missing local API: "+api);
 }
-for (const route of ["/analyze","/coach","/mnemonic","/research","/share"]) {
+for (const route of ["/health","/analyze","/coach","/mnemonic","/research","/share"]) {
   assert.ok(worker.includes('"'+route+'"') || worker.includes("'"+route+"'"), "Missing Worker route: "+route);
 }
 assert.match(local, /NEBULA_FULL_BACKUP/);
