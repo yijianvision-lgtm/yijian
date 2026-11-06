@@ -1,9 +1,9 @@
 # NEBULA 本地优先后台（当前采用方案）
 
-NEBULA 采用 **Local-first**：不要求注册、登录、Clerk、Supabase、D1、R2 或百度网盘。知识图谱、原始讲义、提取文本、来源信息和导入历史保存在当前浏览器的 IndexedDB 中。
+NEBULA 采用 **Local-first**：不要求注册、登录、Clerk、Supabase、D1、R2 或百度网盘。知识图谱、原始讲义、AI 已学习对话分别保存在当前浏览器的 IndexedDB 独立对象库中。
 
 ## 文件
-- `nebula-local.js`：本地数据层与讲义解析器。
+- `nebula-local.js`：本地数据层与讲义解析器。IndexedDB 使用 `lectureSources` 保存原始讲义，使用 `aiConversations` 保存 AI 已学习对话，二者独立读写；旧版 `references` 数据只作为兼容来源读取并迁移。
 - `deepseek-worker.js`：可选的 DeepSeek 桥接服务，保留 DeepSeek 历史分享链接读取与历史内容分析，并新增 `POST /coach`（知识校正/四维/逻辑链）、`POST /mnemonic`（口诀核对）和 `GET /research?q=...`（Crossref 元数据检索）。它不存储知识库或讲义文件。
 - `index.html`：当前 UI 与现有知识图谱逻辑。当前文件已有 LocalStorage 节点/关系保存，以及 IndexedDB 讲义原件保存逻辑；新数据层已单独准备，下一阶段接入 UI 时统一迁移并验证，不在这一步改动视觉界面。
 
@@ -17,7 +17,9 @@ NEBULA 采用 **Local-first**：不要求注册、登录、Clerk、Supabase、D1
 | XMind | 解析 content.json / content.xml 主题 | 原件完整保留；不同版本格式需样本验证 |
 
 ## 本地数据与隐私
-- 原始讲义 Blob、提取文本、页面索引、主题树和知识图谱都保存在本机浏览器 IndexedDB。
+- 原始讲义库：原文件 Blob、提取文本、页面索引、主题树和解析提示保存在 `lectureSources`。
+- AI 已学习对话库：原始对话文本、来源/文件名、导入时间及 AI 分析结果保存在 `aiConversations`。
+- 两个库独立保存；知识节点可以引用两个库的来源，但 AI 分析不得覆盖原始讲义。录入文件时先选择目标库。
 - 不会上传讲义或知识库到 NEBULA 服务器。
 - 只有用户主动触发 AI 分析/DeepSeek 历史导入时，所选文字才会发送到已配置的 DeepSeek Worker。
 - 浏览器清除站点数据、卸载浏览器或设备损坏可能导致本地数据丢失；应实现并使用知识库备份/恢复功能。
