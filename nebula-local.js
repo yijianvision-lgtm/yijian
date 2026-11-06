@@ -325,6 +325,26 @@ async function getAllEntries(storeName) {
     tx.onabort=()=>{db.close();reject(tx.error||new Error("读取本地数据失败"));};
   });
 }
+async function getAllStoresSnapshot() {
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORES,"readonly"), pending={};
+    for(const name of STORES) {
+      const store=tx.objectStore(name);
+      pending[name]={keys:store.getAllKeys(),values:store.getAll()};
+    }
+    tx.oncomplete=()=>{
+      const snapshot={};
+      for(const name of STORES) {
+        const pair=pending[name];
+        snapshot[name]=pair.values.result.map((value,i)=>({key:pair.keys.result[i],value}));
+      }
+      db.close();resolve(snapshot);
+    };
+    tx.onerror=()=>{db.close();reject(tx.error||new Error("创建备份快照失败"));};
+    tx.onabort=()=>{db.close();reject(tx.error||new Error("备份快照事务已中止"));};
+  });
+}
 async function putRecord(storeName, record) {
   if(!record.id) record.id=makeRecordId(storeName);
   await request(storeName,"readwrite",s=>s.put(record));
@@ -389,10 +409,10 @@ async function sha256Hex(text) {
 }
 const BACKUP_LOCAL_STORAGE_KEYS = ["nebula_nodes","nebula_links","nebula_data_generation","nebula_deepseek_worker_url","nebula_sync_history"];
 async function backupPayload() {
-  const stores={};
+  const stores={},snapshot=await getAllStoresSnapshot();
   for(const name of STORES) {
-    const entries=await getAllEntries(name), rows=[];
-    for(const entry of entries) {
+    const rows=[];
+    for(const entry of snapshot[name]||[]) {
       if(name==="meta" && entry.key==="lectureFolder") continue;
       rows.push({key:await encodeBackupValue(entry.key),value:await encodeBackupValue(entry.value)});
     }
