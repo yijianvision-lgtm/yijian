@@ -17,7 +17,7 @@ jobs:
           node-version: 22
       - name: Check JavaScript syntax
         run: |
-          node --check nebula-local.js
-          node --check deepseek-worker.js
+          node --input-type=module --check < nebula-local.js
+          node --input-type=module --check < deepseek-worker.js
       - name: Check backend contracts
         run: node tests/backend-contract.test.mjs
