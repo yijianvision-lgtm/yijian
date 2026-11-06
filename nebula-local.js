@@ -664,7 +664,7 @@ Object.assign(NEBULA_LOCAL,{
   async detectKnowledgeGaps(nodeId){
     const graph=await this.loadGraph(),nodes=graph?.nodes||[];
     const targets=nodeId?nodes.filter(n=>String(n.id)===String(nodeId)):nodes;
-    const [sources,links,learning]=await Promise.all([this.listSources(),request("nodeSourceLinks","readonly",s=>s.getAll()),this.listLearningRecords()]);
+    const [links,learning]=await Promise.all([request("nodeSourceLinks","readonly",s=>s.getAll()),this.listLearningRecords()]);
     const gaps=[];
     for(const node of targets){
       const evidence=links.filter(x=>String(x.nodeId)===String(node.id));
