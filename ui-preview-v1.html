@@ -20,10 +20,29 @@
 .toast{position:fixed;z-index:30;top:82px;left:50%;transform:translateX(-50%);background:#1b2229;border:1px solid var(--line2);border-radius:7px;padding:9px 14px;font-size:10px;color:#d8e0e5;opacity:0;transition:opacity .2s;pointer-events:none}.toast.show{opacity:1}
 @media(max-width:1050px){.left-rail{width:180px;left:12px}.right-panel{width:220px;right:12px}.bottom-hint{left:205px}.timeline{width:38vw}}
 @media(max-width:760px){.topbar{padding:0 12px}.top-center{display:none}.brand{min-width:0}.top-actions{min-width:0}.search{width:130px}.left-rail{top:80px;width:150px;left:8px}.right-panel{top:auto;bottom:78px;right:8px;width:180px;max-height:48vh;overflow:auto}.rail-card{padding:10px}.timeline{width:calc(100vw - 24px);bottom:10px}.bottom-hint{display:none}.workspace-meta{display:none}.overlay{padding:20px 12px}.source-grid{grid-template-columns:1fr}.tree-branches{grid-template-columns:1fr}.tree-branches:before{display:none}}
+
+/* V2 — REF-01 led visual language + dedicated entry screen */
+#entry-screen{position:fixed;z-index:50;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 48%,rgba(27,33,39,.58),rgba(7,9,13,.94) 62%,#07090d 100%);transition:opacity .9s ease,visibility .9s ease}
+#entry-screen:before,#entry-screen:after{content:"";position:absolute;left:50%;top:50%;width:min(68vw,820px);height:min(68vw,820px);border:1px solid rgba(194,207,216,.075);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
+#entry-screen:after{width:min(48vw,580px);height:min(48vw,580px);border-color:rgba(194,207,216,.045)}
+.entry-content{position:relative;z-index:1;text-align:center;width:min(560px,88vw);padding:48px 28px}
+.entry-kicker{font-size:9px;letter-spacing:.34em;color:#8c9aa4;margin-bottom:28px}
+.entry-wordmark{font-size:clamp(38px,6vw,66px);font-weight:350;letter-spacing:.24em;padding-left:.24em;color:#e2e8ec;text-shadow:0 0 32px rgba(199,215,224,.12)}
+.entry-rule{width:42px;height:1px;background:rgba(201,214,222,.5);margin:25px auto}
+.entry-subtitle{font-size:11px;letter-spacing:.2em;color:#a5b0b8}
+.entry-copy{font-size:10px;line-height:2;color:#77838d;margin:15px auto 30px;max-width:340px}
+.entry-button{border:1px solid rgba(196,210,219,.32);background:rgba(222,232,238,.045);color:#e0e7eb;padding:13px 27px;border-radius:2px;font-size:10px;letter-spacing:.2em;transition:all .25s}
+.entry-button:hover{background:rgba(222,232,238,.1);border-color:rgba(218,229,235,.65);box-shadow:0 0 30px rgba(202,218,228,.08)}
+.entry-foot{margin-top:38px;font-size:8px;letter-spacing:.16em;color:#59646e}
+body:not(.entered) .topbar,body:not(.entered) .left-rail,body:not(.entered) .right-panel,body:not(.entered) .timeline,body:not(.entered) .bottom-hint{opacity:0;pointer-events:none}
+body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
+.topbar,.left-rail,.right-panel,.timeline,.bottom-hint{transition:opacity .5s ease}
+@media(max-width:760px){.entry-content{padding:32px 18px}.entry-copy{max-width:280px}}
 </style>
 </head>
 <body>
 <div id="space"></div><div class="grain"></div>
+<div id="entry-screen"><div class="entry-content"><div class="entry-kicker">A PERSONAL KNOWLEDGE UNIVERSE</div><div class="entry-wordmark">NEBULA</div><div class="entry-rule"></div><div class="entry-subtitle">让知识拥有自己的空间</div><div class="entry-copy">从一个想法出发，连接概念、来源与时间。<br>在属于你的知识宇宙中自由探索。</div><button class="entry-button" id="enterNebula">进入知识宇宙&nbsp; ↗</button><div class="entry-foot">PRIVATE KNOWLEDGE SPACE · EST. 2026</div></div></div>
 <header class="topbar">
  <div class="brand"><div class="mark"></div><div><div class="brand-name">NEBULA</div><div class="brand-sub">PERSONAL KNOWLEDGE UNIVERSE</div></div></div>
  <nav class="top-center"><button class="nav active" data-view="universe">宇宙空间</button><button class="nav" data-view="hierarchy">逻辑结构</button><button class="nav" data-view="sources">原始资料</button></nav>
@@ -59,12 +78,12 @@ import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples
 const host=document.getElementById('space');const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x080b10,.027);
 const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,500);camera.position.set(0,1.8,18);
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x000000,0);host.appendChild(renderer.domElement);
-const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.045;controls.minDistance=7;controls.maxDistance=34;controls.autoRotate=true;controls.autoRotateSpeed=.16;
-scene.add(new THREE.AmbientLight(0xc5d1d8,.72));const key=new THREE.PointLight(0xdce6ed,18,40);key.position.set(0,5,8);scene.add(key);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.045;controls.minDistance=7;controls.maxDistance=34;controls.autoRotate=true;controls.autoRotateSpeed=.11;
+scene.add(new THREE.AmbientLight(0xc5d1d8,.72));const key=new THREE.PointLight(0xdce6ed,8,40);key.position.set(0,5,8);scene.add(key);
 const core=new THREE.Group();scene.add(core);
-const nodes=[['系统思维',0,0,0,1.0],['反馈机制',-4,2,-2,.48],['系统结构',3,2,-1,.56],['复杂性',-2,-3,1,.62],['涌现',4,-2,2,.42],['因果回路',-6,-1,2,.36],['边界与环境',6,1,-3,.4],['系统演化',1,4,2,.48],['适应性',-3,4,3,.34],['非线性',5,-4,-1,.34],['延迟效应',-5,-4,-2,.3],['整体与部分',2,0,4,.4]];
+const nodes=[['系统思维',0,0,0,.38],['反馈机制',-4,2,-2,.19],['系统结构',3,2,-1,.21],['复杂性',-2,-3,1,.23],['涌现',4,-2,2,.17],['因果回路',-6,-1,2,.15],['边界与环境',6,1,-3,.16],['系统演化',1,4,2,.19],['适应性',-3,4,3,.14],['非线性',5,-4,-1,.14],['延迟效应',-5,-4,-2,.13],['整体与部分',2,0,4,.16]];
 const positions=nodes.map(n=>new THREE.Vector3(n[1],n[2],n[3]));const spheres=[];
-nodes.forEach((n,i)=>{const g=new THREE.SphereGeometry(n[4],32,32);const m=new THREE.MeshStandardMaterial({color:i===0?0xc9d2d7:0x8e9da7,roughness:.48,metalness:.25,emissive:i===0?0x4b555b:0x242d34,emissiveIntensity:i===0?.16:.1});const s=new THREE.Mesh(g,m);s.position.copy(positions[i]);s.userData.index=i;core.add(s);spheres.push(s);const halo=new THREE.Mesh(new THREE.SphereGeometry(n[4]*1.18,24,24),new THREE.MeshBasicMaterial({color:0xaebdc7,transparent:true,opacity:.035,side:THREE.BackSide}));s.add(halo)});
+nodes.forEach((n,i)=>{const g=new THREE.IcosahedronGeometry(n[4],1);const m=new THREE.MeshStandardMaterial({color:i===0?0xc9d2d7:0x8e9da7,roughness:.48,metalness:.25,emissive:i===0?0x4b555b:0x242d34,emissiveIntensity:i===0?.16:.1});const s=new THREE.Mesh(g,m);s.position.copy(positions[i]);s.userData.index=i;core.add(s);spheres.push(s);const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(n[4]*1.3,1),new THREE.MeshBasicMaterial({color:0xaebdc7,transparent:true,opacity:.025,side:THREE.BackSide}));s.add(halo)});
 const lineMat=new THREE.LineBasicMaterial({color:0x83919a,transparent:true,opacity:.19});const edges=[[0,1],[0,2],[0,3],[0,4],[0,7],[1,5],[1,8],[2,6],[2,11],[3,10],[3,9],[4,9],[7,8],[7,11],[2,7],[1,3],[4,11]];edges.forEach(([a,b])=>{const geo=new THREE.BufferGeometry().setFromPoints([positions[a],positions[b]]);core.add(new THREE.Line(geo,lineMat))});
 const starGeo=new THREE.BufferGeometry();const starPts=[];for(let i=0;i<280;i++){starPts.push((Math.random()-.5)*65,(Math.random()-.5)*42,(Math.random()-.5)*48)}starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starPts,3));const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xaebbc4,size:.035,transparent:true,opacity:.36}));scene.add(stars);
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;function selectNode(i){selected=i;document.getElementById('selectedName').textContent=nodes[i][0];document.getElementById('selectedDesc').textContent=i===0?'理解复杂系统中结构、反馈与演化之间的关系。':'这是当前知识宇宙中的关联概念，可继续向外探索它的来源与影响。';spheres.forEach((s,j)=>{s.material.emissiveIntensity=j===i?.32:.1;s.scale.setScalar(j===i?1.12:1)});toast('已定位：'+nodes[i][0])}
@@ -72,6 +91,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{mouse.x=e.clientX/innerWi
 function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}addEventListener('resize',resize);
 const mini=document.getElementById('miniMap'),ctx=mini.getContext('2d');function drawMini(){const d=mini.getBoundingClientRect(),w=d.width*devicePixelRatio,h=d.height*devicePixelRatio;mini.width=w;mini.height=h;ctx.scale(devicePixelRatio,devicePixelRatio);const ww=d.width,hh=d.height;ctx.strokeStyle='rgba(185,199,208,.16)';ctx.lineWidth=1;edges.forEach(([a,b])=>{ctx.beginPath();ctx.moveTo(ww/2+positions[a].x*12,hh/2-positions[a].y*10);ctx.lineTo(ww/2+positions[b].x*12,hh/2-positions[b].y*10);ctx.stroke()});positions.forEach((p,i)=>{ctx.beginPath();ctx.arc(ww/2+p.x*12,hh/2-p.y*10,i===selected?4:2.4,0,Math.PI*2);ctx.fillStyle=i===selected?'#d5dfe4':'#87959f';ctx.fill()});ctx.strokeStyle='rgba(210,220,226,.28)';ctx.strokeRect(ww/2-42,hh/2-32,84,64)}drawMini();const observer=new ResizeObserver(drawMini);observer.observe(mini);
+document.getElementById('enterNebula').addEventListener('click',()=>{document.body.classList.add('entered');setTimeout(()=>window.dispatchEvent(new Event('resize')),650)});
 function toast(s){const t=document.getElementById('toast');t.textContent=s;t.classList.add('show');clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.classList.remove('show'),1800)}
 function showView(v){document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.view===v));document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'));if(v==='hierarchy')document.getElementById('hierarchy').classList.add('open');if(v==='sources')document.getElementById('sources').classList.add('open')}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'))));
