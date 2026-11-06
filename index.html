@@ -389,6 +389,7 @@ document.querySelector('#saveNode').onclick=()=>{
 
 /* Shared DeepSeek sync state/helpers must exist before any handlers reference them. */
 let deepseekPending=null;
+let activeConversationId=null;
 const dsEl=id=>document.getElementById(id);
 
 /* Batch import DeepSeek public share URLs through the secured Worker. */
@@ -450,7 +451,7 @@ dsEl('analyzeDeepSeekArchive').onclick=async()=>{
   const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+dsEl('deepseekSyncToken').value.trim()},body:JSON.stringify({text,existingNodes:nodes.map(n=>({id:n.id,name:n.name,coreWord:n.coreWord,desc:n.desc,parentId:n.parentId}))})});
   const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||('HTTP '+res.status));
   deepseekPending=data.result||{};
-  if(window.NEBULA_LOCAL){await window.NEBULA_LOCAL.saveConversation({title:file?.name||'AI 学习对话',transcript:text,analysis:deepseekPending,source:file?'conversation-file':'pasted-conversation',fileName:file?.name||''});await window.nebulaRenderReferences();}
+  if(window.NEBULA_LOCAL){const saved=await window.NEBULA_LOCAL.saveConversation({id:activeConversationId||undefined,title:file?.name||'AI 学习对话',transcript:text,analysis:deepseekPending,source:file?'conversation-file':'pasted-conversation',fileName:file?.name||''});activeConversationId=saved.id;await window.nebulaRenderReferences();}
   const ns=deepseekPending.nodes||[],ls=deepseekPending.links||[],ms=deepseekPending.mergeSuggestions||[],us=deepseekPending.uncertain||[];
   dsEl('deepseekSyncStatus').textContent='分析完成：识别 '+ns.length+' 个候选节点、'+ls.length+' 条关联、'+ms.length+' 条合并建议、'+us.length+' 项待核对。尚未写入知识库。';
   dsEl('deepseekSyncPreview').textContent=ns.slice(0,30).map((n,i)=>(i+1)+'. '+(n.coreWord||n.name||'未命名')+'｜'+(n.parentId?'有上级':'暂定主干')+(n.needsReview?'｜待核对':'')).join('\n')+(ns.length>30?'\n……其余 '+(ns.length-30)+' 个节点':'')+(ms.length?'\n\n合并建议：\n'+JSON.stringify(ms.slice(0,12),null,2):'')+(us.length?'\n\n待核对：\n'+JSON.stringify(us.slice(0,8),null,2):'');
@@ -499,7 +500,7 @@ libraryInput?.addEventListener('change',async e=>{
  for(const f of files){try{
   if(target==='ai'){
    const transcript=await f.text();if(!transcript.trim())throw new Error('文件没有可读取的对话文字');
-   await window.NEBULA_LOCAL.saveConversation({title:f.name,transcript,source:'conversation-file',fileName:f.name,blob:f});
+   const saved=await window.NEBULA_LOCAL.saveConversation({title:f.name,transcript,source:'conversation-file',fileName:f.name,blob:f});activeConversationId=saved.id;
   }else{
    const item=await window.NEBULA_LOCAL.saveReference(f);if(item.warnings?.length)errors.push(f.name+'：'+item.warnings.join('；'));
   }
