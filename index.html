@@ -98,7 +98,7 @@ if(!localStorage.getItem('nebula_batch_01_imported')){
 
 function makeGroupNode(id,name,desc,x,color){return{id,name,desc,parentId:null,level:1,x,y:0,z:0,color,date:'知识主干',before:'这是一个一级知识主干，负责组织所属概念与核心问题。',after:'继续向下拆分二级主题，再由二级主题展开具体机制、案例与应用。',left:'可与其他一级主干建立跨主题关联，但横向关联不改变父子层级。',right:'检查分类边界是否清晰，避免不同维度的概念被放进同一层级。'};}
 function migrateLegacySeedHierarchy(){
- if(nodes.some(n=>n.parentId||n.parent_id||n.parent))return false;
+ if(nodes.some(n=>!String(n.id).startsWith('hist-art-')&&(n.parentId||n.parent_id||n.parent)))return false;
  const byId=new Map(nodes.map(n=>[String(n.id),n]));
  const groups=[makeGroupNode('root-methods','思维与分析方法','建立分析问题、拆解复杂现象与推导结论的方法体系。',-22,0x76dfff),makeGroupNode('root-cognition','认知与决策','理解人的判断机制、认知局限与决策质量。',0,0xb59aff),makeGroupNode('root-knowledge','知识组织与表达','把概念、实体与关系组织成可检索、可推理的知识结构。',22,0x78e2c2)];
  groups.forEach(g=>{if(!nodes.some(n=>n.id===g.id))nodes.push(g);});
@@ -129,11 +129,11 @@ function build(){normalizeHierarchy();layoutHierarchy3D();while(group.children.l
 function renderTimeline(){const ev=document.querySelector('#events');ev.innerHTML='';nodes.filter(n=>n.date).slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(n=>{const e=document.createElement('div');e.className='event'+(selected?.id===n.id?' active':'');e.innerHTML='<span>'+n.date+'</span>';e.title=n.name;e.onclick=()=>select(n);ev.append(e);});}
 function levelOf(n,seen=new Set()){
  const p=n.parentId?nodes.find(x=>x.id===n.parentId):null;
- if(p&&!seen.has(n.id)){seen.add(n.id);return Math.min(3,levelOf(p,seen)+1);}
+ if(p&&!seen.has(n.id)){seen.add(n.id);return levelOf(p,seen)+1;}
  const raw=n.level??n.depth??n.tier??n.rank;
- if(raw!==undefined){const m=String(raw).match(/[123]/);if(m)return Math.max(1,Math.min(3,Number(m[0])));}
- const t=String(n.name||'');const m=t.match(/^\s*(?:(\d+)[.、)）]|(一级|二级|三级|第一层|第二层|第三层))/);
- if(m){const v=m[1]?Number(m[1]):({'一级':1,'第一层':1,'二级':2,'第二层':2,'三级':3,'第三层':3}[m[2]]);return Math.max(1,Math.min(3,v));}
+ if(raw!==undefined){const m=String(raw).match(/\d+/);if(m)return Math.max(1,Number(m[0]));}
+ const t=String(n.name||'');const m=t.match(/^\s*(?:(\d+)[.、)）]|(一级|二级|三级|四级|五级|第一层|第二层|第三层|第四层|第五层))/);
+ if(m){const v=m[1]?Number(m[1]):({'一级':1,'第一层':1,'二级':2,'第二层':2,'三级':3,'第三层':3,'四级':4,'第四层':4,'五级':5,'第五层':5}[m[2]]);return Math.max(1,v);}
  return 1;
 }
 function parentOf(n){return n.parentId?nodes.find(x=>x.id===n.parentId)||null:null;}
@@ -147,7 +147,7 @@ function normalizeHierarchy(){
  // Remove invalid links and break accidental cycles before calculating levels.
  nodes.forEach(n=>{let p=parentOf(n),seen=new Set([n.id]);while(p){if(seen.has(p.id)){n.parentId=null;break;}seen.add(p.id);p=parentOf(p);}});
  nodes.forEach(n=>{if(!n.parentId)n.level=1;});
- const depthOf=(n,seen=new Set())=>{if(!n.parentId)return 1;if(seen.has(n.id))return 1;seen.add(n.id);const p=parentOf(n);return p?Math.min(3,depthOf(p,seen)+1):1;};
+ const depthOf=(n,seen=new Set())=>{if(!n.parentId)return 1;if(seen.has(n.id))return 1;seen.add(n.id);const p=parentOf(n);return p?depthOf(p,seen)+1:1;};
  nodes.forEach(n=>n.level=depthOf(n));
 }
 function layoutHierarchy3D(){
