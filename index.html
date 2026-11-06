@@ -134,7 +134,7 @@ function renderLogical(){
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function select(n){selected=n;build();showPanels(n);const obj=nodeMeshes.get(n.id);if(obj){const p=obj.position.clone();controls.target.copy(p);}}
 function formatThought(raw){
- const lines=String(raw||'').split(/\\n+/).map(x=>x.trim()).filter(Boolean);
+ const lines=String(raw||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);
  if(!lines.length)return '<p class="thought-detail">尚未填写</p>';
  let lead=lines.shift().replace(/^【重点】/,'').trim();
  if(lines.length===0){const parts=lead.split(/(?<=[。！？.!?；;])/).map(x=>x.trim()).filter(Boolean);if(parts.length>1){lead=parts.shift();lines.push(...parts);}}
