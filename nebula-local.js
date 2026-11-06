@@ -184,6 +184,33 @@ export const NEBULA_LOCAL = {
   async loadMeta(key) {
     return request("meta", "readonly", s => s.get(key));
   },
+  async chooseFolder() {
+    if (!window.showDirectoryPicker) throw new Error("当前浏览器不支持文件夹授权，请使用 Chrome/Edge 或选择单个文件。");
+    const handle = await window.showDirectoryPicker({ mode: "read" });
+    const permission = await handle.requestPermission({ mode: "read" });
+    if (permission !== "granted") throw new Error("没有获得文件夹读取授权。");
+    await this.saveMeta("lectureFolder", handle);
+    return handle.name;
+  },
+  async scanFolder() {
+    const handle = await this.loadMeta("lectureFolder");
+    if (!handle) throw new Error("请先选择并授权讲义文件夹。");
+    let permission = await handle.queryPermission({ mode: "read" });
+    if (permission !== "granted") permission = await handle.requestPermission({ mode: "read" });
+    if (permission !== "granted") throw new Error("文件夹读取权限已失效，请重新授权。");
+    const accepted = new Set(["pdf","docx","doc","emmx","xmind"]);
+    const found = [];
+    const walk = async dir => {
+      for await (const [name, entry] of dir.entries()) {
+        if (entry.kind === "directory") await walk(entry);
+        else if (accepted.has((name.split(".").pop() || "").toLowerCase())) found.push(await entry.getFile());
+      }
+    };
+    await walk(handle);
+    const saved = [];
+    for (const file of found) saved.push(await this.saveReference(file));
+    return { scanned: found.length, saved: saved.length, names: found.map(f=>f.name) };
+  },
   async requestPersistentStorage() {
     if (navigator.storage?.persist) return navigator.storage.persist();
     return false;
@@ -192,5 +219,33 @@ export const NEBULA_LOCAL = {
     return navigator.storage?.estimate ? navigator.storage.estimate() : null;
   }
 };
+async function migrateLegacyReferences() {
+  try {
+    const legacy = await new Promise((resolve, reject) => {
+      const req = indexedDB.open("nebula_memory_v1");
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    if (!legacy.objectStoreNames.contains("references")) { legacy.close(); return; }
+    const rows = await new Promise((resolve, reject) => {
+      const tx = legacy.transaction("references", "readonly");
+      const req = tx.objectStore("references").getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    legacy.close();
+    for (const old of rows) {
+      const id = "legacy_" + String(old.id || makeId()).replace(/[^a-zA-Z0-9_-]/g, "_");
+      if (!(await NEBULA_LOCAL.getReference(id))) {
+        await request("references", "readwrite", s => s.put({
+          id, name: old.name || "旧版参考资料", extension: String(old.type || "").toLowerCase(),
+          mime: "application/octet-stream", size: old.size || old.blob?.size || 0,
+          savedAt: old.savedAt || Date.now(), blob: old.blob || null, text: old.text || "",
+          html: "", tree: [], pages: [], warnings: ["从旧版本地参考资料库迁移；原文件与已提取文字已保留。"]
+        }));
+      }
+    }
+  } catch (e) { console.warn("NEBULA legacy reference migration skipped:", e); }
+}
 globalThis.NEBULA_LOCAL = NEBULA_LOCAL;
-window.dispatchEvent(new CustomEvent("nebula-local-ready"));
+migrateLegacyReferences().finally(() => window.dispatchEvent(new CustomEvent("nebula-local-ready")));
