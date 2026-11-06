@@ -3,8 +3,8 @@
  * No login, cloud database, account service or remote file storage.
  */
 const DB_NAME = "nebula_local_v2";
-const DB_VERSION = 3;
-const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions"];
+const DB_VERSION = 4;
+const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations"];
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -282,7 +282,7 @@ migrateLegacyReferences().finally(() => window.dispatchEvent(new CustomEvent("ne
 
 
 // --- Cognitive OS persistence layer (schema v3) ----------------------------
-const COGNITIVE_STORES = ["sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions"];
+const COGNITIVE_STORES = ["sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations"];
 const makeRecordId = prefix => (prefix || "rec") + "_" + Date.now().toString(36) + "_" + crypto.randomUUID().replace(/-/g,"");
 const nowISO = () => new Date().toISOString();
 const cloneJSON = value => JSON.parse(JSON.stringify(value));
@@ -468,7 +468,7 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
   } else if(proposal.proposalType==="relation") {
     const relation={id:makeRecordId("relation"),sourceNodeId:proposal.sourceNodeId||proposal.targetNodeId,targetNodeId:proposal.relatedNodeId||snapshot.targetNodeId,type:snapshot.type||"related",label:snapshot.label||"",rationale:proposal.reasoning||"",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now()};
     if(!relation.sourceNodeId||!relation.targetNodeId||relation.sourceNodeId===relation.targetNodeId) throw new Error("关系两端节点无效，未应用建议。");
-    await putRecord("nodeSourceLinks",relation).catch(async()=>{throw new Error("关系记录写入失败。");});
+    await putRecord("knowledgeRelations",relation).catch(async()=>{throw new Error("关系记录写入失败。");});
   } else {
     throw new Error("合并/拆分需要明确的节点映射与来源迁移，当前版本暂不自动执行；建议仍保持待审核状态。");
   }
@@ -481,7 +481,7 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
 async function duplicateCandidates(nodes, options={}) {
   const threshold=Number(options.threshold??0.78), limit=Number(options.limit??100), out=[];
   for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++) {
-    const a=nodes[i],b=nodes[j],score=similarityScore(a.coreWord||a.name,a.coreWord||b.name);
+    const a=nodes[i],b=nodes[j],score=similarityScore(a.coreWord||a.name,b.coreWord||b.name);
     if(score>=threshold) out.push({leftId:a.id,rightId:b.id,leftTitle:a.name,rightTitle:b.name,score:Number(score.toFixed(3)),decisionRequired:true});
   }
   return out.sort((a,b)=>b.score-a.score).slice(0,limit);
@@ -523,4 +523,29 @@ Object.assign(NEBULA_LOCAL,{
     const nodes=graph?.nodes||[];
     return {nodeCount:nodes.length,sourceCount:sources.length,pendingReviews:proposals.length,learningRecords:learning.length,researchSessions:research.length,needsReviewCount:nodes.filter(n=>n.needsReview||n.status==="needs_review").length,generatedAt:Date.now()};
   }
+});
+
+// Source catalog adapters: original files and conversations remain in their own stores.
+const originalSaveReference = NEBULA_LOCAL.saveReference.bind(NEBULA_LOCAL);
+const originalSaveConversation = NEBULA_LOCAL.saveConversation.bind(NEBULA_LOCAL);
+NEBULA_LOCAL.saveReference = async function(file) {
+  const item=await originalSaveReference(file);
+  await this.saveSource({id:"src_"+item.id,sourceType:"lecture",title:item.name,referenceId:item.id,fileName:item.name,mime:item.mime,size:item.size,parserWarnings:item.warnings||[],createdAt:item.savedAt});
+  return item;
+};
+NEBULA_LOCAL.saveConversation = async function(record) {
+  const item=await originalSaveConversation(record);
+  await this.saveSource({id:"src_"+item.id,sourceType:"ai_conversation",title:item.title,referenceId:item.id,fileName:item.fileName||"",origin:item.source||"manual-import",createdAt:item.savedAt||Date.now()});
+  return item;
+};
+Object.assign(NEBULA_LOCAL,{
+  async saveKnowledgeRelation(record) {
+    if(!record?.sourceNodeId||!record?.targetNodeId||record.sourceNodeId===record.targetNodeId)throw new Error("关系两端节点必须有效且不能相同。");
+    return putRecord("knowledgeRelations",{...record,id:record.id||makeRecordId("relation"),createdAt:record.createdAt||Date.now()});
+  },
+  async listKnowledgeRelations(nodeId) {
+    const rows=await request("knowledgeRelations","readonly",s=>s.getAll());
+    return rows.filter(x=>!nodeId||x.sourceNodeId===nodeId||x.targetNodeId===nodeId);
+  },
+  async deleteKnowledgeRelation(id){return deleteRecord("knowledgeRelations",id);}
 });
