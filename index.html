@@ -215,22 +215,54 @@ function collectRecords(parsed){
 }
 function importKnowledgeData(parsed,mode){
  const incoming=collectRecords(parsed),thoughts=parsed.thoughtLines||parsed.mindLines||parsed.thoughts||[];
- const findNode=(t)=>nodes.find(n=>n.id===t.nodeId||n.id===t.node_id||n.name===t.nodeName||n.name===t.node||n.name===t.name);
- let added=0,updated=0,thoughtUpdated=0;const idMap=new Map();const now=Date.now();
+ const findNode=t=>nodes.find(n=>n.id===t.nodeId||n.id===t.node_id||n.name===t.nodeName||n.name===t.node||n.name===t.name);
+ const normName=v=>String(v||'').normalize('NFKC').toLowerCase().replace(/[\\s\\p{P}\\p{S}]+/gu,'');
+ const bigrams=v=>{const a=Array.from(normName(v));const out=new Set();for(let i=0;i<a.length-1;i++)out.add(a[i]+a[i+1]);if(!out.size&&a.length)out.add(a[0]);return out;};
+ const similarity=(a,b)=>{const A=bigrams(a),B=bigrams(b);if(!A.size||!B.size)return 0;let hit=0;A.forEach(x=>{if(B.has(x))hit++;});return 2*hit/(A.size+B.size);};
+ const mergeText=(oldValue,newValue)=>{const a=String(oldValue||'').trim(),b=String(newValue||'').trim();if(!b)return a;if(!a)return b;if(normName(a)===normName(b)||a.includes(b))return a;return a+'\\n\\n【补充】'+b;};
+ let added=0,updated=0,merged=0,thoughtUpdated=0;const idMap=new Map(),now=Date.now(),pending=[];
  if(mode!=='thought'){
-  incoming.forEach((raw,i)=>{if(!raw||typeof raw!=='object')return;const name=String(raw.name||raw.title||raw.label||raw.text||'').trim();if(!name)return;const id=String(raw.id||('imp-'+now+'-'+i));const existing=nodes.find(n=>n.id===id)||nodes.find(n=>n.name===name);const n={...(existing||{}),...raw,id:existing?.id||id,name,desc:raw.desc||raw.description||raw.content||existing?.desc||'',x:Number(raw.x??existing?.x??(Math.cos(i*2.4)*(15+i*2))),y:Number(raw.y??existing?.y??((i%3-1)*7)),z:Number(raw.z??existing?.z??(Math.sin(i*2.4)*(15+i*2))),color:raw.color??existing?.color??0x76dfff,date:raw.date||existing?.date||'导入'};n.level=Number(raw.level??raw.depth??raw.tier??1)||1;n.parentId=null;if(existing){Object.assign(existing,n);idMap.set(raw.id||name,existing.id);idMap.set(name,existing.id);updated++;}else{nodes.push(n);idMap.set(raw.id||name,n.id);idMap.set(name,n.id);added++;}});
-  const rawLinks=parsed.links||parsed.edges||[];rawLinks.forEach(l=>{const a=Array.isArray(l)?l[0]:(l.source||l.from||l.parentId),b=Array.isArray(l)?l[1]:(l.target||l.to||l.childId);const aa=idMap.get(a)||a,bb=idMap.get(b)||b;if(aa&&bb&&nodes.some(n=>n.id===aa)&&nodes.some(n=>n.id===bb)&&aa!==bb&&!links.some(x=>(Array.isArray(x)?x[0]:x.source||x.from)===aa&&(Array.isArray(x)?x[1]:x.target||x.to)===bb))links.push([aa,bb]);});
-  // Infer parent-child edges from explicit parent references; keep hierarchy levels 1→2→3.
-  incoming.forEach(raw=>{const child=idMap.get(raw.id)||idMap.get(raw.name||raw.title)||nodes.find(n=>n.name===(raw.name||raw.title))?.id;const parentKey=raw.parentId??raw.parent_id??raw.parent;const parent=idMap.get(parentKey)||nodes.find(n=>n.id===parentKey||n.name===parentKey)?.id;const target=nodes.find(n=>n.id===child);if(target){target.parentId=parent&&parent!==child?parent:null;target.level=parent?Math.min(3,levelOf(nodes.find(n=>n.id===parent))+1):Math.max(1,Number(raw.level)||1);}if(parent&&child&&parent!==child&&!links.some(l=>(Array.isArray(l)?l[0]:l.source||l.from)===parent&&(Array.isArray(l)?l[1]:l.target||l.to)===child))links.push([parent,child]);});normalizeHierarchy();
-  if(mode==='logic')return {added,updated,thoughtUpdated};
+  incoming.forEach((raw,i)=>{
+   if(!raw||typeof raw!=='object')return;
+   const name=String(raw.name||raw.title||raw.label||raw.text||'').trim();if(!name)return;
+   const rawId=String(raw.id||('imp-'+now+'-'+i));
+   let existing=nodes.find(n=>String(n.id)===rawId)||nodes.find(n=>normName(n.name)===normName(name));
+   if(!existing){
+    const candidates=nodes.map(n=>({n,score:similarity(n.name,name)})).filter(x=>x.score>=.92).sort((a,b)=>b.score-a.score);
+    if(candidates.length===1)existing=candidates[0].n;
+    else if(candidates.length>1)pending.push({name,candidates:candidates.slice(0,3).map(x=>x.n.name)});
+   }
+   const id=existing?.id||rawId;
+   if(existing){
+    const fields=['desc','before','after','left','right','sourceNote'];
+    fields.forEach(k=>{const v=raw[k]??(k==='desc'?raw.description||raw.content:undefined);if(v!==undefined)existing[k]=mergeText(existing[k],v);});
+    if(raw.date&&!existing.date)existing.date=raw.date;
+    if(raw.confidence)existing.confidence=mergeText(existing.confidence,raw.confidence);
+    if(raw.needsReview===true)existing.needsReview=true;
+    if(raw.aliases)existing.aliases=[...new Set([...(existing.aliases||[]),...(Array.isArray(raw.aliases)?raw.aliases:[raw.aliases])])];
+    merged++;updated++;
+   }else{
+    const n={...raw,id,name,desc:raw.desc||raw.description||raw.content||'',x:Number(raw.x??(Math.cos(i*2.4)*(15+i*2))),y:Number(raw.y??((i%3-1)*7)),z:Number(raw.z??(Math.sin(i*2.4)*(15+i*2))),color:raw.color??0x76dfff,date:raw.date||'导入'};
+    nodes.push(n);added++;
+   }
+   idMap.set(rawId,id);idMap.set(String(raw.id||name),id);idMap.set(name,id);
+   (raw.aliases||[]).forEach(a=>idMap.set(String(a),id));
+   pending.push(...(raw._pending||[]));
+  });
+  const rawLinks=parsed.links||parsed.edges||[];
+  rawLinks.forEach(l=>{const a=Array.isArray(l)?l[0]:(l.source||l.from||l.parentId),b=Array.isArray(l)?l[1]:(l.target||l.to||l.childId);const aa=idMap.get(String(a))||a,bb=idMap.get(String(b))||b;if(aa&&bb&&nodes.some(n=>n.id===aa)&&nodes.some(n=>n.id===bb)&&aa!==bb&&!links.some(x=>(Array.isArray(x)?x[0]:x.source||x.from)===aa&&(Array.isArray(x)?x[1]:x.target||x.to)===bb))links.push([aa,bb]);});
+  // Restore parent-child hierarchy only after every imported ID has been mapped to its canonical node.
+  incoming.forEach(raw=>{const child=idMap.get(String(raw.id||raw.name||raw.title));const parentKey=raw.parentId??raw.parent_id??raw.parent;const parent=parentKey==null?null:(idMap.get(String(parentKey))||nodes.find(n=>String(n.id)===String(parentKey)||normName(n.name)===normName(parentKey))?.id);const target=nodes.find(n=>n.id===child);if(target&&parent&&parent!==child){target.parentId=parent;}else if(target&&!target.parentId&&Number(raw.level||1)===1){target.parentId=null;}});
+  normalizeHierarchy();
+  if(mode==='logic')return {added,updated,merged,thoughtUpdated,pending};
  }
  if(mode!=='logic'){
   const list=[...thoughts,...incoming.filter(n=>n.thoughtLines||n.mindLines||n.before||n.after||n.left||n.right)];
-  list.forEach(t=>{const target=findNode(t)||nodes.find(n=>n.id===t.nodeId)||nodes.find(n=>n.name===String(t.nodeName||t.node||t.name||'').trim());if(!target)return;let changed=false;const src=t.thoughtLines||t.mindLines||t.thoughts||t; if(Array.isArray(src)){src.forEach(x=>{const d=normDirection(x.direction||x.type||x.name);if(d&&x.content){target[d]=String(x.content);changed=true;}});}else{Object.entries(src).forEach(([k,v])=>{const d=normDirection(k);if(d&&typeof v==='string'){target[d]=v;changed=true;}});}if(changed){thoughtUpdated++;}});
+  list.forEach(t=>{const target=findNode(t)||nodes.find(n=>n.id===idMap.get(String(t.nodeId||t.node_id||'')))||nodes.find(n=>n.name===String(t.nodeName||t.node||t.name||'').trim());if(!target)return;let changed=false;const src=t.thoughtLines||t.mindLines||t.thoughts||t;if(Array.isArray(src)){src.forEach(x=>{const d=normDirection(x.direction||x.type||x.name);if(d&&x.content){target[d]=mergeText(target[d],x.content);changed=true;}});}else{Object.entries(src).forEach(([k,v])=>{const d=normDirection(k);if(d&&typeof v==='string'){target[d]=mergeText(target[d],v);changed=true;}});}if(changed)thoughtUpdated++;});
  }
- return {added,updated,thoughtUpdated};
+ return {added,updated,merged,thoughtUpdated,pending};
 }
-document.querySelector('#importFile').onchange=async e=>{const file=e.target.files?.[0];if(!file)return;const mode=document.querySelector('input[name="importMode"]:checked').value;try{const parsed=JSON.parse(await file.text());if(!Array.isArray(parsed)&&!parsed.nodes&&!parsed.items&&!parsed.logicChain&&!parsed.logicalChains&&!parsed.thoughtLines&&!parsed.mindLines&&!parsed.thoughts)throw new Error('文件中未识别到节点、逻辑链或思维线数据');const result=importKnowledgeData(parsed,mode);persist();build();if(nodes.length)select(nodes[nodes.length-1]);document.querySelector('#importDialog').style.display='none';toast('导入完成：新增 '+result.added+'，更新 '+result.updated+'，思维线匹配 '+result.thoughtUpdated);}catch(err){alert('导入失败：'+err.message);}finally{e.target.value='';}};
+document.querySelector('#importFile').onchange=async e=>{const file=e.target.files?.[0];if(!file)return;const mode=document.querySelector('input[name="importMode"]:checked').value;try{const parsed=JSON.parse(await file.text());if(!Array.isArray(parsed)&&!parsed.nodes&&!parsed.items&&!parsed.logicChain&&!parsed.logicalChains&&!parsed.thoughtLines&&!parsed.mindLines&&!parsed.thoughts)throw new Error('文件中未识别到节点、逻辑链或思维线数据');const result=importKnowledgeData(parsed,mode);persist();build();if(nodes.length)select(nodes[nodes.length-1]);document.querySelector('#importDialog').style.display='none';toast('导入完成：新增 '+result.added+'，合并/更新 '+result.merged+'，思维线匹配 '+result.thoughtUpdated+(result.pending?.length?'；有 '+result.pending.length+' 组相似名称需核对':''));}catch(err){alert('导入失败：'+err.message);}finally{e.target.value='';}};
 function openEditor(n=null,parent=null){
  editing=n;document.querySelector('#editorTitle').textContent=n?'编辑知识节点':(parent?'创建下级知识节点':'创建知识节点');
  [['nodeName','name'],['nodeDesc','desc'],['nodeBefore','before'],['nodeAfter','after'],['nodeLeft','left'],['nodeRight','right']].forEach(([id,k])=>document.getElementById(id).value=n?.[k]||'');
