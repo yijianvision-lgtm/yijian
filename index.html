@@ -73,6 +73,29 @@ const seed=[
 ];
 let nodes=JSON.parse(localStorage.getItem('nebula_nodes')||'null')||seed;if(!Array.isArray(nodes)||nodes.length===0)nodes=seed.map(n=>({...n}));
 let links=JSON.parse(localStorage.getItem('nebula_links')||'null')||[['n1','n2'],['n1','n3'],['n1','n4'],['n1','n6'],['n3','n4'],['n2','n5'],['n5','n6'],['n3','n6']];
+
+/* NEBULA first user knowledge batch: historical Chinese painting. Imported once without altering existing records. */
+const nebulaBatch01=[
+{id:'hist-art-001',name:'魏晋南北朝—隋唐：中国绘画样式形成',desc:'本批知识的宏观主题：从魏晋南北朝至隋唐，观察中国绘画主体、题材、载体、理论与实践的演变。',parentId:null,level:1,x:38,y:0,z:0,color:0x9b8cff,date:'魏晋南北朝—隋唐',before:'瞻前：追溯汉代绘画传统、礼教功能与早期绘画载体；具体承接关系需结合后续原始材料核验。',after:'顾后：考察隋唐绘画制度、人物画与后续中国绘画传统的影响；具体影响链待补充史料。',left:'左顾：从内部考察人物画、山水与花鸟题材萌芽、绘画载体及形式语言。',right:'右盼：比较南朝与北朝、宫廷与士人、理论文献与绘画实践之间的差异。',sourceNote:'来源：用户提供的“魏晋南北朝→隋唐·中国绘画样式形成”图片。',confidence:'图片可辨识的主题与结构',needsReview:false},
+{id:'hist-art-002',name:'魏晋南北朝：士人参与与绘画转型',desc:'图片提出的历史起点：绘画主体由工匠作画逐渐出现士大夫主动参与；题材由礼教工具扩展至人物，并出现山水、花鸟题材萌芽；卷轴、壁画、石刻等载体并存。',parentId:'hist-art-001',level:2,x:28,y:8,z:-12,color:0x78a8ff,date:'魏晋南北朝',before:'瞻前：需回看汉代绘画的礼教、墓葬与装饰传统，具体承接关系待史料核验。',after:'顾后：为隋唐人物画、绘画理论与多样载体的发展提供历史背景；具体因果强度待核。',left:'左顾：士人参与、人物题材、山水花鸟萌芽、卷轴与壁画等载体。',right:'右盼：比较南朝与北朝在绘画风格、媒介和保存形态上的差异。',sourceNote:'来源：用户图片中的“起点：魏晋南北朝—士人觉醒”条目。',confidence:'图片文字可辨识，历史概括待文献核对',needsReview:true},
+{id:'hist-art-003',name:'绘画理论与画学论著',desc:'图片将绘画理论/画学论著列为一条重要脉络，并列出顾恺之、孙畅之、谢赫、荆浩、王维、张彦远等名字作为记忆线索。',parentId:'hist-art-001',level:2,x:48,y:9,z:-10,color:0xb59aff,date:'魏晋—唐及后续画论传统',before:'瞻前：追溯早期人物画实践与品评传统。',after:'顾后：考察画论如何影响绘画评价、创作观念与后世美术史书写。',left:'左顾：区分画家、画论作者、史家及其著述类型；图片中的人名口诀需逐一核对。',right:'右盼：比较理论文献与实际作品之间的相互印证及可能偏差。',sourceNote:'图片记忆线索：“顾、孙、谢、荆、王、张彦远”；原图小字存在识别不确定，需核原文。',confidence:'部分可辨识',needsReview:true},
+{id:'hist-art-004',name:'绘画实践：人物、造像与多种载体',desc:'图片将人物画实践与造像并列为另一条主线，并提及卷轴、壁画、石刻、漆画、寺观壁画等载体并存。',parentId:'hist-art-001',level:2,x:48,y:-8,z:12,color:0x78e2c2,date:'魏晋南北朝—隋唐',before:'瞻前：回看礼教性绘画、墓葬图像与早期造像传统。',after:'顾后：观察人物画技法、造像样式及绘画媒介对后世的影响。',left:'左顾：按人物画、造像、壁画、卷轴等媒介和题材分类。',right:'右盼：比较南北地域、宫廷与宗教场景、不同载体的表现差异。',sourceNote:'来源：用户图片“隋唐二：实践篇 = 人 + 造像”及载体列表。',confidence:'图片可辨识的概括',needsReview:true},
+{id:'hist-art-005',name:'南朝绘画线索',desc:'图片将南朝作为独立分支，并出现顾恺之等人物线索；其具体作品、画论和艺术特征尚需原始笔记补全。',parentId:'hist-art-001',level:2,x:28,y:-9,z:12,color:0x76dfff,date:'南朝',before:'瞻前：结合魏晋士人文化与人物品评传统。',after:'顾后：追踪南朝人物画与绘画品评传统对隋唐的影响。',left:'左顾：核对顾恺之相关作品、传世摹本、画论与人物画表现。',right:'右盼：与北朝石窟壁画、造像及地域风格比较。',sourceNote:'来源：用户图片中的南朝分支；图片细节分辨率有限。',confidence:'结构线索',needsReview:true},
+{id:'hist-art-006',name:'北朝绘画与造像线索',desc:'图片将北朝的石刻、壁画及造像作为独立分支，并提示与南朝线索进行比较。',parentId:'hist-art-001',level:2,x:28,y:-1,z:16,color:0xe19bff,date:'北朝',before:'瞻前：结合北方政权、佛教传播与石窟营造背景。',after:'顾后：考察北朝壁画、造像及其向隋唐艺术发展的联系。',left:'左顾：石刻、壁画、雕塑及其造型语言。',right:'右盼：与南朝人物画和士人审美传统比较；具体风格判断待作品证据支持。',sourceNote:'来源：用户图片中的北朝/北魏相关分支。',confidence:'结构线索',needsReview:true},
+{id:'hist-art-007',name:'唐代人物画的演变',desc:'中观板块：从初唐到中晚唐的人物画发展，关注政治纪实、宫廷生活、世俗写实与贵族审美等变化。',parentId:'hist-art-001',level:2,x:58,y:0,z:0,color:0xffc47b,date:'初唐—中晚唐',before:'瞻前：联系魏晋南北朝人物画、绘画理论和造像传统。',after:'顾后：观察唐代人物画对后世人物画、仕女画与审美观念的影响。',left:'左顾：比较人物画题材、线描、设色、人物造型及宫廷/世俗场景。',right:'右盼：比较初唐与中晚唐、张萱与周昉，以及不同社会阶层的审美表达。',sourceNote:'来源：用户提供的“唐代仕女画”分析图片中第二层“中观板块”。',confidence:'主题明确，具体演变判断待原始笔记核实',needsReview:true},
+{id:'hist-art-008',name:'唐代仕女画',desc:'微观知识点：唐代仕女画。用户图片将其放在唐代人物画的演变脉络中，涉及宫廷生活、女性形象、世俗写实与贵族审美。',parentId:'hist-art-007',level:3,x:68,y:0,z:0,color:0xffd18a,date:'唐代',before:'瞻前：联系初唐人物画及更早人物画传统；从政治纪实到宫廷/世俗题材的变化需用作品和文献核验。',after:'顾后：考察唐代仕女形象、服饰审美与人物画传统在后世的接受和转化。',left:'左顾：分析人物比例、面部塑造、衣纹线描、设色、姿态、场景与服饰细节。',right:'右盼：比较张萱与周昉、宫廷与世俗场景，以及不同女性形象的审美表达。',sourceNote:'来源：用户提供的“第一层：微观单点（唐代仕女画）”图片。',confidence:'主题可辨识；细节需要原图/笔记核对',needsReview:true},
+{id:'hist-art-009',name:'张萱与《捣练图》',desc:'图片将张萱列为唐代仕女画的重要比较对象，并出现《捣练图》作为记忆线索。',parentId:'hist-art-008',level:4,x:75,y:5,z:-5,color:0xffd18a,date:'唐代',before:'瞻前：放回唐代宫廷人物画与仕女画的语境中考察。',after:'顾后：比较后世摹本、图像传播与对唐代女性生活图像的理解。',left:'左顾：分析画面人物分组、劳动场景、动作、衣饰与线描设色。',right:'右盼：与周昉仕女画比较题材、人物气质和审美表达；作品归属与版本问题需核验。',sourceNote:'图片中出现张萱与《捣练图》；此节点为待核对的作品分析入口。',confidence:'名称可辨识，作品细节待核验',needsReview:true},
+{id:'hist-art-010',name:'周昉与《簪花仕女图》',desc:'图片将周昉列为唐代仕女画的重要比较对象，并出现《簪花仕女图》作为记忆线索。',parentId:'hist-art-008',level:4,x:75,y:-5,z:5,color:0xffd18a,date:'唐代（作品断代与归属需核）',before:'瞻前：联系唐代宫廷人物画和贵族女性形象的形成背景。',after:'顾后：考察后世对唐代仕女形象与贵族审美的接受。',left:'左顾：分析人物形象、服饰、姿态、花鸟/庭院环境与设色。',right:'右盼：与张萱及《捣练图》比较；作品断代、作者归属及图像解释应保留学术审慎。',sourceNote:'图片中出现周昉与《簪花仕女图》；作品断代、归属需查证。',confidence:'名称可辨识，学术归属待核验',needsReview:true},
+{id:'hist-art-011',name:'美术史分析与答题方法',desc:'图片提供的分析顺序：先做作品/主题定位，再进行性质或风格判断，继而分析基础信息、功能、意义、历史定位，并从四个方向展开。',parentId:'hist-art-001',level:2,x:38,y:12,z:18,color:0x8ca7ff,date:'方法节点（来自本批笔记）',before:'瞻前：明确作品、时代、作者/归属、媒介与历史语境。',after:'顾后：归纳创新、局限、历史影响及后世评价。',left:'左顾：分析定义、特征、形式、构成、技法与代表作品。',right:'右盼：进行同类作品、地域流派、中外艺术及不同阶段的比较。',sourceNote:'图片中的“方法论主线”“作品分析四步”“四维十字象限”整理为本主题下的方法节点，不作为全站底层规则重复导入。',confidence:'方法步骤可辨识',needsReview:false}
+];
+if(!localStorage.getItem('nebula_batch_01_imported')){
+ const existing=new Set(nodes.map(n=>String(n.id)));
+ nebulaBatch01.forEach(n=>{if(!existing.has(n.id))nodes.push(n);});
+ localStorage.setItem('nebula_batch_01_imported','1');
+ localStorage.setItem('nebula_nodes',JSON.stringify(nodes));
+ localStorage.setItem('nebula_links',JSON.stringify(links));
+}
+
 function makeGroupNode(id,name,desc,x,color){return{id,name,desc,parentId:null,level:1,x,y:0,z:0,color,date:'知识主干',before:'这是一个一级知识主干，负责组织所属概念与核心问题。',after:'继续向下拆分二级主题，再由二级主题展开具体机制、案例与应用。',left:'可与其他一级主干建立跨主题关联，但横向关联不改变父子层级。',right:'检查分类边界是否清晰，避免不同维度的概念被放进同一层级。'};}
 function migrateLegacySeedHierarchy(){
  if(nodes.some(n=>n.parentId||n.parent_id||n.parent))return false;
