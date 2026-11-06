@@ -19,7 +19,9 @@ const conversation = await api.saveConversation({
   transcript: "A local-only conversation fixture.",
   blob: new Blob(["original attachment"], { type: "text/plain" })
 });
-await api.saveLearningRecord({ nodeId: "base", activityType: "recall", score: 1 });
+const firstReview = await api.saveLearningRecord({ nodeId: "base", activityType: "recall", score: 1 });
+assert.equal(firstReview.schedule.intervalDays, 1);
+assert.ok(firstReview.schedule.nextReviewAt > Date.now());
 await api.saveResearchSession({ title: "Research fixture", query: "knowledge graph" });
 
 const backup = await api.exportFullBackup();
