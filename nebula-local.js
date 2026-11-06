@@ -546,7 +546,7 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
     await putRecord("knowledgeVersions",version);created.currentVersionId=version.id;nodes.push(created);
   } else if(proposal.proposalType==="update"||proposal.proposalType==="reparent") {
     if(!before) throw new Error("找不到目标节点，未应用建议。");
-    validateParent(before.id,snapshot.parentId??before.parentId);
+    validateParent(before.id,Object.prototype.hasOwnProperty.call(snapshot,"parentId")?snapshot.parentId:before.parentId);
     const version={id:makeRecordId("version"),nodeId:before.id,versionNumber:(await getAllEntries("knowledgeVersions")).filter(x=>x.value.nodeId===before.id).length+1,contentSnapshot:cloneJSON(before),changeReason:proposal.reasoning||"审核通过的 AI 建议",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:before.currentVersionId||null};
     await putRecord("knowledgeVersions",version);
     const index=nodes.findIndex(n=>String(n.id)===String(before.id));
