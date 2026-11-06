@@ -12,7 +12,7 @@ function openDB() {
     req.onupgradeneeded = () => {
       const db = req.result;
       for (const name of STORES) if (!db.objectStoreNames.contains(name)) {
-        if (name === "references" || name === "lectureSources" || name === "aiConversations" || name === "assets" || name === "history") db.createObjectStore(name, { keyPath: "id" });
+        if (["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations"].includes(name)) db.createObjectStore(name, { keyPath: "id" });
         else db.createObjectStore(name);
       }
     };
