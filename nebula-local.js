@@ -3,8 +3,8 @@
  * No login, cloud database, account service or remote file storage.
  */
 const DB_NAME = "nebula_local_v2";
-const DB_VERSION = 1;
-const STORES = ["graph", "references", "assets", "meta", "history"];
+const DB_VERSION = 2;
+const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history"];
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -12,7 +12,7 @@ function openDB() {
     req.onupgradeneeded = () => {
       const db = req.result;
       for (const name of STORES) if (!db.objectStoreNames.contains(name)) {
-        if (name === "references" || name === "assets" || name === "history") db.createObjectStore(name, { keyPath: "id" });
+        if (name === "references" || name === "lectureSources" || name === "aiConversations" || name === "assets" || name === "history") db.createObjectStore(name, { keyPath: "id" });
         else db.createObjectStore(name);
       }
     };
@@ -150,16 +150,21 @@ export const NEBULA_LOCAL = {
       size: file.size, savedAt: Date.now(), blob: file, text: parsed.text, html: parsed.html,
       tree: parsed.tree, pages: parsed.pages, warnings: parsed.warnings
     };
-    await request("references", "readwrite", s => s.put(item));
+    item.sourceLibrary = "lecture";
+    await request("lectureSources", "readwrite", s => s.put(item));
     return { ...item, blob: undefined };
   },
   async listReferences() {
-    return (await request("references", "readonly", s => s.getAll())).map(({ blob, ...item }) => item).sort((a,b) => b.savedAt-a.savedAt);
+    const current = await request("lectureSources", "readonly", s => s.getAll());
+    const legacy = await request("references", "readonly", s => s.getAll());
+    const rows = [...legacy.filter(x => !current.some(y => y.id === x.id)), ...current];
+    return rows.map(({ blob, ...item }) => item).sort((a,b) => b.savedAt-a.savedAt);
   },
   async getReference(id) {
-    return (await request("references", "readonly", s => s.get(id))) || null;
+    return (await request("lectureSources", "readonly", s => s.get(id))) || (await request("references", "readonly", s => s.get(id))) || null;
   },
   async deleteReference(id) {
+    await request("lectureSources", "readwrite", s => s.delete(id));
     await request("references", "readwrite", s => s.delete(id));
     const db = await openDB();
     await new Promise((resolve,reject) => {
@@ -169,6 +174,31 @@ export const NEBULA_LOCAL = {
       q.onsuccess = () => { const c=q.result; if(!c)return; if(c.value.referenceId===id)c.delete(); c.continue(); };
       tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
     });
+  },
+  async saveConversation(record) {
+    if (!record || !(record.transcript || record.text)) throw new Error("对话内容不能为空");
+    const item = {
+      id: record.id || makeId(), sourceLibrary: "ai",
+      title: record.title || record.name || "AI 学习对话",
+      source: record.source || "manual-import",
+      transcript: record.transcript || record.text,
+      analysis: record.analysis || null,
+      savedAt: Date.now(), fileName: record.fileName || "",
+      blob: record.blob || null, metadata: record.metadata || {}
+    };
+    await request("aiConversations", "readwrite", s => s.put(item));
+    const { blob, ...safe } = item;
+    return safe;
+  },
+  async listConversations() {
+    return (await request("aiConversations", "readonly", s => s.getAll()))
+      .map(({ blob, ...item }) => item).sort((a,b) => b.savedAt-a.savedAt);
+  },
+  async getConversation(id) {
+    return (await request("aiConversations", "readonly", s => s.get(id))) || null;
+  },
+  async deleteConversation(id) {
+    await request("aiConversations", "readwrite", s => s.delete(id));
   },
   async saveHistory(record) {
     const item = { id: record.id || makeId(), ...record, savedAt: Date.now() };
@@ -237,8 +267,8 @@ async function migrateLegacyReferences() {
     for (const old of rows) {
       const id = "legacy_" + String(old.id || makeId()).replace(/[^a-zA-Z0-9_-]/g, "_");
       if (!(await NEBULA_LOCAL.getReference(id))) {
-        await request("references", "readwrite", s => s.put({
-          id, name: old.name || "旧版参考资料", extension: String(old.type || "").toLowerCase(),
+        await request("lectureSources", "readwrite", s => s.put({
+          id, sourceLibrary: "lecture", name: old.name || "旧版参考资料", extension: String(old.type || "").toLowerCase(),
           mime: "application/octet-stream", size: old.size || old.blob?.size || 0,
           savedAt: old.savedAt || Date.now(), blob: old.blob || null, text: old.text || "",
           html: "", tree: [], pages: [], warnings: ["从旧版本地参考资料库迁移；原文件与已提取文字已保留。"]
