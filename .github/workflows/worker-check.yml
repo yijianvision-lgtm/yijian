@@ -37,3 +37,30 @@ jobs:
           Path("/tmp/nebula-inline.js").write_text(scripts[-1], encoding="utf-8")
           PY
           node --check /tmp/nebula-inline.js
+
+      - name: Check cognitive backend contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          local = Path("nebula-local.js").read_text(encoding="utf-8")
+          html = Path("index.html").read_text(encoding="utf-8")
+          worker = Path("deepseek-worker.js").read_text(encoding="utf-8")
+          required_local = [
+              'DB_VERSION = 4', 'lectureSources', 'aiConversations',
+              'knowledgeRelations', 'nodeSourceLinks', 'knowledgeVersions',
+              'reviewProposals', 'learningRecords', 'researchSessions',
+              'exportFullBackup', 'previewFullBackup', 'restoreFullBackup',
+              'findDuplicateCandidates', 'getCognitiveDashboard',
+              'applyProposal', 'getNodeEvidence'
+          ]
+          missing = [item for item in required_local if item not in local]
+          if missing:
+              raise SystemExit("Missing local backend contracts: " + ", ".join(missing))
+          required_worker = ['"/analyze"', '"/coach"', '"/mnemonic"', '"/research"', '"/share"']
+          missing = [item for item in required_worker if item not in worker]
+          if missing:
+              raise SystemExit("Missing Worker routes: " + ", ".join(missing))
+          if 'exportFullBackup()' not in html or 'restoreFullBackup(parsed' not in html:
+              raise SystemExit("Full backup UI hooks are not connected")
+          print("NEBULA cognitive backend contract checks passed")
+          PY
