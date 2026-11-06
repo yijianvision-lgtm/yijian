@@ -476,14 +476,17 @@ async function restoreFullBackup(fileOrObject, options={}) {
     tx.onerror=()=>reject(tx.error||new Error("恢复失败，数据库事务已回滚。"));
     tx.onabort=()=>reject(tx.error||new Error("恢复已中止，数据库事务已回滚。"));
   }).finally(()=>db.close());
-  if(mode==="replace" && parsed.localStorage && typeof parsed.localStorage==="object") {
+  let localStorageSynced=true;
+  if(mode==="replace" && typeof localStorage!=="undefined") {
     try {
+      const saved=parsed.localStorage&&typeof parsed.localStorage==="object"?parsed.localStorage:{};
       for(const key of BACKUP_LOCAL_STORAGE_KEYS) {
-        if(Object.prototype.hasOwnProperty.call(parsed.localStorage,key))localStorage.setItem(key,String(parsed.localStorage[key]));
+        if(Object.prototype.hasOwnProperty.call(saved,key))localStorage.setItem(key,String(saved[key]));
+        else localStorage.removeItem(key);
       }
-    } catch(error) { throw new Error("数据库已恢复，但部分旧版浏览器本地缓存未能同步；重新打开页面会从 IndexedDB 读取知识图谱。"+error.message); }
+    } catch(error) { localStorageSynced=false; console.warn("NEBULA restored IndexedDB successfully; legacy localStorage cache could not be synchronized:",error); }
   }
-  return {mode,restoredStores:storeNames,restored,manifest:Object.fromEntries(Object.entries(parsed.stores).map(([k,v])=>[k,v.length])),folderPermission:"需重新授权"};
+  return {mode,restoredStores:storeNames,restored,manifest:Object.fromEntries(Object.entries(parsed.stores).map(([k,v])=>[k,v.length])),localStorageSynced,folderPermission:"需重新授权"};
 }
 async function createKnowledgeProposal(record) {
   const allowed=new Set(["create","update","merge","split","reparent","relation"]);
