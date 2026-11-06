@@ -23,6 +23,15 @@ export default {
     if (!allowed) return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: cors });
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(request.url);
+    if (url.pathname === "/health" && request.method === "GET") {
+      return new Response(JSON.stringify({
+        ok: true,
+        service: "NEBULA Cognitive OS Bridge",
+        version: "2026-11",
+        configured: { deepseekApiKey: !!env.DEEPSEEK_API_KEY, syncToken: !!env.NEBULA_SYNC_TOKEN },
+        capabilities: ["conversation-analysis","knowledge-coach","mnemonic-review","crossref-research","deepseek-share-import"]
+      }), { headers: cors });
+    }
     if (url.pathname === "/share" && request.method === "POST") {
       if (!env.NEBULA_SYNC_TOKEN || request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
         return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
