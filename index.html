@@ -144,10 +144,9 @@ let links=JSON.parse(localStorage.getItem('nebula_links')||'null')||[];
 window.addEventListener('nebula-local-ready',async()=>{
  try{
   const saved=await window.NEBULA_LOCAL.loadGraph();
-  const legacyNodes=JSON.parse(localStorage.getItem('nebula_nodes')||'null');
-  if(saved&&Array.isArray(saved.nodes)&&saved.nodes.length&&(!legacyNodes||!legacyNodes.length)){
+  if(saved&&Array.isArray(saved.nodes)){
    nodes=saved.nodes;links=Array.isArray(saved.links)?saved.links:[];
-   localStorage.setItem('nebula_nodes',JSON.stringify(nodes));localStorage.setItem('nebula_links',JSON.stringify(links));
+   try{localStorage.setItem('nebula_nodes',JSON.stringify(nodes));localStorage.setItem('nebula_links',JSON.stringify(links));}catch(e){console.warn('NEBULA localStorage cache unavailable; IndexedDB remains authoritative:',e);}
    build();renderLogical();
   }else await window.NEBULA_LOCAL.saveGraph(nodes,links);
   await window.NEBULA_LOCAL.requestPersistentStorage();
