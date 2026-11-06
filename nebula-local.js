@@ -278,7 +278,7 @@ async function migrateLegacyReferences() {
   } catch (e) { console.warn("NEBULA legacy reference migration skipped:", e); }
 }
 globalThis.NEBULA_LOCAL = NEBULA_LOCAL;
-migrateLegacyReferences().finally(() => window.dispatchEvent(new CustomEvent("nebula-local-ready")));
+migrateLegacyReferences().finally(() => { backfillSourceCatalog(); window.dispatchEvent(new CustomEvent("nebula-local-ready")); });
 
 
 // --- Cognitive OS persistence layer (schema v3) ----------------------------
