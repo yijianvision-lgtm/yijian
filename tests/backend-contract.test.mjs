@@ -24,7 +24,7 @@ assert.match(local, /BACKUP_LOCAL_STORAGE_KEYS/);
 assert.match(worker, /DEEPSEEK_API_KEY/);
 assert.match(worker, /NEBULA_SYNC_TOKEN/);
 
-const inlineScripts = [...html.matchAll(/<script(?:\\s+type="module")?>([\\s\\S]*?)<\\/script>/g)];
+const inlineScripts = [...html.matchAll(/<script(?:\s+type="module")?>([\s\S]*?)<\/script>/g)];
 assert.ok(inlineScripts.length >= 2, "Expected the app bootstrap and main module scripts.");
 for (const match of inlineScripts) {
   const isModule = match[0].startsWith('<script type="module">');
