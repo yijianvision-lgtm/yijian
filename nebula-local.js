@@ -555,7 +555,8 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
     await putRecord("knowledgeVersions",afterVersion);nodes[index].currentVersionId=afterVersion.id;
   } else if(proposal.proposalType==="relation") {
     const relation={id:makeRecordId("relation"),sourceNodeId:proposal.sourceNodeId||proposal.targetNodeId,targetNodeId:proposal.relatedNodeId||snapshot.targetNodeId,type:snapshot.type||"related",label:snapshot.label||"",rationale:proposal.reasoning||"",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now()};
-    if(!relation.sourceNodeId||!relation.targetNodeId||relation.sourceNodeId===relation.targetNodeId) throw new Error("关系两端节点无效，未应用建议。");
+    const knownNodeIds=new Set(nodes.map(n=>String(n.id)));
+    if(!relation.sourceNodeId||!relation.targetNodeId||String(relation.sourceNodeId)===String(relation.targetNodeId)||!knownNodeIds.has(String(relation.sourceNodeId))||!knownNodeIds.has(String(relation.targetNodeId))) throw new Error("关系两端节点无效或不存在，未应用建议。");
     await putRecord("knowledgeRelations",relation).catch(async()=>{throw new Error("关系记录写入失败。");});
   } else if(proposal.proposalType==="merge") {
     if(!before) throw new Error("合并建议缺少保留目标节点。");
@@ -621,6 +622,12 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
     resultingNodeId=before.id;
   }
   await NEBULA_LOCAL.saveGraph(nodes,links);
+  if(resultingNodeId&&Array.isArray(proposal.evidenceSourceIds)&&proposal.evidenceSourceIds.length) {
+    const knownSources=new Set((await NEBULA_LOCAL.listSources()).map(x=>String(x.id)));
+    const existingEvidence=await NEBULA_LOCAL.listNodeSources(resultingNodeId);
+    const linked=new Set(existingEvidence.map(x=>String(x.sourceId)));
+    for(const sourceId of proposal.evidenceSourceIds)if(knownSources.has(String(sourceId))&&!linked.has(String(sourceId)))await NEBULA_LOCAL.linkNodeSource({nodeId:resultingNodeId,sourceId,evidenceType:"ai-review-evidence"});
+  }
   proposal.status="accepted";proposal.reviewerNote=reviewerNote;proposal.reviewedAt=Date.now();proposal.resultingNodeId=resultingNodeId;
   await putRecord("reviewProposals",proposal);
   await NEBULA_LOCAL.saveHistory({type:"proposal-applied",proposalId:id,nodeId:resultingNodeId,reason:proposal.reasoning||"",at:Date.now()});
