@@ -456,7 +456,9 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
   let resultingNodeId=proposal.targetNodeId||snapshot.id||makeRecordId("node");
   if(proposal.proposalType==="create") {
     if(nodes.some(n=>String(n.id)===String(resultingNodeId))) throw new Error("目标节点 ID 已存在，未应用建议。");
-    nodes.push({...snapshot,id:resultingNodeId});
+    const created={...snapshot,id:resultingNodeId};
+    const version={id:makeRecordId("version"),nodeId:resultingNodeId,versionNumber:1,contentSnapshot:cloneJSON(created),changeReason:proposal.reasoning||"用户审核通过的 AI 建议",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:null};
+    await putRecord("knowledgeVersions",version);created.currentVersionId=version.id;nodes.push(created);
   } else if(proposal.proposalType==="update"||proposal.proposalType==="reparent") {
     if(!before) throw new Error("找不到目标节点，未应用建议。");
     const version={id:makeRecordId("version"),nodeId:before.id,versionNumber:(await getAllEntries("knowledgeVersions")).filter(x=>x.value.nodeId===before.id).length+1,contentSnapshot:cloneJSON(before),changeReason:proposal.reasoning||"审核通过的 AI 建议",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:before.currentVersionId||null};
@@ -509,7 +511,17 @@ Object.assign(NEBULA_LOCAL,{
   async createProposal(record){return createKnowledgeProposal(record);},
   async listProposals(status){const rows=await request("reviewProposals","readonly",s=>s.getAll());return rows.filter(x=>!status||x.status===status).sort((a,b)=>b.createdAt-a.createdAt);},
   async applyProposal(id,decision,reviewerNote){return applyKnowledgeProposal(id,decision,reviewerNote);},
+  async deleteProposal(id){return deleteRecord("reviewProposals",id)},
   async listNodeVersions(nodeId){return (await request("knowledgeVersions","readonly",s=>s.getAll())).filter(x=>x.nodeId===nodeId).sort((a,b)=>a.versionNumber-b.versionNumber);},
+  async saveNodeVersion(node,reason="用户编辑",createdBy="user"){
+    if(!node?.id)throw new Error("节点 ID 缺失，无法建立版本。");
+    const rows=(await request("knowledgeVersions","readonly",s=>s.getAll())).filter(x=>String(x.nodeId)===String(node.id)).sort((a,b)=>a.versionNumber-b.versionNumber);
+    const latest=rows.at(-1),snapshot=cloneJSON(node);
+    const comparable=x=>JSON.stringify({name:x.name,coreWord:x.coreWord,desc:x.desc,before:x.before,after:x.after,left:x.left,right:x.right,parentId:x.parentId,status:x.status,confidence:x.confidence});
+    if(latest&&comparable(latest.contentSnapshot)===comparable(snapshot))return latest;
+    const version={id:makeRecordId("version"),nodeId:node.id,versionNumber:(latest?.versionNumber||0)+1,contentSnapshot:snapshot,changeReason:reason,evidenceSourceIds:[],createdAt:Date.now(),createdBy,supersedesVersionId:latest?.id||null};
+    await putRecord("knowledgeVersions",version);node.currentVersionId=version.id;return version;
+  },
   async saveLearningRecord(record){
     if(!record?.nodeId||!record?.activityType)throw new Error("学习记录缺少节点或活动类型。");
     return putRecord("learningRecords",{...record,id:record.id||makeRecordId("learn"),createdAt:record.createdAt||Date.now()});
