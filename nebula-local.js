@@ -521,8 +521,66 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
     const relation={id:makeRecordId("relation"),sourceNodeId:proposal.sourceNodeId||proposal.targetNodeId,targetNodeId:proposal.relatedNodeId||snapshot.targetNodeId,type:snapshot.type||"related",label:snapshot.label||"",rationale:proposal.reasoning||"",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now()};
     if(!relation.sourceNodeId||!relation.targetNodeId||relation.sourceNodeId===relation.targetNodeId) throw new Error("关系两端节点无效，未应用建议。");
     await putRecord("knowledgeRelations",relation).catch(async()=>{throw new Error("关系记录写入失败。");});
-  } else {
-    throw new Error("合并/拆分需要明确的节点映射与来源迁移，当前版本暂不自动执行；建议仍保持待审核状态。");
+  } else if(proposal.proposalType==="merge") {
+    if(!before) throw new Error("合并建议缺少保留目标节点。");
+    const sourceIds=[...new Set((proposal.sourceNodeIds||proposal.mergeNodeIds||snapshot.sourceNodeIds||[]).map(String))].filter(id=>id!==String(before.id));
+    if(!sourceIds.length) throw new Error("合并建议必须明确 sourceNodeIds，未执行任何更改。");
+    const sources=sourceIds.map(id=>nodes.find(n=>String(n.id)===id));
+    if(sources.some(n=>!n)) throw new Error("合并来源节点有缺失，未执行任何更改。");
+    const allVersions=(await getAllEntries("knowledgeVersions")).map(x=>x.value);
+    for(const n of [before,...sources]) {
+      const prior=allVersions.filter(v=>String(v.nodeId)===String(n.id)).sort((a,b)=>a.versionNumber-b.versionNumber).at(-1);
+      await putRecord("knowledgeVersions",{id:makeRecordId("version"),nodeId:n.id,versionNumber:(prior?.versionNumber||0)+1,contentSnapshot:cloneJSON(n),changeReason:"合并前自动留档",evidenceSourceIds:[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:prior?.id||null});
+    }
+    const sourceSet=new Set(sourceIds), mergedSnapshot={...snapshot};delete mergedSnapshot.sourceNodeIds;
+    const updatedTarget={...before,...mergedSnapshot,id:before.id,updatedAt:Date.now(),mergedFrom:sourceIds};
+    const remap=id=>sourceSet.has(String(id))?before.id:id;
+    for(const n of nodes) if(sourceSet.has(String(n.parentId))) n.parentId=before.id;
+    const remappedLinks=[];
+    for(const link of links) {
+      let next;
+      if(Array.isArray(link)) next=[remap(link[0]),remap(link[1])];
+      else if(link&&typeof link==="object") next={...link,source:remap(link.source??link.from),target:remap(link.target??link.to),from:link.from==null?link.from:remap(link.from),to:link.to==null?link.to:remap(link.to)};
+      else continue;
+      const a=Array.isArray(next)?next[0]:(next.source??next.from),b=Array.isArray(next)?next[1]:(next.target??next.to);
+      if(String(a)!==String(b)&&!remappedLinks.some(x=>JSON.stringify(x)===JSON.stringify(next)))remappedLinks.push(next);
+    }
+    links.splice(0,links.length,...remappedLinks);
+    const evidence=await request("nodeSourceLinks","readonly",s=>s.getAll());
+    for(const row of evidence.filter(x=>sourceSet.has(String(x.nodeId)))) {
+      const duplicate=evidence.some(x=>String(x.nodeId)===String(before.id)&&x.sourceId===row.sourceId&&x.evidenceLocator===row.evidenceLocator);
+      if(!duplicate)await putRecord("nodeSourceLinks",{...row,id:makeRecordId("evidence"),nodeId:before.id,linkedAt:Date.now()});
+      await deleteRecord("nodeSourceLinks",row.id);
+    }
+    const relations=await request("knowledgeRelations","readonly",s=>s.getAll());
+    for(const relation of relations) {
+      const nextSource=remap(relation.sourceNodeId),nextTarget=remap(relation.targetNodeId);
+      if(nextSource!==relation.sourceNodeId||nextTarget!==relation.targetNodeId) {
+        if(String(nextSource)===String(nextTarget)) await deleteRecord("knowledgeRelations",relation.id);
+        else await putRecord("knowledgeRelations",{...relation,sourceNodeId:nextSource,targetNodeId:nextTarget,updatedAt:Date.now()});
+      }
+    }
+    const index=nodes.findIndex(n=>String(n.id)===String(before.id));nodes[index]=updatedTarget;
+    for(let i=nodes.length-1;i>=0;i--)if(sourceSet.has(String(nodes[i].id)))nodes.splice(i,1);
+    resultingNodeId=before.id;
+    const latest=allVersions.filter(v=>String(v.nodeId)===String(before.id)).sort((a,b)=>a.versionNumber-b.versionNumber).at(-1);
+    const afterVersion=await putRecord("knowledgeVersions",{id:makeRecordId("version"),nodeId:before.id,versionNumber:(latest?.versionNumber||0)+2,contentSnapshot:cloneJSON(updatedTarget),changeReason:"合并后的知识版本",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:latest?.id||null});
+    updatedTarget.currentVersionId=afterVersion.id;
+  } else if(proposal.proposalType==="split") {
+    if(!before) throw new Error("拆分建议缺少原始节点。");
+    const proposed=proposal.proposedNodes||snapshot.nodes;
+    if(!Array.isArray(proposed)||proposed.length<2) throw new Error("拆分建议必须提供至少两个 proposedNodes，未执行任何更改。");
+    const prior=(await getAllEntries("knowledgeVersions")).map(x=>x.value).filter(v=>String(v.nodeId)===String(before.id)).sort((a,b)=>a.versionNumber-b.versionNumber).at(-1);
+    await putRecord("knowledgeVersions",{id:makeRecordId("version"),nodeId:before.id,versionNumber:(prior?.versionNumber||0)+1,contentSnapshot:cloneJSON(before),changeReason:"拆分前自动留档",evidenceSourceIds:[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:prior?.id||null});
+    const splitNodes=proposed.map((item,i)=>({...item,id:i===0?before.id:(item.id&&!nodes.some(n=>String(n.id)===String(item.id))?item.id:makeRecordId("node")),parentId:item.parentId??before.parentId??null,level:item.level??before.level??1,createdAt:item.createdAt||Date.now(),updatedAt:Date.now()}));
+    const index=nodes.findIndex(n=>String(n.id)===String(before.id));nodes.splice(index,1,splitNodes[0],...splitNodes.slice(1));
+    for(const item of splitNodes) {
+      const priorRows=(await getAllEntries("knowledgeVersions")).map(x=>x.value).filter(v=>String(v.nodeId)===String(item.id));
+      const latest=priorRows.sort((a,b)=>a.versionNumber-b.versionNumber).at(-1);
+      const version=await putRecord("knowledgeVersions",{id:makeRecordId("version"),nodeId:item.id,versionNumber:(latest?.versionNumber||0)+1,contentSnapshot:cloneJSON(item),changeReason:"审核通过的知识拆分",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:latest?.id||null});
+      item.currentVersionId=version.id;
+    }
+    resultingNodeId=before.id;
   }
   await NEBULA_LOCAL.saveGraph(nodes,links);
   proposal.status="accepted";proposal.reviewerNote=reviewerNote;proposal.reviewedAt=Date.now();proposal.resultingNodeId=resultingNodeId;
