@@ -4,7 +4,7 @@ NEBULA 采用 **Local-first**：不要求注册、登录、Clerk、Supabase、D1
 
 ## 文件
 - `nebula-local.js`：本地数据层与讲义解析器。IndexedDB 使用 `lectureSources` 保存原始讲义，使用 `aiConversations` 保存 AI 已学习对话；schema v4 另含 `sources`、`nodeSourceLinks`、`knowledgeRelations`、`knowledgeVersions`、`reviewProposals`、`learningRecords`、`researchSessions`，分别承担来源目录、节点证据链接、横向关系、知识版本、AI 审核队列、学习记录与研究草稿。旧版 `references` 数据继续兼容读取。
-- `deepseek-worker.js`：可选的 DeepSeek 桥接服务，保留 DeepSeek 历史分享链接读取与历史内容分析，并新增 `POST /coach`（知识校正/四维/逻辑链）、`POST /mnemonic`（口诀核对）和 `GET /research?q=...`（Crossref 元数据检索）。它不存储知识库或讲义文件。
+- `deepseek-worker.js`：可选的 DeepSeek 桥接服务，保留 DeepSeek 历史分享链接读取与历史内容分析，并新增 `GET /health`（部署与功能状态，不返回密钥）、`POST /coach`（知识校正/四维/逻辑链）、`POST /mnemonic`（口诀核对）和 `GET /research?q=...`（Crossref 元数据检索）。它不存储知识库或讲义文件。
 - `index.html`：现有 UI 与知识图谱逻辑。IndexedDB 是正式数据源，LocalStorage 仅保留旧版兼容缓存；恢复时以 IndexedDB 为准，避免旧缓存覆盖新数据。原有“导出 JSON”入口导出完整本地备份，导入支持预览后选择完整替换或安全合并。
 
 ## 支持的讲义类型
@@ -35,7 +35,9 @@ NEBULA 采用 **Local-first**：不要求注册、登录、Clerk、Supabase、D1
 - 学术检索可通过 Crossref 等公开元数据服务完成，必须保留 DOI、作者、年份和来源链接；不能把元数据检索描述成论文全文下载。
 - 语音识别、语音合成和图片 OCR 是独立的前端/浏览器能力，尚需在 UI 接入后逐项测试。
 
-## 当前已接入的本地后台 API\n- 完整备份：`exportFullBackup()`、`previewFullBackup()`、`restoreFullBackup()`。\n- AI 接口适配：`analyzeConversation()`、`coachKnowledge()`、`checkMnemonic()`、`searchResearch()`、`fetchDeepSeekShare()`；仅在显式调用时向 Worker 发送对应文本。\n- 来源内容：`getNodeEvidence()`、`getSourceContent()` 可从节点回溯来源及原始记录。\n- 来源与证据：`saveSource()`、`linkNodeSource()`、`listNodeSources()`、`listSourceNodes()`。\n- 关系：`saveKnowledgeRelation()`、`listKnowledgeRelations()`。\n- 审核与版本：`createProposal()`、`listProposals()`、`applyProposal()`、`listNodeVersions()`。\n- 学习与研究：`saveLearningRecord()`、`listLearningRecords()`、`saveResearchSession()`、`listResearchSessions()`。\n- 驾驶舱汇总：`getCognitiveDashboard()`。\n\n节点编辑器已接入来源选择与版本留档；认知驾驶舱已接入待审核提案、认知缺口统计和下一步学习建议。逐条证据查看器、完整研究工作台、口头复述/语音训练界面仍需后续前端接入。\n\n## 部署与下一步
+## 当前已接入的本地后台 API\n- 完整备份：`exportFullBackup()`、`previewFullBackup()`、`restoreFullBackup()`。\n- AI 接口适配：`analyzeConversation()`、`coachKnowledge()`、`checkMnemonic()`、`searchResearch()`、`fetchDeepSeekShare()`；仅在显式调用时向 Worker 发送对应文本。\n- 来源内容：`getNodeEvidence()`、`getSourceContent()` 可从节点回溯来源及原始记录。\n- 来源与证据：`saveSource()`、`linkNodeSource()`、`listNodeSources()`、`listSourceNodes()`。\n- 关系：`saveKnowledgeRelation()`、`listKnowledgeRelations()`。\n- 审核与版本：`createProposal()`、`listProposals()`、`applyProposal()`、`listNodeVersions()`。\n- 学习与研究：`saveLearningRecord()`、`listLearningRecords()`、`saveResearchSession()`、`listResearchSessions()`。\n- 驾驶舱汇总与认知缺口：`getCognitiveDashboard()`、`detectKnowledgeGaps()`、`buildLearningQueue()`。
+- AI 建议进入审核队列：`proposeCoachReview()`、`proposeMnemonicReview()`；AI 输出只生成待审核提案，不静默覆盖正式节点。
+- 节点编辑会保存编辑前与编辑后版本，并将所选来源和页码/段落/主题路径写入多对多证据关联。\n\n节点编辑器已接入来源选择与版本留档；认知驾驶舱已接入待审核提案、认知缺口统计和下一步学习建议。逐条证据查看器、完整研究工作台、口头复述/语音训练界面仍需后续前端接入。\n\n## 部署与下一步
 本地知识库不需要部署任何账户或云数据库服务。DeepSeek Worker 若已部署，需将仓库新版 `deepseek-worker.js` 部署到原 Worker（保留原 Worker 名称与原有两个 secrets），即可启用新增 AI 端点。仓库的 `wrangler.toml` 仅部署无状态 DeepSeek Worker，不含 D1/R2。需要命令行部署时，在仓库目录执行：\n\n```bash\nnpx wrangler login\nnpx wrangler secret put DEEPSEEK_API_KEY\nnpx wrangler secret put NEBULA_SYNC_TOKEN\nnpx wrangler deploy\n```\n\n按提示填入你自己原有的密钥；不要把密钥发给我或写进仓库。若 Worker 已有同名 secrets，确认仍保留即可，不要为了重新部署而更换令牌。
 
 
