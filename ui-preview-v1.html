@@ -397,7 +397,11 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
 #continuumFocus.arriving .continuum-core p,
 #continuumFocus.arriving .continuum-core-meta,
 #continuumFocus.arriving .continuum-core button{animation:coreTextSecond 1.7s ease 1.05s both}
-#continuumFocus.arriving .continuum-quadrant{animation:none!important;opacity:0!important;filter:blur(3px)!important}
+#continuumFocus.arriving .continuum-quadrant{animation:none!important;opacity:1!important;filter:none!important}
+#continuumFocus.arriving .continuum-quadrant .cq-kicker,
+#continuumFocus.arriving .continuum-quadrant b,
+#continuumFocus.arriving .continuum-quadrant small,
+#continuumFocus.arriving .continuum-quadrant i{opacity:0}
 #continuumFocus.arriving .continuum-quadrant .cq-kicker,
 #continuumFocus.arriving .continuum-quadrant b{animation:directionTextReveal 1.9s cubic-bezier(.2,.65,.25,1) both}
 #continuumFocus.arriving .q-forward .cq-kicker,
