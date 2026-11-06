@@ -623,10 +623,12 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
   }
   await NEBULA_LOCAL.saveGraph(nodes,links);
   if(resultingNodeId&&Array.isArray(proposal.evidenceSourceIds)&&proposal.evidenceSourceIds.length) {
-    const knownSources=new Set((await NEBULA_LOCAL.listSources()).map(x=>String(x.id)));
-    const existingEvidence=await NEBULA_LOCAL.listNodeSources(resultingNodeId);
-    const linked=new Set(existingEvidence.map(x=>String(x.sourceId)));
-    for(const sourceId of proposal.evidenceSourceIds)if(knownSources.has(String(sourceId))&&!linked.has(String(sourceId)))await NEBULA_LOCAL.linkNodeSource({nodeId:resultingNodeId,sourceId,evidenceType:"ai-review-evidence"});
+    try {
+      const knownSources=new Set((await NEBULA_LOCAL.listSources()).map(x=>String(x.id)));
+      const existingEvidence=await NEBULA_LOCAL.listNodeSources(resultingNodeId);
+      const linked=new Set(existingEvidence.map(x=>String(x.sourceId)));
+      for(const sourceId of proposal.evidenceSourceIds)if(knownSources.has(String(sourceId))&&!linked.has(String(sourceId)))await NEBULA_LOCAL.linkNodeSource({nodeId:resultingNodeId,sourceId,evidenceType:"ai-review-evidence"});
+    } catch(error) { proposal.evidenceLinkWarning=String(error.message||error); }
   }
   proposal.status="accepted";proposal.reviewerNote=reviewerNote;proposal.reviewedAt=Date.now();proposal.resultingNodeId=resultingNodeId;
   await putRecord("reviewProposals",proposal);
