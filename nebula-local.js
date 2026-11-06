@@ -3,8 +3,8 @@
  * No login, cloud database, account service or remote file storage.
  */
 const DB_NAME = "nebula_local_v2";
-const DB_VERSION = 2;
-const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history"];
+const DB_VERSION = 3;
+const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions"];
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -279,3 +279,248 @@ async function migrateLegacyReferences() {
 }
 globalThis.NEBULA_LOCAL = NEBULA_LOCAL;
 migrateLegacyReferences().finally(() => window.dispatchEvent(new CustomEvent("nebula-local-ready")));
+
+
+// --- Cognitive OS persistence layer (schema v3) ----------------------------
+const COGNITIVE_STORES = ["sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions"];
+const makeRecordId = prefix => (prefix || "rec") + "_" + Date.now().toString(36) + "_" + crypto.randomUUID().replace(/-/g,"");
+const nowISO = () => new Date().toISOString();
+const cloneJSON = value => JSON.parse(JSON.stringify(value));
+const normaliseTitle = value => String(value || "").normalize("NFKC").toLowerCase().replace(/[\s\p{P}\p{S}]+/gu,"").trim();
+function tokenSet(value) {
+  const s = normaliseTitle(value), chars = Array.from(s), out = new Set();
+  if (chars.length <= 2) { if (s) out.add(s); return out; }
+  for (let i=0;i<chars.length-1;i++) out.add(chars[i]+chars[i+1]);
+  return out;
+}
+function similarityScore(a,b) {
+  const A=tokenSet(a),B=tokenSet(b); if(!A.size||!B.size)return 0;
+  let common=0; for(const x of A)if(B.has(x))common++;
+  return 2*common/(A.size+B.size);
+}
+async function getAllEntries(storeName) {
+  const db=await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(storeName,"readonly"), store=tx.objectStore(storeName);
+    const keys=store.getAllKeys(), values=store.getAll();
+    tx.oncomplete=()=>resolve(values.result.map((value,i)=>({key:keys.result[i],value})));
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+async function putRecord(storeName, record) {
+  if(!record.id) record.id=makeRecordId(storeName);
+  await request(storeName,"readwrite",s=>s.put(record));
+  return record;
+}
+async function readRecord(storeName,id) {
+  return (await request(storeName,"readonly",s=>s.get(id))) || null;
+}
+async function deleteRecord(storeName,id) {
+  await request(storeName,"readwrite",s=>s.delete(id));
+}
+async function encodeBackupValue(value) {
+  if(value instanceof Blob) {
+    const bytes=new Uint8Array(await value.arrayBuffer());
+    let binary="";
+    for(let i=0;i<bytes.length;i+=0x8000) binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+    return {$nebulaType:"Blob",mime:value.type||"application/octet-stream",base64:btoa(binary),size:value.size};
+  }
+  if(value instanceof Date) return {$nebulaType:"Date",value:value.toISOString()};
+  if(value instanceof ArrayBuffer) {
+    const bytes=new Uint8Array(value);let binary="";
+    for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+    return {$nebulaType:"ArrayBuffer",base64:btoa(binary)};
+  }
+  if(ArrayBuffer.isView(value)) return {$nebulaType:"TypedArray",name:value.constructor.name,values:Array.from(value)};
+  if(Array.isArray(value)) return Promise.all(value.map(encodeBackupValue));
+  if(value&&typeof value==="object") {
+    // File System Access handles are permissions, not user content; never serialize them.
+    if(typeof value.queryPermission==="function" && typeof value.getFile==="function") return {$nebulaType:"OmittedHandle"};
+    const out={};
+    for(const [k,v] of Object.entries(value)) out[k]=await encodeBackupValue(v);
+    return out;
+  }
+  return value;
+}
+function decodeBackupValue(value) {
+  if(Array.isArray(value)) return value.map(decodeBackupValue);
+  if(value&&typeof value==="object") {
+    if(value.$nebulaType==="Blob") {
+      const binary=atob(value.base64), bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+      return new Blob([bytes],{type:value.mime||"application/octet-stream"});
+    }
+    if(value.$nebulaType==="Date") return new Date(value.value);
+    if(value.$nebulaType==="ArrayBuffer") {
+      const binary=atob(value.base64), bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+      return bytes.buffer;
+    }
+    if(value.$nebulaType==="TypedArray") {
+      const C=globalThis[value.name]; return typeof C==="function" ? new C(value.values) : value.values;
+    }
+    if(value.$nebulaType==="OmittedHandle") return undefined;
+    const out={}; for(const [k,v] of Object.entries(value)){const decoded=decodeBackupValue(v);if(decoded!==undefined)out[k]=decoded;} return out;
+  }
+  return value;
+}
+async function sha256Hex(text) {
+  if(!crypto.subtle) throw new Error("当前环境不支持备份完整性校验，请使用 HTTPS 或 localhost。");
+  const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+async function backupPayload() {
+  const stores={};
+  for(const name of STORES) {
+    const entries=await getAllEntries(name), rows=[];
+    for(const entry of entries) {
+      if(name==="meta" && entry.key==="lectureFolder") continue;
+      rows.push({key:await encodeBackupValue(entry.key),value:await encodeBackupValue(entry.value)});
+    }
+    stores[name]=rows;
+  }
+  return {format:"NEBULA_FULL_BACKUP",schemaVersion:3,exportedAt:nowISO(),stores,
+    manifest:Object.fromEntries(Object.entries(stores).map(([k,v])=>[k,{records:v.length}])),
+    notes:["原始讲义与 AI 对话分别备份。","本地文件夹授权句柄不会导出，恢复后需重新授权。"]};
+}
+async function makeFullBackup() {
+  const payload=await backupPayload();
+  const canonical=JSON.stringify(payload);
+  const backup={...payload,integrity:{algorithm:"SHA-256",digest:await sha256Hex(canonical)}};
+  const json=JSON.stringify(backup);
+  return {blob:new Blob([json],{type:"application/vnd.nebula.backup+json"}),fileName:"nebula-full-backup-"+new Date().toISOString().slice(0,10)+".json",bytes:new Blob([json]).size,manifest:payload.manifest};
+}
+async function validateFullBackup(input) {
+  const parsed=typeof input==="string"?JSON.parse(input):input;
+  if(!parsed||parsed.format!=="NEBULA_FULL_BACKUP"||!parsed.stores||typeof parsed.stores!=="object") throw new Error("这不是有效的 NEBULA 完整备份文件。");
+  const supported=new Set(STORES);
+  for(const [name,rows] of Object.entries(parsed.stores)) {
+    if(!supported.has(name)||!Array.isArray(rows)) throw new Error("备份包含不支持的数据表："+name);
+    for(const row of rows) if(!row||!("key" in row)||!("value" in row)) throw new Error("备份记录结构不完整："+name);
+  }
+  if(parsed.integrity?.algorithm==="SHA-256") {
+    const {integrity,...payload}=parsed;
+    const actual=await sha256Hex(JSON.stringify(payload));
+    if(actual!==integrity.digest) throw new Error("备份完整性校验失败：文件可能损坏或被修改。");
+  } else throw new Error("备份缺少有效的 SHA-256 完整性校验。");
+  return parsed;
+}
+async function previewFullBackup(fileOrObject) {
+  const raw=typeof fileOrObject?.text==="function"?await fileOrObject.text():fileOrObject;
+  const parsed=await validateFullBackup(raw);
+  const manifest=Object.fromEntries(Object.entries(parsed.stores).map(([k,v])=>[k,v.length]));
+  return {valid:true,exportedAt:parsed.exportedAt,schemaVersion:parsed.schemaVersion,manifest,totalRecords:Object.values(manifest).reduce((a,b)=>a+b,0)};
+}
+async function restoreFullBackup(fileOrObject, options={}) {
+  const raw=typeof fileOrObject?.text==="function"?await fileOrObject.text():fileOrObject;
+  const parsed=await validateFullBackup(raw);
+  const mode=options.mode||"replace";
+  if(!["replace","merge"].includes(mode)) throw new Error("恢复模式只能是 replace 或 merge。");
+  const db=await openDB();
+  const storeNames=Object.keys(parsed.stores).filter(n=>STORES.includes(n));
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(storeNames,"readwrite");
+    for(const name of storeNames) {
+      const store=tx.objectStore(name);
+      if(mode==="replace") store.clear();
+      for(const row of parsed.stores[name]) {
+        const key=decodeBackupValue(row.key), value=decodeBackupValue(row.value);
+        if(name==="meta" && key==="lectureFolder") continue;
+        if(store.keyPath) store.put(value);
+        else store.put(value,key);
+      }
+    }
+    tx.oncomplete=()=>resolve({mode,restoredStores:storeNames,manifest:Object.fromEntries(Object.entries(parsed.stores).map(([k,v])=>[k,v.length]))});
+    tx.onerror=()=>reject(tx.error||new Error("恢复失败，原数据库事务已回滚。"));
+    tx.onabort=()=>reject(tx.error||new Error("恢复已中止，原数据库事务已回滚。"));
+  });
+}
+async function createKnowledgeProposal(record) {
+  const allowed=new Set(["create","update","merge","split","reparent","relation"]);
+  if(!record||!allowed.has(record.proposalType)) throw new Error("不支持的建议类型。");
+  return putRecord("reviewProposals",{...record,id:record.id||makeRecordId("proposal"),status:"pending",createdAt:Date.now(),reviewedAt:null});
+}
+async function applyKnowledgeProposal(id, decision, reviewerNote="") {
+  const proposal=await readRecord("reviewProposals",id);
+  if(!proposal) throw new Error("找不到这条待审核建议。");
+  if(proposal.status!=="pending") throw new Error("这条建议已经审核过。");
+  if(decision!=="accept"&&decision!=="reject") throw new Error("审核决定无效。");
+  if(decision==="reject") {
+    proposal.status="rejected";proposal.reviewerNote=reviewerNote;proposal.reviewedAt=Date.now();
+    await putRecord("reviewProposals",proposal);return proposal;
+  }
+  const graph=await NEBULA_LOCAL.loadGraph();
+  const nodes=Array.isArray(graph?.nodes)?graph.nodes:[], links=Array.isArray(graph?.links)?graph.links:[];
+  const before=proposal.targetNodeId?nodes.find(n=>String(n.id)===String(proposal.targetNodeId)):null;
+  const snapshot=proposal.proposedSnapshot||{};
+  let resultingNodeId=proposal.targetNodeId||snapshot.id||makeRecordId("node");
+  if(proposal.proposalType==="create") {
+    if(nodes.some(n=>String(n.id)===String(resultingNodeId))) throw new Error("目标节点 ID 已存在，未应用建议。");
+    nodes.push({...snapshot,id:resultingNodeId});
+  } else if(proposal.proposalType==="update"||proposal.proposalType==="reparent") {
+    if(!before) throw new Error("找不到目标节点，未应用建议。");
+    const version={id:makeRecordId("version"),nodeId:before.id,versionNumber:(await getAllEntries("knowledgeVersions")).filter(x=>x.value.nodeId===before.id).length+1,contentSnapshot:cloneJSON(before),changeReason:proposal.reasoning||"审核通过的 AI 建议",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:before.currentVersionId||null};
+    await putRecord("knowledgeVersions",version);
+    const index=nodes.findIndex(n=>String(n.id)===String(before.id));
+    nodes[index]={...before,...snapshot,id:before.id,currentVersionId:version.id,updatedAt:Date.now()};
+    const afterVersion={id:makeRecordId("version"),nodeId:before.id,versionNumber:version.versionNumber+1,contentSnapshot:cloneJSON(nodes[index]),changeReason:"审核通过后的新版本",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:version.id};
+    await putRecord("knowledgeVersions",afterVersion);nodes[index].currentVersionId=afterVersion.id;
+  } else if(proposal.proposalType==="relation") {
+    const relation={id:makeRecordId("relation"),sourceNodeId:proposal.sourceNodeId||proposal.targetNodeId,targetNodeId:proposal.relatedNodeId||snapshot.targetNodeId,type:snapshot.type||"related",label:snapshot.label||"",rationale:proposal.reasoning||"",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now()};
+    if(!relation.sourceNodeId||!relation.targetNodeId||relation.sourceNodeId===relation.targetNodeId) throw new Error("关系两端节点无效，未应用建议。");
+    await putRecord("nodeSourceLinks",relation).catch(async()=>{throw new Error("关系记录写入失败。");});
+  } else {
+    throw new Error("合并/拆分需要明确的节点映射与来源迁移，当前版本暂不自动执行；建议仍保持待审核状态。");
+  }
+  await NEBULA_LOCAL.saveGraph(nodes,links);
+  proposal.status="accepted";proposal.reviewerNote=reviewerNote;proposal.reviewedAt=Date.now();proposal.resultingNodeId=resultingNodeId;
+  await putRecord("reviewProposals",proposal);
+  await NEBULA_LOCAL.saveHistory({type:"proposal-applied",proposalId:id,nodeId:resultingNodeId,reason:proposal.reasoning||"",at:Date.now()});
+  return proposal;
+}
+async function duplicateCandidates(nodes, options={}) {
+  const threshold=Number(options.threshold??0.78), limit=Number(options.limit??100), out=[];
+  for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++) {
+    const a=nodes[i],b=nodes[j],score=similarityScore(a.coreWord||a.name,a.coreWord||b.name);
+    if(score>=threshold) out.push({leftId:a.id,rightId:b.id,leftTitle:a.name,rightTitle:b.name,score:Number(score.toFixed(3)),decisionRequired:true});
+  }
+  return out.sort((a,b)=>b.score-a.score).slice(0,limit);
+}
+Object.assign(NEBULA_LOCAL,{
+  async exportFullBackup(){return makeFullBackup();},
+  async previewFullBackup(input){return previewFullBackup(input);},
+  async restoreFullBackup(input,options){return restoreFullBackup(input,options);},
+  async saveSource(record){
+    const types=new Set(["lecture","ai_conversation","paper","personal_note","web"]);
+    if(!record||!types.has(record.sourceType))throw new Error("来源类型无效。");
+    return putRecord("sources",{...record,id:record.id||makeRecordId("source"),createdAt:record.createdAt||Date.now(),updatedAt:Date.now()});
+  },
+  async getSource(id){return readRecord("sources",id);},
+  async listSources(){return (await request("sources","readonly",s=>s.getAll())).sort((a,b)=>(b.updatedAt||b.createdAt)-(a.updatedAt||a.createdAt));},
+  async linkNodeSource(record){
+    if(!record?.nodeId||!record?.sourceId)throw new Error("节点与来源 ID 均为必填。");
+    const exists=(await request("nodeSourceLinks","readonly",s=>s.getAll())).find(x=>x.nodeId===record.nodeId&&x.sourceId===record.sourceId&&x.evidenceLocator===record.evidenceLocator);
+    if(exists)return exists;
+    return putRecord("nodeSourceLinks",{...record,id:makeRecordId("evidence"),linkedAt:Date.now()});
+  },
+  async unlinkNodeSource(id){return deleteRecord("nodeSourceLinks",id);},
+  async listNodeSources(nodeId){return (await request("nodeSourceLinks","readonly",s=>s.getAll())).filter(x=>x.nodeId===nodeId);},
+  async listSourceNodes(sourceId){return (await request("nodeSourceLinks","readonly",s=>s.getAll())).filter(x=>x.sourceId===sourceId);},
+  async createProposal(record){return createKnowledgeProposal(record);},
+  async listProposals(status){const rows=await request("reviewProposals","readonly",s=>s.getAll());return rows.filter(x=>!status||x.status===status).sort((a,b)=>b.createdAt-a.createdAt);},
+  async applyProposal(id,decision,reviewerNote){return applyKnowledgeProposal(id,decision,reviewerNote);},
+  async listNodeVersions(nodeId){return (await request("knowledgeVersions","readonly",s=>s.getAll())).filter(x=>x.nodeId===nodeId).sort((a,b)=>a.versionNumber-b.versionNumber);},
+  async saveLearningRecord(record){
+    if(!record?.nodeId||!record?.activityType)throw new Error("学习记录缺少节点或活动类型。");
+    return putRecord("learningRecords",{...record,id:record.id||makeRecordId("learn"),createdAt:record.createdAt||Date.now()});
+  },
+  async listLearningRecords(nodeId){const rows=await request("learningRecords","readonly",s=>s.getAll());return rows.filter(x=>!nodeId||x.nodeId===nodeId).sort((a,b)=>b.createdAt-a.createdAt);},
+  async saveResearchSession(record){return putRecord("researchSessions",{...record,id:record.id||makeRecordId("research"),updatedAt:Date.now(),createdAt:record.createdAt||Date.now()});},
+  async listResearchSessions(){return (await request("researchSessions","readonly",s=>s.getAll())).sort((a,b)=>b.updatedAt-a.updatedAt);},
+  async findDuplicateCandidates(nodes,options){return duplicateCandidates(nodes||[],options||{});},
+  async getCognitiveDashboard(){
+    const [sources,proposals,learning,research,graph]=await Promise.all([this.listSources(),this.listProposals("pending"),this.listLearningRecords(),this.listResearchSessions(),this.loadGraph()]);
+    const nodes=graph?.nodes||[];
+    return {nodeCount:nodes.length,sourceCount:sources.length,pendingReviews:proposals.length,learningRecords:learning.length,researchSessions:research.length,needsReviewCount:nodes.filter(n=>n.needsReview||n.status==="needs_review").length,generatedAt:Date.now()};
+  }
+});
