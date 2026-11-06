@@ -88,7 +88,27 @@ h1{font-size:15px;letter-spacing:.22em;margin:0;font-weight:650}.sub{font-size:9
 .logic-node-row.level-2 .logic-node-dot{background:#d9ccff;box-shadow:0 0 8px #c2aaff,0 0 18px #a88cff66}
 .logic-node-row.level-3 .logic-node-dot{background:#c6f5e3;box-shadow:0 0 8px #8ce8ca,0 0 18px #78e2c266}
 .logic-node-row.level-4 .logic-node-dot{background:#ffe6b6;box-shadow:0 0 8px #ffd18a,0 0 18px #ffd18a66}
-@media(max-width:640px){.logic-node-row{grid-template-columns:34px minmax(0,1fr);gap:9px}.logic-core-word{font-size:16px}}</style>
+@media(max-width:640px){.logic-node-row{grid-template-columns:34px minmax(0,1fr);gap:9px}.logic-core-word{font-size:16px}}
+/* Horizontal tree layout: siblings grow from left to right */
+#logical{overflow-x:auto;overflow-y:auto;max-width:100%;padding:10px 18px 38px}
+#logical .logic-tools{position:sticky;left:0;z-index:5;min-width:max-content}
+#logical .logic-vertical{display:flex;flex-direction:row;align-items:flex-start;justify-content:flex-start;gap:22px;max-width:none;width:max-content;min-width:100%;margin:28px 0 50px;padding:24px 12px 30px;position:relative}
+#logical .logic-vertical:before{content:"";position:absolute;left:0;right:0;top:11px;height:1px;background:linear-gradient(90deg,transparent,#86bfff66 8%,#86bfff66 92%,transparent)}
+#logical .logic-node-row{display:flex;flex-direction:column;align-items:flex-start;gap:10px;flex:0 0 220px;width:220px;min-height:0;padding:0 0 14px;position:relative;border:1px solid #8bbcff2b;border-radius:14px;background:linear-gradient(155deg,#111a32ed,#080e20ed);box-shadow:0 8px 24px #0004}
+#logical .logic-node-row:before{content:"";position:absolute;left:50%;top:-14px;width:1px;height:14px;background:#86bfff66}
+#logical .logic-node-spine{display:flex;flex-direction:row;align-items:center;gap:9px;width:100%;padding:12px 13px 0}
+#logical .logic-node-spine:after{display:none}
+#logical .logic-node-dot{margin:0;flex:0 0 10px}
+#logical .logic-node-index{margin:0}
+#logical .logic-node-content{width:100%;padding:0 13px 4px;border:0}
+#logical .logic-node-kicker{margin:0 0 5px}
+#logical .logic-core-word{font-size:17px;line-height:1.4;white-space:normal;overflow-wrap:anywhere}
+#logical .logic-node-meta{display:block;font-size:10px;color:#9aabc9;line-height:1.5;margin-top:5px}
+#logical .logic-node-actions{gap:5px}
+#logical .logic-node-actions .btn{font-size:10px;padding:6px 8px}
+#logical .logic-node-foot{margin-top:7px}
+@media(max-width:640px){#logical{padding-left:10px;padding-right:10px}#logical .logic-node-row{flex-basis:190px;width:190px}#logical .logic-core-word{font-size:16px}}
+</style>
 </head>
 <body>
 <div id="scene"></div>
@@ -232,7 +252,7 @@ function renderLogical(){
   const core=String(n.coreWord||n.keyword||n.name||'未命名').split(/[：:，,。；;]/)[0].trim();
   return '<article class="logic-node-row level-'+lv+'" data-id="'+esc(n.id)+'"><div class="logic-node-spine"><span class="logic-node-dot"></span><span class="logic-node-index">'+String(i+1).padStart(2,'0')+'</span></div><div class="logic-node-content"><div class="logic-node-kicker">第 '+lv+' 级</div><button class="logic-core-word" type="button" title="点击核心词，展开下一层">'+esc(core)+'</button><div class="logic-node-meta">'+(n.desc?esc(n.desc):'')+'</div><div class="logic-node-actions"><button class="btn thought-btn">四向思考</button><button class="btn child-btn">＋ 添加下级</button>'+(kids.length?'<button class="btn enter-btn">展开下一级　↓</button>':'')+(n.needsReview?'<span class="logic-review-flag">待核对</span>':'')+'</div><div class="logic-node-foot">'+(kids.length?'下级 '+kids.length+' 个 · ':'')+'四向思考 '+thoughtCount+'/4</div></div></article>';
  }).join('');
- document.querySelector('#logical').innerHTML='<div class="logic-tools"><div class="logic-crumbs">'+crumbs+'</div><div class="logic-heading">'+(parent?esc(parent.coreWord||parent.name):'知识逻辑链')+'</div><div class="logic-subheading">'+(parent?'当前显示第 '+level+' 级 · 仅显示该节点的直接下级':'第一级主干 · 由上至下逐层展开；默认只显示核心词')+'</div><span class="logic-count">'+list.length+' 个节点</span><button class="btn" id="logicBack" '+(!parent?'disabled':'')+'>↑ 返回上一级</button><button class="btn" id="logicSelectAll">全选本层</button><button class="btn" id="logicDelete">批量删除（'+selectedIds.size+'）</button></div><div class="logic-vertical">'+(rows||'<div class="logic-empty">这一层还没有节点。可在上一级节点下添加子节点。</div>')+'</div>';
+ document.querySelector('#logical').innerHTML='<div class="logic-tools"><div class="logic-crumbs">'+crumbs+'</div><div class="logic-heading">'+(parent?esc(parent.coreWord||parent.name):'知识逻辑链')+'</div><div class="logic-subheading">'+(parent?'当前显示第 '+level+' 级 · 仅显示该节点的直接下级':'知识树横向展开 · 点击节点进入下一层；默认只显示当前层级')+'</div><span class="logic-count">'+list.length+' 个节点</span><button class="btn" id="logicBack" '+(!parent?'disabled':'')+'>↑ 返回上一级</button><button class="btn" id="logicSelectAll">全选本层</button><button class="btn" id="logicDelete">批量删除（'+selectedIds.size+'）</button></div><div class="logic-vertical">'+(rows||'<div class="logic-empty">这一层还没有节点。可在上一级节点下添加子节点。</div>')+'</div>';
  document.querySelectorAll('.logic-crumb[data-root]').forEach(el=>el.onclick=()=>{currentParentId=null;renderLogical();});
  document.querySelectorAll('.logic-crumb[data-crumb]').forEach(el=>el.onclick=()=>{currentParentId=el.dataset.crumb;renderLogical();});
  document.querySelector('#logicBack').onclick=()=>{currentParentId=parent?parentOf(parent)?.id||null:null;renderLogical();};
