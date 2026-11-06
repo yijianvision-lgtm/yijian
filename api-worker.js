@@ -121,59 +121,6 @@ export default {
       if (url.pathname === "/v1/me" && request.method === "GET") {
         return json({ ok: true, accountId: user.id, privateByDefault: true, storage: "encrypted-client-payload" }, 200, cors);
       }
-      if (url.pathname === "/v1/knowledge" && request.method === "GET") {
-        const rows = await env.DB.prepare("SELECT id, payload, updated_at FROM knowledge WHERE owner_id = ? ORDER BY updated_at DESC LIMIT 500").bind(user.id).all();
-        return json({ ok: true, items: rows.results || [] }, 200, cors);
-      }
-      if (url.pathname === "/v1/knowledge" && request.method === "DELETE") {\n        const id = url.searchParams.get("id");\n        if (!safeId(id)) return json({ error: "Invalid id" }, 400, cors);\n        await env.DB.prepare("DELETE FROM knowledge WHERE id = ? AND owner_id = ?").bind(id, user.id).run();\n        return json({ ok: true, deleted: true }, 200, cors);\n      }\n      if (url.pathname === "/v1/knowledge" && request.method === "PUT") {
-        const body = await request.json();
-        if (!safeId(body.id) || typeof body.encryptedPayload !== "string" || body.encryptedPayload.length > 1500000) return json({ error: "Invalid encrypted knowledge payload" }, 400, cors);
-        await env.DB.prepare("INSERT INTO knowledge (id, owner_id, payload, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(id, owner_id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(body.id, user.id, body.encryptedPayload, Date.now()).run();
-        return json({ ok: true, id: body.id }, 200, cors);
-      }
-      if (url.pathname === "/v1/references" && request.method === "GET") {
-        const rows = await env.DB.prepare("SELECT id, name, mime, size, created_at FROM private_references WHERE owner_id = ? ORDER BY created_at DESC LIMIT 300").bind(user.id).all();
-        return json({ ok: true, items: rows.results || [] }, 200, cors);
-      }
-      if (url.pathname === "/v1/references" && request.method === "POST") {
-        const body = await request.json();
-        if (!safeId(body.id) || !String(body.name || "").trim() || String(body.name).length > 240 || !/^[-\w.+]+\/[\w.+-]+$/.test(body.mime || "") || !Number.isFinite(body.size) || body.size < 0 || body.size > 50 * 1024 * 1024) return json({ error: "Invalid private reference metadata" }, 400, cors);
-        await env.DB.prepare("INSERT INTO private_references (id, owner_id, name, mime, size, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(body.id, user.id, body.name, body.mime, body.size, Date.now()).run();
-        return json({ ok: true, id: body.id, private: true }, 201, cors);
-      }
-      const refMatch = url.pathname.match(/^\/v1\/references\/([a-zA-Z0-9_-]{8,100})(?:\/(file))?$/);
-      if (refMatch) {
-        const id = refMatch[1];
-        const row = await env.DB.prepare("SELECT id, name, mime, size FROM private_references WHERE id = ? AND owner_id = ?").bind(id, user.id).first();
-        if (!row) return json({ error: "Not found" }, 404, cors);
-        if (request.method === "PUT" && refMatch[2] === "file") {
-          const length = Number(request.headers.get("Content-Length") || 0);
-          if (length > 50 * 1024 * 1024) return json({ error: "File too large (max 50 MB)" }, 413, cors);
-          await env.PRIVATE_FILES.put(user.id + "/" + id, request.body, { httpMetadata: { contentType: "application/octet-stream", cacheControl: "private, no-store" } });
-          return json({ ok: true, id, encrypted: true }, 200, cors);
-        }
-        if (request.method === "GET" && refMatch[2] === "file") {
-          const object = await env.PRIVATE_FILES.get(user.id + "/" + id);
-          if (!object) return json({ error: "File not found" }, 404, cors);
-          return new Response(object.body, { headers: { ...cors, "Content-Type": "application/octet-stream", "Cache-Control": "private, no-store", "Content-Disposition": "attachment; filename=\"private-encrypted-file.bin\"" } });
-        }
-        if (request.method === "DELETE" && !refMatch[2]) {
-          await env.PRIVATE_FILES.delete(user.id + "/" + id);
-          await env.DB.prepare("DELETE FROM private_references WHERE id = ? AND owner_id = ?").bind(id, user.id).run();
-          return json({ ok: true, deleted: true }, 200, cors);
-        }
-      }
-      if (url.pathname === "/v1/ai/analyze" && request.method === "POST") return await aiAnalyze(await request.json(), env, cors);\n      if (url.pathname === "/v1/ai/mnemonic" && request.method === "POST") {\n        const body = await request.json();\n        const prompt = String(body.mnemonic || body.userInput || "").slice(0, 6000);\n        if (!prompt.trim()) return json({ error: "Please provide a mnemonic or knowledge point" }, 400, cors);\n        const task = { ...body, userInput: "请检查并帮助优化这条记忆口诀。保留用户原文，不要擅自替换。请判断口诀是否准确、是否遗漏关键点、是否容易记忆，并给出优化候选。用户口诀：\\n" + prompt, sourceText: String(body.sourceText || "").slice(0, 30000) };\n        return await aiAnalyze(task, env, cors);\n      }
-      if (url.pathname === "/v1/research" && request.method === "GET") {
-        const q = String(url.searchParams.get("q") || "").trim().slice(0, 240);
-        if (!q) return json({ error: "Missing q" }, 400, cors);
-        const api = "https://api.crossref.org/works?rows=8&query=" + encodeURIComponent(q);
-        const upstream = await fetch(api, { headers: { "User-Agent": "NEBULA-Knowledge/1.0" } });
-        if (!upstream.ok) return json({ error: "Research provider unavailable" }, 502, cors);
-        const data = await upstream.json();
-        const items = (data.message?.items || []).map(x => ({ title: x.title?.[0] || "", authors: (x.author || []).slice(0, 5).map(a => [a.given, a.family].filter(Boolean).join(" ")), year: x.published?.["date-parts"]?.[0]?.[0] || null, doi: x.DOI || null, url: x.URL || null, type: x.type || null }));
-        return json({ ok: true, provider: "Crossref", items }, 200, cors);
-      }
       return json({ error: "Not found" }, 404, cors);
     } catch (error) {
       return json({ error: String(error.message || error) }, 500, cors);
