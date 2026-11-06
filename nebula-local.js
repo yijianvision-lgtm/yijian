@@ -785,6 +785,26 @@ Object.assign(NEBULA_LOCAL,{
   async checkMnemonic(endpoint,token,payload) {
     return callNebulaWorker(endpoint,token,"/mnemonic",{body:payload||{}});
   },
+  async proposeCoachReview(endpoint,token,payload={}){
+    const result=await this.coachKnowledge(endpoint,token,payload);
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    const target=payload.nodeId?nodes.find(n=>String(n.id)===String(payload.nodeId)):null;
+    const four=result.result?.fourDimensions||result.fourDimensions||{};
+    const analysis=result.result||result;
+    const concise=analysis.concise||analysis.corrected;
+    const proposedSnapshot=target?{...target,coachAnalysis:analysis,needsReview:!!analysis.needsReview||target.needsReview,...(typeof concise==="string"?{desc:concise}:{}),...(typeof four.foresight==="string"?{before:four.foresight}:{}),...(typeof four.aftermath==="string"?{after:four.aftermath}:{}),...(typeof four.lateral==="string"?{left:four.lateral}:{}),...(typeof four.counterview==="string"?{right:four.counterview}:{})}:{name:String(payload.title||payload.userInput||payload.answer||"待命名知识").slice(0,100),desc:typeof concise==="string"?concise:"AI 学习教练生成的候选知识，需人工核验。",coachAnalysis:analysis,needsReview:true};
+    const proposal=await this.createProposal({proposalType:target?"update":"create",targetNodeId:target?.id||null,proposedSnapshot,reasoning:"AI 学习教练建议；审核前不会修改正式知识。",evidenceSourceIds:Array.isArray(payload.evidenceSourceIds)?payload.evidenceSourceIds:[],analysis});
+    return {proposal,analysis};
+  },
+  async proposeMnemonicReview(endpoint,token,payload={}){
+    if(!payload.nodeId)throw new Error("口诀审核必须关联一个知识节点。");
+    const result=await this.checkMnemonic(endpoint,token,payload);
+    const analysis=result.result||result,graph=await this.loadGraph();
+    const node=(graph?.nodes||[]).find(n=>String(n.id)===String(payload.nodeId));
+    if(!node)throw new Error("找不到口诀所属的知识节点。");
+    const proposal=await this.createProposal({proposalType:"update",targetNodeId:node.id,proposedSnapshot:{...node,mnemonicReview:analysis,mnemonicSuggestion:analysis.suggestedVersion||"",mnemonicOriginal:analysis.original||payload.mnemonic||""},reasoning:"AI 口诀核验结果；保留原口诀，仅将建议版本作为候选。",evidenceSourceIds:Array.isArray(payload.evidenceSourceIds)?payload.evidenceSourceIds:[],analysis});
+    return {proposal,analysis};
+  },
   async searchResearch(endpoint,token,query) {
     if(!String(query||"").trim())throw new Error("请输入论文检索关键词。");
     return callNebulaWorker(endpoint,token,"/research?q="+encodeURIComponent(String(query).slice(0,240)),{method:"GET"});
