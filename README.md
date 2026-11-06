@@ -24,7 +24,7 @@ The first browser prototype is available at [index.html](index.html).
 - The first prototype uses a small built-in example knowledge set; it does not yet load an external JSON file.
 - Relationship lines are currently a predefined sample set. A visual relationship editor and node deletion are not implemented yet.
 - Node coordinates are assigned automatically for newly created nodes; direct XYZ coordinate editing is not implemented yet.
-- JSON export is implemented; JSON import, IndexedDB sync, and cloud synchronization are not yet implemented.
+- JSON import/export is implemented. Import accepts a NEBULA JSON export (or a JSON array of nodes), previews the node count for confirmation, and merges into the current browser data. Matching IDs update existing nodes; new IDs are added. IndexedDB sync and cloud synchronization are not yet implemented.
 - The timeline is a lightweight node/date navigator, not yet a full historical event editor.
 - The logical view is a selectable list, not yet a full relationship-layout view.
 
@@ -57,7 +57,8 @@ NEBULA is a navigable knowledge universe, not a conventional 2D mind map. Knowle
 - [x] Add basic node creation/editing, search, timeline navigation, and JSON export.
 - [ ] Add relationship editing and direct XYZ coordinate editing.
 - [ ] Add full logical-structure view using the same data.
-- [ ] Add JSON import, IndexedDB persistence, and richer timeline events.
+- [x] Add JSON import and export.
+- [ ] Add IndexedDB persistence and richer timeline events.
 - [ ] Publish a hosted version after the local prototype is validated.
 
 ## Project specification
