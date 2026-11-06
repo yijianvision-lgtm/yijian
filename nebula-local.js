@@ -682,7 +682,18 @@ Object.assign(NEBULA_LOCAL,{
   },
   async saveLearningRecord(record){
     if(!record?.nodeId||!record?.activityType)throw new Error("学习记录缺少节点或活动类型。");
-    return putRecord("learningRecords",{...record,id:record.id||makeRecordId("learn"),createdAt:record.createdAt||Date.now()});
+    const now=record.createdAt||Date.now(),activity=String(record.activityType).toLowerCase();
+    const scheduled=["recall","active-recall","oral-recall","quiz","mnemonic","flashcard"].some(x=>activity.includes(x));
+    let schedule=null;
+    if(scheduled){
+      const history=(await this.listLearningRecords(record.nodeId)).filter(x=>x.schedule).sort((a,b)=>b.createdAt-a.createdAt),prior=history[0]?.schedule||{};
+      let quality=Number(record.quality??record.score??3);if(quality>=0&&quality<=1)quality*=5;quality=Math.max(0,Math.min(5,Math.round(quality)));
+      const repetitions=quality<3?0:(Number(prior.repetitions)||0)+1;
+      const intervalDays=quality<3?1:repetitions===1?1:repetitions===2?3:Math.max(1,Math.round((Number(prior.intervalDays)||3)*(Number(prior.easeFactor)||2.5)));
+      const easeFactor=Math.max(1.3,(Number(prior.easeFactor)||2.5)+(0.1-(5-quality)*(0.08+(5-quality)*0.02)));
+      schedule={quality,repetitions,intervalDays,easeFactor,nextReviewAt:now+intervalDays*86400000};
+    }
+    return putRecord("learningRecords",{...record,id:record.id||makeRecordId("learn"),createdAt:now,...(schedule?{schedule}: {})});
   },
   async listLearningRecords(nodeId){const rows=await request("learningRecords","readonly",s=>s.getAll());return rows.filter(x=>!nodeId||x.nodeId===nodeId).sort((a,b)=>b.createdAt-a.createdAt);},
   async saveResearchSession(record){return putRecord("researchSessions",{...record,id:record.id||makeRecordId("research"),updatedAt:Date.now(),createdAt:record.createdAt||Date.now()});},
@@ -715,14 +726,16 @@ Object.assign(NEBULA_LOCAL,{
     return gaps.sort((a,b)=>b.priority-a.priority||b.missingCount-a.missingCount);
   },
   async buildLearningQueue(limit=30){
-    const graph=await this.loadGraph(),nodes=graph?.nodes||[],gaps=await this.detectKnowledgeGaps();
-    const byId=new Map(nodes.map(n=>[String(n.id),n]));
-    return gaps.slice(0,Math.max(1,Math.min(200,Number(limit)||30))).map(g=>({node:byId.get(String(g.nodeId)),...g,nextAction:g.missing.some(x=>x.key==="verification"||x.key==="evidence")?"核验来源与事实":g.missing.some(x=>x.key==="recall")?"进行主动回忆与口头复述":g.missing.some(x=>x.key==="transfer")?"完成一个迁移应用案例":"补齐知识结构缺口"}));
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[],gaps=await this.detectKnowledgeGaps(),records=await this.listLearningRecords(),now=Date.now();
+    const byId=new Map(nodes.map(n=>[String(n.id),n])),gapMap=new Map(gaps.map(g=>[String(g.nodeId),g])),dueMap=new Map();
+    for(const record of records)if(record.schedule?.nextReviewAt<=now){const key=String(record.nodeId),old=dueMap.get(key);if(!old||record.schedule.nextReviewAt<old.schedule.nextReviewAt)dueMap.set(key,record);}
+    for(const [nodeId,record] of dueMap)if(!gapMap.has(nodeId)){const node=byId.get(nodeId);if(node)gapMap.set(nodeId,{nodeId,title:node.name||node.coreWord||nodeId,missing:[],missingCount:0,priority:2,evidenceCount:0,learningCount:records.filter(x=>String(x.nodeId)===nodeId).length});}
+    return [...gapMap.values()].map(g=>{const due=dueMap.get(String(g.nodeId));const structural=g.missing.some(x=>x.key==="verification"||x.key==="evidence")?"核验来源与事实":g.missing.some(x=>x.key==="recall")?"进行主动回忆与口头复述":g.missing.some(x=>x.key==="transfer")?"完成一个迁移应用案例":"补齐知识结构缺口";return {node:byId.get(String(g.nodeId)),...g,dueForReview:!!due,nextReviewAt:due?.schedule?.nextReviewAt||null,priority:g.priority+(due?2:0),nextAction:due?"进行间隔复习（已到期）":structural};}).sort((a,b)=>b.priority-a.priority||b.missingCount-a.missingCount).slice(0,Math.max(1,Math.min(200,Number(limit)||30)));
   },
   async getCognitiveDashboard(){
     const [sources,proposals,learning,research,graph,gaps]=await Promise.all([this.listSources(),this.listProposals("pending"),this.listLearningRecords(),this.listResearchSessions(),this.loadGraph(),this.detectKnowledgeGaps()]);
     const nodes=graph?.nodes||[];
-    return {nodeCount:nodes.length,sourceCount:sources.length,pendingReviews:proposals.length,learningRecords:learning.length,researchSessions:research.length,needsReviewCount:nodes.filter(n=>n.needsReview||n.status==="needs_review").length,knowledgeGapCount:gaps.length,missingEvidenceCount:gaps.filter(g=>g.missing.some(x=>x.key==="evidence")).length,generatedAt:Date.now()};
+    return {nodeCount:nodes.length,sourceCount:sources.length,pendingReviews:proposals.length,learningRecords:learning.length,researchSessions:research.length,needsReviewCount:nodes.filter(n=>n.needsReview||n.status==="needs_review").length,knowledgeGapCount:gaps.length,missingEvidenceCount:gaps.filter(g=>g.missing.some(x=>x.key==="evidence")).length,dueReviewCount:learning.filter(x=>x.schedule?.nextReviewAt<=Date.now()).length,generatedAt:Date.now()};
   }
 });
 
