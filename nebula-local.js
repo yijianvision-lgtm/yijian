@@ -477,7 +477,7 @@ async function restoreFullBackup(fileOrObject, options={}) {
     tx.onabort=()=>reject(tx.error||new Error("恢复已中止，数据库事务已回滚。"));
   }).finally(()=>db.close());
   let localStorageSynced=true;
-  if(mode==="replace" && typeof localStorage!=="undefined") {
+  if(mode==="replace" && typeof localStorage!=="undefined" && Number(parsed.schemaVersion)>=4 && Object.prototype.hasOwnProperty.call(parsed,"localStorage")) {
     try {
       const saved=parsed.localStorage&&typeof parsed.localStorage==="object"?parsed.localStorage:{};
       for(const key of BACKUP_LOCAL_STORAGE_KEYS) {
