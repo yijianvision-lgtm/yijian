@@ -415,6 +415,7 @@ dsEl('fetchDeepSeekShares').onclick=async()=>{
   const ar=await fetch(base+'/analyze',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({text:dsEl('deepseekArchiveText').value,existingNodes:nodes.map(n=>({id:n.id,name:n.name,coreWord:n.coreWord,desc:n.desc,parentId:n.parentId}))})});
   const ad=await ar.json();if(!ar.ok||!ad.ok)throw new Error(ad.error||'知识分析失败');
   deepseekPending=ad.result||{};
+  if(window.NEBULA_LOCAL){await window.NEBULA_LOCAL.saveConversation({title:'DeepSeek 分享对话（'+urls.length+' 条）',transcript:dsEl('deepseekArchiveText').value,analysis:deepseekPending,source:'deepseek-share',metadata:{shareUrls:urls}});await window.nebulaRenderReferences();}
   const ns=deepseekPending.nodes||[],ms=deepseekPending.mergeSuggestions||[],us=deepseekPending.uncertain||[];
   dsEl('deepseekSyncStatus').textContent='读取 '+urls.length+' 条对话成功；分析得到 '+ns.length+' 个候选节点、'+ms.length+' 条合并建议、'+us.length+' 项待核对。尚未写入。';
   dsEl('deepseekSyncPreview').textContent=ns.slice(0,50).map((n,i)=>(i+1)+'. '+(n.coreWord||n.name||'未命名')+(n.parentId?'｜有上级':'｜暂定主干')+(n.needsReview?'｜待核对':'')).join('\n')+(ms.length?'\n\n合并建议：\n'+JSON.stringify(ms.slice(0,15),null,2):'')+(us.length?'\n\n待核对：\n'+JSON.stringify(us.slice(0,10),null,2):'');
@@ -449,6 +450,7 @@ dsEl('analyzeDeepSeekArchive').onclick=async()=>{
   const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+dsEl('deepseekSyncToken').value.trim()},body:JSON.stringify({text,existingNodes:nodes.map(n=>({id:n.id,name:n.name,coreWord:n.coreWord,desc:n.desc,parentId:n.parentId}))})});
   const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||('HTTP '+res.status));
   deepseekPending=data.result||{};
+  if(window.NEBULA_LOCAL){await window.NEBULA_LOCAL.saveConversation({title:file?.name||'AI 学习对话',transcript:text,analysis:deepseekPending,source:file?'conversation-file':'pasted-conversation',fileName:file?.name||''});await window.nebulaRenderReferences();}
   const ns=deepseekPending.nodes||[],ls=deepseekPending.links||[],ms=deepseekPending.mergeSuggestions||[],us=deepseekPending.uncertain||[];
   dsEl('deepseekSyncStatus').textContent='分析完成：识别 '+ns.length+' 个候选节点、'+ls.length+' 条关联、'+ms.length+' 条合并建议、'+us.length+' 项待核对。尚未写入知识库。';
   dsEl('deepseekSyncPreview').textContent=ns.slice(0,30).map((n,i)=>(i+1)+'. '+(n.coreWord||n.name||'未命名')+'｜'+(n.parentId?'有上级':'暂定主干')+(n.needsReview?'｜待核对':'')).join('\n')+(ns.length>30?'\n……其余 '+(ns.length-30)+' 个节点':'')+(ms.length?'\n\n合并建议：\n'+JSON.stringify(ms.slice(0,12),null,2):'')+(us.length?'\n\n待核对：\n'+JSON.stringify(us.slice(0,8),null,2):'');
