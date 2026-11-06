@@ -400,7 +400,7 @@ async function refreshCognitiveDashboard(){
  if(!window.NEBULA_LOCAL){stats.textContent='本地数据模块尚未加载。';return;}
  try{
   const [summary,proposals,learning]=await Promise.all([window.NEBULA_LOCAL.getCognitiveDashboard(),window.NEBULA_LOCAL.listProposals('pending'),window.NEBULA_LOCAL.buildLearningQueue(12)]);
-  stats.textContent='知识节点 '+summary.nodeCount+'｜来源 '+summary.sourceCount+'｜待审核建议 '+summary.pendingReviews+'｜学习记录 '+summary.learningRecords+'｜研究记录 '+summary.researchSessions+'｜待核验节点 '+summary.needsReviewCount+'｜知识缺口 '+summary.knowledgeGapCount+'｜缺少证据 '+summary.missingEvidenceCount;
+  stats.textContent='知识节点 '+summary.nodeCount+'｜来源 '+summary.sourceCount+'｜待审核建议 '+summary.pendingReviews+'｜学习记录 '+summary.learningRecords+'｜到期复习 '+summary.dueReviewCount+'｜研究记录 '+summary.researchSessions+'｜待核验节点 '+summary.needsReviewCount+'｜知识缺口 '+summary.knowledgeGapCount+'｜缺少证据 '+summary.missingEvidenceCount;
   learningBox.innerHTML='';
   if(!learning.length)learningBox.textContent='目前没有明显的结构性学习缺口。';
   learning.forEach((item,index)=>{const row=document.createElement('div');row.style.cssText='padding:7px 0;border-bottom:1px solid #ffffff12';row.textContent=(index+1)+'. '+item.title+'｜'+item.nextAction+'｜待补 '+item.missingCount+' 项';learningBox.appendChild(row);});
