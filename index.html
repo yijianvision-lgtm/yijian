@@ -108,6 +108,31 @@ h1{font-size:15px;letter-spacing:.22em;margin:0;font-weight:650}.sub{font-size:9
 #logical .logic-node-actions .btn{font-size:10px;padding:6px 8px}
 #logical .logic-node-foot{margin-top:7px}
 @media(max-width:640px){#logical{padding-left:10px;padding-right:10px}#logical .logic-node-row{flex-basis:190px;width:190px}#logical .logic-core-word{font-size:16px}}
+
+/* NEBULA refined knowledge-tree visual language */
+#logical .logic-vertical{gap:26px;padding-top:30px}
+#logical .logic-node-row{flex-basis:216px;width:216px;gap:9px;border:1px solid #dcecff20;border-radius:13px;background:linear-gradient(145deg,rgba(20,28,48,.94),rgba(7,12,25,.97));box-shadow:0 7px 24px #0007,inset 0 1px 0 #ffffff0b;transition:border-color .2s,box-shadow .2s,transform .2s}
+#logical .logic-node-row:hover{border-color:#eaf5ff65;box-shadow:0 0 0 1px #eaf5ff10,0 0 18px #e9f4ff14,0 12px 30px #0008;transform:translateY(-2px)}
+#logical .logic-node-row:before{background:linear-gradient(#e8f4ff88,#9acbff22)}
+#logical .logic-node-dot{width:6px;height:6px;flex-basis:6px;background:#f5f9ff;box-shadow:0 0 4px 1px #fff,0 0 9px 2px #dcecffaa,0 0 17px #c9e5ff55}
+#logical .logic-node-index{font-size:9px;letter-spacing:.16em;color:#a9bad4}
+#logical .logic-node-kicker{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#b7c8e2}
+#logical .logic-core-word{font-size:17px;font-weight:760;letter-spacing:.015em;text-shadow:0 0 12px #e8f3ff18}
+#logical .logic-node-meta{color:#aab8cf;font-size:10px}
+#logical .logic-node-foot{color:#8e9db8;font-size:9px;letter-spacing:.035em}
+#logical .logic-node-row.level-1{border-color:#e6f1ff55;background:linear-gradient(145deg,#1b2942f2,#0a1225f5);box-shadow:0 0 22px #dcecff12,inset 0 1px 0 #ffffff16}
+#logical .logic-node-row.level-1 .logic-node-kicker{color:#e4efff}
+#logical .logic-node-row.level-2{border-color:#b9caff45}
+#logical .logic-node-row.level-2 .logic-node-dot{background:#e8e9ff;box-shadow:0 0 4px #fff,0 0 10px #c9d2ffbb}
+#logical .logic-node-row.level-3{border-color:#9ddfd044}
+#logical .logic-node-row.level-3 .logic-node-dot{background:#e3fff5;box-shadow:0 0 4px #fff,0 0 10px #a8f1d8bb}
+#logical .logic-node-row.level-4{border-color:#e7c99b55}
+#logical .logic-node-row.level-4 .logic-node-dot{background:#fff3df;box-shadow:0 0 4px #fff,0 0 10px #ffddaabb}
+#logical .logic-node-actions .enter-btn{display:block;width:100%;margin-top:5px;padding:10px 12px;border:1px solid #dcecff55;border-radius:9px;background:linear-gradient(100deg,#dcecff18,#dcecff08);color:#edf5ff;font-size:12px;font-weight:700;letter-spacing:.04em;box-shadow:inset 0 1px 0 #ffffff12;transition:background .2s,box-shadow .2s}
+#logical .logic-node-actions .enter-btn:hover{background:#dcecff25;box-shadow:0 0 14px #dcecff22}
+#logical .logic-tools #logicBack{padding:10px 18px;border:1px solid #e4efff66;border-radius:10px;background:#dcecff18;color:#f1f6ff;font-size:13px;font-weight:700;box-shadow:0 0 14px #dcecff10}
+#logical .logic-tools #logicBack:disabled{opacity:.35}
+
 </style>
 </head>
 <body>
@@ -250,7 +275,7 @@ function renderLogical(){
  const rows=list.map((n,i)=>{
   const lv=levelOf(n),kids=childrenOf(n),thoughtCount=[n.before,n.after,n.left,n.right].filter(Boolean).length;
   const core=String(n.coreWord||n.keyword||n.name||'未命名').split(/[：:，,。；;]/)[0].trim();
-  return '<article class="logic-node-row level-'+lv+'" data-id="'+esc(n.id)+'"><div class="logic-node-spine"><span class="logic-node-dot"></span><span class="logic-node-index">'+String(i+1).padStart(2,'0')+'</span></div><div class="logic-node-content"><div class="logic-node-kicker">第 '+lv+' 级</div><button class="logic-core-word" type="button" title="点击核心词，展开下一层">'+esc(core)+'</button><div class="logic-node-meta">'+(n.desc?esc(n.desc):'')+'</div><div class="logic-node-actions"><button class="btn thought-btn">四向思考</button><button class="btn child-btn">＋ 添加下级</button>'+(kids.length?'<button class="btn enter-btn">展开下一级　↓</button>':'')+(n.needsReview?'<span class="logic-review-flag">待核对</span>':'')+'</div><div class="logic-node-foot">'+(kids.length?'下级 '+kids.length+' 个 · ':'')+'四向思考 '+thoughtCount+'/4</div></div></article>';
+  return '<article class="logic-node-row level-'+lv+'" data-id="'+esc(n.id)+'"><div class="logic-node-spine"><span class="logic-node-dot"></span><span class="logic-node-index">'+String(i+1).padStart(2,'0')+'</span></div><div class="logic-node-content"><div class="logic-node-kicker">第 '+lv+' 级</div><button class="logic-core-word" type="button" title="进入该分支">'+esc(core)+'</button><div class="logic-node-meta">'+(n.desc?esc(n.desc):'')+'</div><div class="logic-node-actions"><button class="btn thought-btn">四向思考</button><button class="btn child-btn">＋ 添加下级</button>'+(kids.length?'<button class="btn enter-btn">展开下一级　↓</button>':'')+(n.needsReview?'<span class="logic-review-flag">待核对</span>':'')+'</div><div class="logic-node-foot">'+(kids.length?'下级 '+kids.length+' 个 · ':'')+'四向思考 '+thoughtCount+'/4</div></div></article>';
  }).join('');
  document.querySelector('#logical').innerHTML='<div class="logic-tools"><div class="logic-crumbs">'+crumbs+'</div><div class="logic-heading">'+(parent?esc(parent.coreWord||parent.name):'知识逻辑链')+'</div><div class="logic-subheading">'+(parent?'当前显示第 '+level+' 级 · 仅显示该节点的直接下级':'知识树横向展开 · 点击节点进入下一层；默认只显示当前层级')+'</div><span class="logic-count">'+list.length+' 个节点</span><button class="btn" id="logicBack" '+(!parent?'disabled':'')+'>↑ 返回上一级</button><button class="btn" id="logicSelectAll">全选本层</button><button class="btn" id="logicDelete">批量删除（'+selectedIds.size+'）</button></div><div class="logic-vertical">'+(rows||'<div class="logic-empty">这一层还没有节点。可在上一级节点下添加子节点。</div>')+'</div>';
  document.querySelectorAll('.logic-crumb[data-root]').forEach(el=>el.onclick=()=>{currentParentId=null;renderLogical();});
