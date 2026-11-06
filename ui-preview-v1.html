@@ -375,6 +375,80 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
  #continuumFocus .q-right{right:0!important}
 }
 
+ 
+/* V17 — readable core, sequential thinking directions, and visible knowledge paths */
+#continuumFocus .continuum-core{z-index:5!important;max-width:340px!important;opacity:1!important}
+#continuumFocus .continuum-core-label{font-size:7px!important;letter-spacing:.19em!important;color:rgba(190,207,218,.68)!important}
+#continuumFocus .continuum-core-title{font-size:clamp(18px,1.55vw,22px)!important;line-height:1.35!important;color:rgba(242,247,250,.98)!important;text-shadow:0 0 22px rgba(205,225,238,.16)!important}
+#continuumFocus .continuum-core p{max-width:320px!important;font-size:10px!important;line-height:1.8!important;color:rgba(207,220,229,.78)!important}
+#continuumFocus .continuum-core-meta{font-size:7px!important;color:rgba(183,199,210,.62)!important}
+#continuumFocus .continuum-core button{font-size:8px!important;color:rgba(218,230,237,.78)!important;border-color:rgba(200,216,226,.18)!important}
+#continuumFocus .continuum-quadrant{z-index:4!important;opacity:.78!important;filter:none!important;color:rgba(228,237,243,.88)!important}
+#continuumFocus .continuum-quadrant b{font-size:12px!important;letter-spacing:.055em!important;color:rgba(237,244,248,.94)!important;text-shadow:0 0 16px rgba(195,216,230,.12)!important}
+#continuumFocus .continuum-quadrant small{font-size:9px!important;line-height:1.7!important;color:rgba(202,216,226,.72)!important}
+#continuumFocus .continuum-quadrant i{font-size:8px!important;color:rgba(209,224,233,.76)!important}
+#continuumFocus .cq-kicker{font-size:6px!important;letter-spacing:.17em!important;color:rgba(190,208,219,.65)!important}
+#continuumFocus .continuum-quadrant:hover{opacity:1!important}
+.continuum-routes{position:absolute!important;z-index:2!important;inset:0!important;width:100%!important;height:100%!important;overflow:visible!important;pointer-events:none!important}
+.continuum-routes .route{fill:none;stroke:rgba(190,211,225,.43);stroke-width:1.05;stroke-linecap:round;stroke-dasharray:4 8;opacity:.72;marker-end:url(#nebulaArrowHead)}
+.continuum-routes .route-point{fill:rgba(218,232,241,.86);stroke:rgba(190,214,229,.34);stroke-width:1;opacity:.78}
+#continuumFocus.arriving .continuum-core-label,
+#continuumFocus.arriving .continuum-core-title{animation:coreTextFirst 1.8s cubic-bezier(.2,.65,.25,1) .18s both}
+#continuumFocus.arriving .continuum-core p,
+#continuumFocus.arriving .continuum-core-meta,
+#continuumFocus.arriving .continuum-core button{animation:coreTextSecond 1.7s ease 1.05s both}
+#continuumFocus.arriving .continuum-quadrant{animation:none!important;opacity:0!important;filter:blur(3px)!important}
+#continuumFocus.arriving .continuum-quadrant .cq-kicker,
+#continuumFocus.arriving .continuum-quadrant b{animation:directionTextReveal 1.9s cubic-bezier(.2,.65,.25,1) both}
+#continuumFocus.arriving .q-forward .cq-kicker,
+#continuumFocus.arriving .q-forward b{animation-delay:2.05s}
+#continuumFocus.arriving .q-left .cq-kicker,
+#continuumFocus.arriving .q-left b{animation-delay:2.55s}
+#continuumFocus.arriving .q-right .cq-kicker,
+#continuumFocus.arriving .q-right b{animation-delay:3.05s}
+#continuumFocus.arriving .q-backward .cq-kicker,
+#continuumFocus.arriving .q-backward b{animation-delay:3.55s}
+#continuumFocus.arriving .continuum-quadrant small,
+#continuumFocus.arriving .continuum-quadrant i{animation:directionDetailReveal 1.6s ease both}
+#continuumFocus.arriving .q-forward small,#continuumFocus.arriving .q-forward i{animation-delay:2.8s}
+#continuumFocus.arriving .q-left small,#continuumFocus.arriving .q-left i{animation-delay:3.3s}
+#continuumFocus.arriving .q-right small,#continuumFocus.arriving .q-right i{animation-delay:3.8s}
+#continuumFocus.arriving .q-backward small,#continuumFocus.arriving .q-backward i{animation-delay:4.3s}
+#continuumFocus .continuum-routes .route,
+#continuumFocus .continuum-routes .route-point{opacity:.72}
+#continuumFocus.arriving .continuum-routes .route{stroke-dasharray:220;stroke-dashoffset:220;animation:routeDraw 2.1s ease forwards}
+#continuumFocus.arriving .continuum-routes .route-forward{animation-delay:4.15s}
+#continuumFocus.arriving .continuum-routes .route-left{animation-delay:4.55s}
+#continuumFocus.arriving .continuum-routes .route-right{animation-delay:4.95s}
+#continuumFocus.arriving .continuum-routes .route-backward{animation-delay:5.35s}
+#continuumFocus.arriving .continuum-routes .route-point{opacity:0;animation:pointAppear 1.1s ease forwards}
+#continuumFocus.arriving .continuum-routes .point-forward{animation-delay:5.9s}
+#continuumFocus.arriving .continuum-routes .point-left{animation-delay:6.15s}
+#continuumFocus.arriving .continuum-routes .point-right{animation-delay:6.4s}
+#continuumFocus.arriving .continuum-routes .point-backward{animation-delay:6.65s}
+#continuumFocus:not(.arriving) .continuum-routes .route{stroke-dasharray:4 8;stroke-dashoffset:0}
+@keyframes coreTextFirst{0%{opacity:0;filter:blur(5px);transform:translateY(5px)}100%{opacity:1;filter:blur(0);transform:translateY(0)}}
+@keyframes coreTextSecond{0%{opacity:0;filter:blur(3px)}100%{opacity:1;filter:blur(0)}}
+@keyframes directionTextReveal{0%{opacity:0;filter:blur(5px);transform:translateY(5px)}100%{opacity:1;filter:blur(0);transform:translateY(0)}}
+@keyframes directionDetailReveal{0%{opacity:0}100%{opacity:1}}
+@keyframes routeDraw{0%{stroke-dashoffset:220;opacity:0}100%{stroke-dashoffset:0;opacity:.72}}
+@keyframes pointAppear{0%{opacity:0;r:0}100%{opacity:.82;r:3.2}}
+#continuumFocus:not(.arriving) .continuum-quadrant{opacity:.78!important;filter:none!important}
+@media(max-width:760px){
+ #continuumFocus .continuum-core-title{font-size:17px!important}
+ #continuumFocus .continuum-core p{font-size:9px!important}
+ #continuumFocus .continuum-quadrant b{font-size:10px!important}
+ #continuumFocus .continuum-quadrant small{font-size:8px!important}
+ #continuumFocus .continuum-routes{opacity:.62}
+}
+@media(prefers-reduced-motion:reduce){
+ #continuumFocus.arriving .continuum-core-label,#continuumFocus.arriving .continuum-core-title,
+ #continuumFocus.arriving .continuum-core p,#continuumFocus.arriving .continuum-core-meta,
+ #continuumFocus.arriving .continuum-core button,#continuumFocus.arriving .continuum-quadrant,
+ #continuumFocus.arriving .continuum-quadrant *,
+ #continuumFocus.arriving .continuum-routes *{animation:none!important;opacity:1!important;filter:none!important;stroke-dashoffset:0!important}
+}
+
 </style>
 </head>
 <body>
@@ -496,6 +570,15 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
  <div class="continuum-topline"><div><span class="source-tag">CONTINUOUS KNOWLEDGE AXIS</span><span class="continuum-path" id="continuumPath">知识宇宙 / 系统思维</span></div><div class="continuum-controls"><button class="continuum-quiet" id="continuumBack" disabled>← 上一个位置</button><button class="continuum-quiet" id="continuumForward" disabled>下一个位置 →</button><button class="continuum-exit" id="continuumExit">退出聚焦 ×</button></div></div>
  <div class="continuum-stage">
   <div class="continuum-axis"></div>
+  <svg class="continuum-routes" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true">
+   <defs><marker id="nebulaArrowHead" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7" fill="none" stroke="rgba(204,222,234,.66)" stroke-width="1"/></marker></defs>
+   <path class="route route-forward" d="M500 322 C500 278 500 235 500 166" marker-end="url(#nebulaArrowHead)"/>
+   <path class="route route-backward" d="M500 378 C500 422 500 466 500 535" marker-end="url(#nebulaArrowHead)"/>
+   <path class="route route-left" d="M446 350 C390 350 328 350 244 350" marker-end="url(#nebulaArrowHead)"/>
+   <path class="route route-right" d="M554 350 C610 350 672 350 756 350" marker-end="url(#nebulaArrowHead)"/>
+   <circle class="route-point point-forward" cx="500" cy="166" r="3.2"/><circle class="route-point point-backward" cx="500" cy="535" r="3.2"/>
+   <circle class="route-point point-left" cx="244" cy="350" r="3.2"/><circle class="route-point point-right" cx="756" cy="350" r="3.2"/>
+  </svg>
   <div class="continuum-orbit orbit-one"></div><div class="continuum-orbit orbit-two"></div>
   <button class="continuum-quadrant q-forward" data-continuum="forward"><span class="cq-kicker">前瞻 · ORIGIN / PREREQUISITE</span><b id="cqForwardTitle">前置知识</b><small id="cqForwardDesc">向前追溯来源与必要条件</small><i>沿认知轴继续 ↗</i></button>
   <button class="continuum-quadrant q-backward" data-continuum="backward"><span class="cq-kicker">顾后 · CONSEQUENCE / FUTURE</span><b id="cqBackwardTitle">后续影响</b><small id="cqBackwardDesc">沿知识发展查看后续结果</small><i>沿认知轴继续 ↗</i></button>
