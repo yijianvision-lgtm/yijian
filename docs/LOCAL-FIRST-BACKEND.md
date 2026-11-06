@@ -26,7 +26,7 @@ NEBULA 采用 **Local-first**：不要求注册、登录、Clerk、Supabase、D1
 - 建议在首次保存时请求浏览器持久化存储权限；浏览器仍可能在磁盘空间不足时回收数据。
 - 本地数据不会自动跨电脑同步。
 
-## 认知数据模型（schema v4）\n- `sources` 将知识来源抽象成独立目录记录；上传讲义和 AI 对话时自动登记，旧资料会在本地启动时补建目录记录。\n- `nodeSourceLinks` 支持节点与来源多对多关联，可记录页码、段落、主题路径、摘录及证据类型。\n- `knowledgeRelations` 独立保存因果、对比、前置、类比、应用、证据支持/挑战等关系，不与父子层级混用。\n- `knowledgeVersions` 保存节点内容快照；`reviewProposals` 保存 AI 建议及审核状态。接受 update/reparent/create/relation 建议时才写入正式数据；merge/split 当前保留为待审核提案，因需要显式节点映射与来源迁移，暂不自动执行。\n- `learningRecords` 与 `researchSessions` 分别保存主动学习表现和研究草稿。\n- `findDuplicateCandidates()` 仅返回相似候选，不自动合并；重复判断必须由用户决定。\n\n## 浏览器文件夹授权
+## 认知数据模型（schema v4）\n- `sources` 将知识来源抽象成独立目录记录；上传讲义和 AI 对话时自动登记，旧资料会在本地启动时补建目录记录。\n- `nodeSourceLinks` 支持节点与来源多对多关联，可记录页码、段落、主题路径、摘录及证据类型。\n- `knowledgeRelations` 独立保存因果、对比、前置、类比、应用、证据支持/挑战等关系，不与父子层级混用。\n- `knowledgeVersions` 保存节点内容快照；`reviewProposals` 保存 AI 建议及审核状态。接受 update/reparent/create/relation 建议时才写入正式数据；merge/split 当前保留为待审核提案，因需要显式节点映射与来源迁移，暂不自动执行。\n- `learningRecords` 与 `researchSessions` 分别保存主动学习表现和研究草稿。\n- `findDuplicateCandidates()` 仅返回相似候选，不自动合并；重复判断必须由用户决定。相同内容的讲义文件与 AI 对话会通过 SHA-256 内容指纹拦截重复保存；语义相似但内容不同的资料仍作为候选，不自动合并。\n\n## 浏览器文件夹授权
 普通网页不能静默扫描电脑文件夹。后续 UI 可提供“选择讲义文件夹”入口，通过 File System Access API 在用户明确授权后访问文件夹；若浏览器不支持，则退回普通文件选择。文件夹持续监听、自动同步与后台扫描不属于当前静态网页后台能力。
 
 ## AI 与学术检索
