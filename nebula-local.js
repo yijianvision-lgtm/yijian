@@ -526,14 +526,27 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
   const nodes=Array.isArray(graph?.nodes)?graph.nodes:[], links=Array.isArray(graph?.links)?graph.links:[];
   const before=proposal.targetNodeId?nodes.find(n=>String(n.id)===String(proposal.targetNodeId)):null;
   const snapshot=proposal.proposedSnapshot||{};
+  const validateParent=(nodeId,parentId)=>{
+    if(parentId==null||parentId==="")return;
+    if(String(parentId)===String(nodeId))throw new Error("知识节点不能成为自己的上级。");
+    let cursor=nodes.find(n=>String(n.id)===String(parentId)),visited=new Set();
+    if(!cursor)throw new Error("上级节点不存在，未应用建议。");
+    while(cursor){
+      if(String(cursor.id)===String(nodeId))throw new Error("检测到父子层级循环，未应用建议。");
+      if(visited.has(String(cursor.id)))throw new Error("现有知识层级已存在循环，需先修复。");
+      visited.add(String(cursor.id));cursor=nodes.find(n=>String(n.id)===String(cursor.parentId));
+    }
+  };
   let resultingNodeId=proposal.targetNodeId||snapshot.id||makeRecordId("node");
   if(proposal.proposalType==="create") {
     if(nodes.some(n=>String(n.id)===String(resultingNodeId))) throw new Error("目标节点 ID 已存在，未应用建议。");
+    validateParent(resultingNodeId,snapshot.parentId);
     const created={...snapshot,id:resultingNodeId};
     const version={id:makeRecordId("version"),nodeId:resultingNodeId,versionNumber:1,contentSnapshot:cloneJSON(created),changeReason:proposal.reasoning||"用户审核通过的 AI 建议",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:null};
     await putRecord("knowledgeVersions",version);created.currentVersionId=version.id;nodes.push(created);
   } else if(proposal.proposalType==="update"||proposal.proposalType==="reparent") {
     if(!before) throw new Error("找不到目标节点，未应用建议。");
+    validateParent(before.id,snapshot.parentId??before.parentId);
     const version={id:makeRecordId("version"),nodeId:before.id,versionNumber:(await getAllEntries("knowledgeVersions")).filter(x=>x.value.nodeId===before.id).length+1,contentSnapshot:cloneJSON(before),changeReason:proposal.reasoning||"审核通过的 AI 建议",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:before.currentVersionId||null};
     await putRecord("knowledgeVersions",version);
     const index=nodes.findIndex(n=>String(n.id)===String(before.id));
@@ -556,6 +569,8 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
       await putRecord("knowledgeVersions",{id:makeRecordId("version"),nodeId:n.id,versionNumber:(prior?.versionNumber||0)+1,contentSnapshot:cloneJSON(n),changeReason:"合并前自动留档",evidenceSourceIds:[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:prior?.id||null});
     }
     const sourceSet=new Set(sourceIds), mergedSnapshot={...snapshot};delete mergedSnapshot.sourceNodeIds;
+    let ancestorId=before.parentId,ancestorSeen=new Set();
+    while(ancestorId!=null&&!ancestorSeen.has(String(ancestorId))){if(sourceSet.has(String(ancestorId)))throw new Error("不能把目标节点合并进自己的祖先节点，否则会形成循环层级。");ancestorSeen.add(String(ancestorId));ancestorId=nodes.find(n=>String(n.id)===String(ancestorId))?.parentId;}
     const updatedTarget={...before,...mergedSnapshot,id:before.id,updatedAt:Date.now(),mergedFrom:sourceIds};
     const remap=id=>sourceSet.has(String(id))?before.id:id;
     for(const n of nodes) if(sourceSet.has(String(n.parentId))) n.parentId=before.id;
