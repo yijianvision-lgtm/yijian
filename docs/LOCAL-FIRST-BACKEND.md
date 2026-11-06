@@ -4,7 +4,7 @@ NEBULA 采用 **Local-first**：不要求注册、登录、Clerk、Supabase、D1
 
 ## 文件
 - `nebula-local.js`：本地数据层与讲义解析器。
-- `deepseek-worker.js`：可选的 DeepSeek 桥接服务，保留 DeepSeek 历史分享链接读取与历史内容分析。它不存储知识库或讲义文件。
+- `deepseek-worker.js`：可选的 DeepSeek 桥接服务，保留 DeepSeek 历史分享链接读取与历史内容分析，并新增 `POST /coach`（知识校正/四维/逻辑链）、`POST /mnemonic`（口诀核对）和 `GET /research?q=...`（Crossref 元数据检索）。它不存储知识库或讲义文件。
 - `index.html`：当前 UI 与现有知识图谱逻辑。当前文件已有 LocalStorage 节点/关系保存，以及 IndexedDB 讲义原件保存逻辑；新数据层已单独准备，下一阶段接入 UI 时统一迁移并验证，不在这一步改动视觉界面。
 
 ## 支持的讲义类型
