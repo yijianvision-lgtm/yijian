@@ -13,10 +13,10 @@
 ## 已提供的桥接 Worker
 文件：`deepseek-worker.js`
 1. 在 Cloudflare 创建 Worker，将该文件作为 Worker 源码部署。
-2. 在 Worker Settings → Variables and Secrets 添加 Secret：`DEEPSEEK_API_KEY`。
+2. 在 Worker Settings → Variables and Secrets 添加两个 Secret：`DEEPSEEK_API_KEY`（DeepSeek 平台生成的 API Key）和 `NEBULA_SYNC_TOKEN`（你自己生成的一串随机长令牌，用于保护 Worker 接口）。
 3. 可选添加变量 `DEEPSEEK_MODEL`，默认 `deepseek-v4-pro`。
-4. Worker 提供 `POST /analyze`，接收 `{ text, existingNodes }`，返回结构化 nodes、links、mergeSuggestions、uncertain。
-5. 仅允许从可信来源调用时，应把 Worker 的 CORS 白名单从 * 改为 NEBULA 实际域名，并增加访问令牌/用户鉴权。生产环境不应长期使用开放 CORS。
+4. 在 NEBULA 同步中心填写 Worker 地址，并在访问令牌框粘贴 `NEBULA_SYNC_TOKEN`（只在当前页面使用，不保存到 LocalStorage）。Worker 提供 `POST /analyze`，接收 `{ text, existingNodes }`，返回结构化 nodes、links、mergeSuggestions、uncertain。
+5. Worker 已限制 CORS 到 NEBULA GitHub Pages 域名，并强制校验 `NEBULA_SYNC_TOKEN`。不要把这两个 Secret 写进前端或提交到仓库。
 
 ## 历史对话迁移流程
 1. 在 DeepSeek 中使用官方可用的数据导出功能；若没有完整导出，逐批分享/复制知识对话。
