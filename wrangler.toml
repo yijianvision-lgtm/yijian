@@ -1,0 +1,24 @@
+name = "nebula-private-api"
+main = "api-worker.js"
+compatibility_date = "2026-11-06"
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGIN = "https://yijianvision-lgtm.github.io"
+DEEPSEEK_MODEL = "deepseek-v4-pro"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nebula-private"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "PRIVATE_FILES"
+bucket_name = "nebula-private-files"
+
+# Configure secrets with:
+# npx wrangler secret put OIDC_JWKS_URL
+# npx wrangler secret put OIDC_ISSUER
+# npx wrangler secret put OIDC_AUDIENCE
+# npx wrangler secret put DEEPSEEK_API_KEY
