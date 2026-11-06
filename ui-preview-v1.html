@@ -38,6 +38,32 @@ body:not(.entered) .topbar,body:not(.entered) .left-rail,body:not(.entered) .rig
 body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
 .topbar,.left-rail,.right-panel,.timeline,.bottom-hint{transition:opacity .5s ease}
 @media(max-width:760px){.entry-content{padding:32px 18px}.entry-copy{max-width:280px}}
+
+/* V3 — denser REF-01 spatial field + nested layer pages */
+:root{--surface:rgba(15,19,24,.72)}
+#space{background:radial-gradient(ellipse at 50% 47%,#222a31 0,#11171d 34%,#090d12 73%,#06080b 100%)}
+.left-rail{width:184px;opacity:.82}
+.right-panel{width:224px;opacity:.86}
+.rail-card{background:linear-gradient(145deg,rgba(17,22,28,.76),rgba(9,13,18,.70));border-color:rgba(211,222,235,.09)}
+.bottom-hint{left:218px}
+.timeline{background:rgba(10,14,19,.68)}
+/* The spatial network, not the panels, is the visual focus */
+#space canvas{filter:contrast(1.06) saturate(.88)}
+.layer-page{position:fixed;z-index:24;inset:84px 50% auto auto;transform:translateX(50%);width:min(650px,calc(100vw - 32px));max-height:calc(100vh - 116px);overflow:auto;border:1px solid rgba(205,218,226,.17);border-radius:12px;background:linear-gradient(145deg,rgba(20,26,32,.94),rgba(9,13,18,.94));box-shadow:0 24px 90px #0009,inset 0 1px rgba(255,255,255,.035);backdrop-filter:blur(26px);display:none;padding:22px}
+.layer-page.open{display:block;animation:layerIn .24s ease-out}
+@keyframes layerIn{from{opacity:0;transform:translate(50%,8px)}to{opacity:1;transform:translate(50%,0)}}
+.layer-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.layer-crumb{font-size:9px;letter-spacing:.12em;color:#87949e}
+.layer-title{font-size:19px;font-weight:450;margin:20px 0 7px;letter-spacing:.04em}
+.layer-intro{font-size:10px;color:#929da6;line-height:1.8;margin-bottom:20px}
+.layer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.layer-card{border:1px solid rgba(202,215,224,.12);background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.012));border-radius:8px;text-align:left;padding:14px;color:#dce3e8;min-height:76px;transition:.2s}
+.layer-card:hover{border-color:rgba(207,221,230,.38);background:rgba(255,255,255,.07);transform:translateY(-1px)}
+.layer-card strong{display:block;font-size:11px;font-weight:500}
+.layer-card small{display:block;color:#7f8b95;font-size:9px;margin-top:7px;line-height:1.5}
+.layer-footer{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:12px;border-top:1px solid var(--line);font-size:9px;color:#75818b}
+@media(max-width:760px){.left-rail{width:142px}.right-panel{width:174px}.bottom-hint{display:none}.layer-page{inset:78px 16px auto;width:auto;transform:none;padding:16px}.layer-page.open{animation:layerMobile .2s ease-out}@keyframes layerMobile{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.layer-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -70,6 +96,15 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
 <section class="overlay" id="hierarchy"><div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE STRUCTURE</div><div class="overlay-title">逻辑结构</div><div class="overlay-sub">纵向层级 · 点击节点逐层展开，沿逻辑链深入探索</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="tree"><div class="tree-root">系统思维 · 根概念</div><div class="tree-stem"></div><div class="tree-branches"><div class="tree-col"><button class="tree-node">系统结构<small>组成要素与关系</small></button><button class="tree-node">边界与环境<small>系统内外部条件</small></button></div><div class="tree-col"><button class="tree-node">反馈机制<small>正反馈与负反馈</small></button><button class="tree-node">因果回路<small>延迟、强化与平衡</small></button></div><div class="tree-col"><button class="tree-node">系统演化<small>适应、涌现与转型</small></button><button class="tree-node">复杂性<small>非线性与不可预测性</small></button></div></div></div></section>
 <section class="overlay" id="sources"><div class="overlay-head"><div><div class="eyebrow">ORIGINAL MATERIALS</div><div class="overlay-title">原始资料库</div><div class="overlay-sub">只展示原始讲义、原始思维导图、论文与文献；与 AI 已整理知识分开保存</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="source-grid"><div class="source-list"><div class="eyebrow">SOURCE LIBRARY</div><div class="source-row active">原始讲义 · PDF / Word</div><div class="source-row">原始思维导图 · EMMX / XMind</div><div class="source-row">论文与文献</div><div class="source-row">图片与附件</div><div class="source-row" style="margin-top:18px;color:#82928e">AI 已学习对话库（独立）</div></div><div class="source-reader"><span class="source-tag">ORIGINAL SOURCE · 未经 AI 整理</span><h3>原始资料阅读区</h3><p>在这里查看资料本身的原始内容，保留原有章节、层级、图片与结构。选择某个知识节点时，可以回溯它对应的原始讲义、思维导图、论文或文献。</p><p>原始资料与 AI 已学习对话分别管理。它们可以关联到同一个知识点，但不会互相覆盖，也不会把 AI 整理内容伪装成原始文件。</p></div></div></section>
 <section class="overlay" id="overview"><div class="overlay-head"><div><div class="eyebrow">UNIVERSE OVERVIEW</div><div class="overlay-title">知识宇宙 · 全局层级</div><div class="overlay-sub">缩小视图查看整体结构，选择任意层级进入具体知识区域</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="tree"><div class="tree-root">NEBULA · 我的知识宇宙</div><div class="tree-stem"></div><div class="tree-branches"><div class="tree-col"><button class="tree-node">认知与思维<small>一级领域 · 18 个节点</small></button><button class="tree-node">学习方法<small>二级层级 · 12 个节点</small></button></div><div class="tree-col"><button class="tree-node">科学与技术<small>一级领域 · 26 个节点</small></button><button class="tree-node">复杂系统<small>二级层级 · 9 个节点</small></button></div><div class="tree-col"><button class="tree-node">社会与经济<small>一级领域 · 14 个节点</small></button><button class="tree-node">组织行为<small>二级层级 · 7 个节点</small></button></div></div></div></section>
+
+<section class="layer-page" id="layerPage" aria-live="polite">
+ <div class="layer-top"><div class="layer-crumb" id="layerCrumb">知识宇宙 / 系统思维</div><button class="close" id="layerBack">← 返回上一级</button></div>
+ <div class="layer-title" id="layerTitle">系统思维</div>
+ <div class="layer-intro" id="layerIntro">从当前概念继续深入，逐层查看组成、关系与来源。</div>
+ <div class="layer-grid" id="layerGrid"></div>
+ <div class="layer-footer"><span id="layerDepth">LEVEL 01</span><span>选择一个概念，继续进入下一层 ↗</span></div>
+</section>
+
 <div class="toast" id="toast"></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
@@ -81,11 +116,11 @@ const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.set
 const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.045;controls.minDistance=7;controls.maxDistance=34;controls.autoRotate=true;controls.autoRotateSpeed=.11;
 scene.add(new THREE.AmbientLight(0xc5d1d8,.72));const key=new THREE.PointLight(0xdce6ed,8,40);key.position.set(0,5,8);scene.add(key);
 const core=new THREE.Group();scene.add(core);
-const nodes=[['系统思维',0,0,0,.38],['反馈机制',-4,2,-2,.19],['系统结构',3,2,-1,.21],['复杂性',-2,-3,1,.23],['涌现',4,-2,2,.17],['因果回路',-6,-1,2,.15],['边界与环境',6,1,-3,.16],['系统演化',1,4,2,.19],['适应性',-3,4,3,.14],['非线性',5,-4,-1,.14],['延迟效应',-5,-4,-2,.13],['整体与部分',2,0,4,.16]];
+const nodes=[['系统思维',0,0,0,.38],['反馈机制',-4,2,-2,.19],['系统结构',3,2,-1,.21],['复杂性',-2,-3,1,.23],['涌现',4,-2,2,.17],['因果回路',-6,-1,2,.15],['边界与环境',6,1,-3,.16],['系统演化',1,4,2,.19],['适应性',-3,4,3,.14],['非线性',5,-4,-1,.14],['延迟效应',-5,-4,-2,.13],['整体与部分',2,0,4,.16],['自组织',-7,3,-1,.14],['适应性循环',7,3,1,.15],['约束条件',-7,-2,-3,.13],['信息流',6,-1,4,.14],['路径依赖',-1,6,-2,.14],['系统动力学',3,-5,3,.16],['复杂适应系统',-4,1,5,.15],['临界点',7,-3,-3,.13],['结构变化',0,-6,-3,.14],['环境扰动',-8,0,1,.12],['协同效应',5,5,-2,.13],['反馈延迟',-2,-5,4,.12]];
 const positions=nodes.map(n=>new THREE.Vector3(n[1],n[2],n[3]));const spheres=[];
 nodes.forEach((n,i)=>{const g=new THREE.IcosahedronGeometry(n[4],1);const m=new THREE.MeshStandardMaterial({color:i===0?0xc9d2d7:0x8e9da7,roughness:.48,metalness:.25,emissive:i===0?0x4b555b:0x242d34,emissiveIntensity:i===0?.16:.1});const s=new THREE.Mesh(g,m);s.position.copy(positions[i]);s.userData.index=i;core.add(s);spheres.push(s);const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(n[4]*1.3,1),new THREE.MeshBasicMaterial({color:0xaebdc7,transparent:true,opacity:.025,side:THREE.BackSide}));s.add(halo)});
 const lineMat=new THREE.LineBasicMaterial({color:0x83919a,transparent:true,opacity:.19});const edges=[[0,1],[0,2],[0,3],[0,4],[0,7],[1,5],[1,8],[2,6],[2,11],[3,10],[3,9],[4,9],[7,8],[7,11],[2,7],[1,3],[4,11]];edges.forEach(([a,b])=>{const geo=new THREE.BufferGeometry().setFromPoints([positions[a],positions[b]]);core.add(new THREE.Line(geo,lineMat))});
-const starGeo=new THREE.BufferGeometry();const starPts=[];for(let i=0;i<280;i++){starPts.push((Math.random()-.5)*65,(Math.random()-.5)*42,(Math.random()-.5)*48)}starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starPts,3));const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xaebbc4,size:.035,transparent:true,opacity:.36}));scene.add(stars);
+const starGeo=new THREE.BufferGeometry();const starPts=[];for(let i=0;i<115;i++){starPts.push((Math.random()-.5)*65,(Math.random()-.5)*42,(Math.random()-.5)*48)}starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starPts,3));const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xaebbc4,size:.028,transparent:true,opacity:.22}));scene.add(stars);
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;function selectNode(i){selected=i;document.getElementById('selectedName').textContent=nodes[i][0];document.getElementById('selectedDesc').textContent=i===0?'理解复杂系统中结构、反馈与演化之间的关系。':'这是当前知识宇宙中的关联概念，可继续向外探索它的来源与影响。';spheres.forEach((s,j)=>{s.material.emissiveIntensity=j===i?.32:.1;s.scale.setScalar(j===i?1.12:1)});toast('已定位：'+nodes[i][0])}
 renderer.domElement.addEventListener('pointerdown',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(spheres);if(hit.length)selectNode(hit[0].object.userData.index)});
 function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
@@ -97,7 +132,21 @@ function showView(v){document.querySelectorAll('.nav').forEach(b=>b.classList.to
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'))));
 document.getElementById('overviewBtn').onclick=()=>document.getElementById('overview').classList.add('open');document.getElementById('fourD').onclick=()=>toast('四维思考：前瞻 · 顾后 · 左顾 · 右盼');document.getElementById('profileBtn').onclick=()=>toast('个人私有空间 · UI 预览');
 document.querySelectorAll('.time-point').forEach((p,i)=>p.onclick=()=>{document.querySelectorAll('.time-point').forEach(x=>x.classList.remove('active'));p.classList.add('active');toast('时间维度：'+p.textContent)});
-document.querySelectorAll('.tree-node').forEach(b=>b.onclick=()=>toast('进入层级：'+b.childNodes[0].textContent.trim()));
+
+const layerData={
+ '系统思维':{desc:'理解复杂系统中结构、反馈与演化之间的关系。',children:[['系统结构','组成要素、连接方式与组织形态'],['反馈机制','正反馈、负反馈与调节过程'],['因果回路','循环因果、延迟与动态行为'],['系统演化','适应、涌现与阶段性转变'],['边界与环境','系统边界、开放性与外部条件'],['复杂性','非线性、不可预测与多层关系']]},
+ '系统结构':{desc:'进入结构层，观察系统由哪些部分组成，以及部分之间如何组织。',children:[['组成要素','系统中的基本单元与属性'],['连接关系','节点之间的依赖、流动与作用'],['层级结构','子系统、模块与整体'],['网络拓扑','中心性、路径与连接模式']]},
+ '反馈机制':{desc:'反馈将系统的结果重新带回系统内部，改变后续行为。',children:[['正反馈','放大变化与自我强化'],['负反馈','稳定、纠偏与目标调节'],['反馈延迟','信息与行动之间的时间差'],['调节机制','控制变量与动态平衡']]},
+ '因果回路':{desc:'沿因果关系追踪循环，辨认强化回路与平衡回路。',children:[['强化回路','变化如何不断自我放大'],['平衡回路','系统如何抵抗偏离'],['时间延迟','因果作用何时显现'],['回路识别','从线性因果转向循环解释']]},
+ '系统演化':{desc:'观察系统如何随时间发生适应、转型与涌现。',children:[['适应性','系统如何回应环境变化'],['涌现','整体层面出现的新性质'],['临界转变','系统状态发生跃迁'],['路径依赖','历史选择如何限制未来']]},
+ '复杂性':{desc:'探索多变量交互、非线性与难以预测的整体行为。',children:[['非线性','输入与结果不成比例'],['复杂适应系统','主体互动与共同演化'],['自组织','局部互动形成整体秩序'],['临界点','微小变化触发状态改变']]}
+};
+let layerStack=[];
+function openLayer(name){const data=layerData[name]||{desc:'继续探索该概念的子主题、关联关系与原始来源。',children:[['核心定义','概念的边界与关键特征'],['形成机制','产生与运行的内在机制'],['相关理论','相邻理论与不同解释'],['原始来源','回到讲义、论文或原始对话']]};layerStack.push(name);renderLayer(data);}
+function renderLayer(data){const name=layerStack[layerStack.length-1];document.getElementById('layerCrumb').textContent='知识宇宙 / '+layerStack.join(' / ');document.getElementById('layerTitle').textContent=name;document.getElementById('layerIntro').textContent=data.desc;document.getElementById('layerDepth').textContent='LEVEL '+String(layerStack.length).padStart(2,'0');document.getElementById('layerGrid').innerHTML='';data.children.forEach(([title,desc])=>{const b=document.createElement('button');b.className='layer-card';const strong=document.createElement('strong');strong.textContent=title;const small=document.createElement('small');small.textContent=desc;b.append(strong,small);b.onclick=()=>openLayer(title);document.getElementById('layerGrid').appendChild(b)});document.getElementById('layerBack').textContent=layerStack.length>1?'← 返回上一级':'关闭页面 ×';document.getElementById('layerPage').classList.add('open');}
+document.getElementById('layerBack').onclick=()=>{if(layerStack.length>1){layerStack.pop();const parent=layerStack[layerStack.length-1];renderLayer(layerData[parent]||{desc:'继续探索该概念的子主题。',children:[['核心定义','概念的边界与关键特征'],['形成机制','产生与运行的内在机制'],['相关理论','相邻理论与不同解释']]});}else{layerStack=[];document.getElementById('layerPage').classList.remove('open')}};
+document.querySelectorAll('.tree-node').forEach(b=>b.onclick=()=>{const name=b.childNodes[0].textContent.trim();layerStack=[];openLayer(name)});
+
 document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=e.target.value.trim();const i=nodes.findIndex(n=>n[0].includes(q));if(i>=0)selectNode(i);else toast(q?'没有找到匹配节点':'请输入搜索内容')}});
 </script>
 </body></html>
