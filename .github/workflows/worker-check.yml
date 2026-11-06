@@ -31,7 +31,7 @@ jobs:
           from pathlib import Path
           import re
           html = Path("index.html").read_text(encoding="utf-8")
-          scripts = re.findall(r"<script(?![^>]*\\bsrc=)[^>]*>([\\s\\S]*?)</script>", html, re.I)
+          scripts = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)</script>", html, re.I)
           if not scripts:
               raise SystemExit("No inline application script found")
           Path("/tmp/nebula-inline.js").write_text(scripts[-1], encoding="utf-8")
