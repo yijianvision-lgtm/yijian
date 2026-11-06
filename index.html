@@ -386,7 +386,7 @@ document.querySelector('#saveNode').onclick=async()=>{
  if(parent&&editing?.id===parent.id)return toast('节点不能把自己设为上级');
  let ancestor=parent;while(ancestor){if(ancestor.id===editing?.id)return toast('不能把节点移动到自己的下级中');ancestor=parentOf(ancestor);}
  let node;
- if(editing){node=editing;Object.assign(node,{name:v('nodeName'),desc:v('nodeDesc'),before:v('nodeBefore'),after:v('nodeAfter'),left:v('nodeLeft'),right:v('nodeRight'),parentId:parent?.id||null,level:parent?levelOf(parent)+1:1,updatedAt:Date.now()});}
+ if(editing){node=editing;if(window.NEBULA_LOCAL)await window.NEBULA_LOCAL.saveNodeVersion(node,'编辑前快照','user');Object.assign(node,{name:v('nodeName'),desc:v('nodeDesc'),before:v('nodeBefore'),after:v('nodeAfter'),left:v('nodeLeft'),right:v('nodeRight'),parentId:parent?.id||null,level:parent?levelOf(parent)+1:1,updatedAt:Date.now()});}
  else{const a=Math.random()*Math.PI*2,r=12+Math.random()*12;node={id:'n'+Date.now(),name:v('nodeName'),desc:v('nodeDesc'),before:v('nodeBefore'),after:v('nodeAfter'),left:v('nodeLeft'),right:v('nodeRight'),parentId:parent?.id||null,level:parent?levelOf(parent)+1:1,x:parent?parent.x+Math.cos(a)*8:Math.cos(a)*r,y:parent?parent.y+(Math.random()-.5)*8:(Math.random()-.5)*20,z:parent?parent.z+Math.sin(a)*8:Math.sin(a)*r,color:[0x76dfff,0xb59aff,0x78a8ff,0x78e2c2][Math.floor(Math.random()*4)],date:'未标注',createdAt:Date.now()};nodes.push(node);}
  normalizeHierarchy();persist();
  try{if(window.NEBULA_LOCAL){await window.NEBULA_LOCAL.saveNodeVersion(node,editing?'用户编辑节点':'创建知识节点','user');const chosen=new Set(Array.from(document.querySelector('#nodeSourceSelect')?.selectedOptions||[]).map(x=>x.value));const existing=await window.NEBULA_LOCAL.listNodeSources(node.id);for(const link of existing)if(!chosen.has(link.sourceId))await window.NEBULA_LOCAL.unlinkNodeSource(link.id);for(const sourceId of chosen)await window.NEBULA_LOCAL.linkNodeSource({nodeId:node.id,sourceId,evidenceLocator:v('nodeEvidenceLocator')||''});await window.NEBULA_LOCAL.saveGraph(nodes,links);persist();}}
@@ -394,6 +394,30 @@ document.querySelector('#saveNode').onclick=async()=>{
  document.querySelector('#editor').style.display='none';build();renderLogical();toast('节点已保存，版本与来源追溯已更新');
 };
 
+
+async function refreshCognitiveDashboard(){
+ const stats=document.querySelector('#cognitiveStats'),queue=document.querySelector('#reviewQueue');
+ if(!window.NEBULA_LOCAL){stats.textContent='本地数据模块尚未加载。';return;}
+ try{
+  const [summary,proposals]=await Promise.all([window.NEBULA_LOCAL.getCognitiveDashboard(),window.NEBULA_LOCAL.listProposals('pending')]);
+  stats.textContent='知识节点 '+summary.nodeCount+'｜来源 '+summary.sourceCount+'｜待审核建议 '+summary.pendingReviews+'｜学习记录 '+summary.learningRecords+'｜研究记录 '+summary.researchSessions+'｜待核验节点 '+summary.needsReviewCount;
+  queue.innerHTML='';
+  if(!proposals.length){queue.textContent='目前没有待审核建议。';return;}
+  proposals.forEach(proposal=>{
+   const card=document.createElement('div');card.style.cssText='padding:12px 0;border-bottom:1px solid #ffffff18';
+   const heading=document.createElement('strong');heading.textContent=(proposal.proposalType||'知识建议')+' · '+(proposal.proposedSnapshot?.name||proposal.proposedSnapshot?.coreWord||proposal.targetNodeId||'待确认项目');card.appendChild(heading);
+   const detail=document.createElement('p');detail.style.cssText='margin:6px 0;color:#9eaccd;line-height:1.6';detail.textContent=proposal.reasoning||proposal.description||'AI 提交的知识结构建议；应用前请核对内容与来源。';card.appendChild(detail);
+   const preview=document.createElement('pre');preview.style.cssText='white-space:pre-wrap;max-height:130px;overflow:auto;color:#aebcdd;font-size:10px';preview.textContent=JSON.stringify(proposal.proposedSnapshot||{},null,2);card.appendChild(preview);
+   const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;margin-top:8px';
+   const accept=document.createElement('button');accept.className='btn';accept.textContent='审核通过并应用';accept.onclick=async()=>{accept.disabled=true;try{await window.NEBULA_LOCAL.applyProposal(proposal.id,'accept','用户在认知驾驶舱确认');const graph=await window.NEBULA_LOCAL.loadGraph();nodes=graph?.nodes||[];links=graph?.links||[];persist();build();renderLogical();await refreshCognitiveDashboard();toast('建议已应用并保留版本记录');}catch(error){accept.disabled=false;toast('应用失败：'+error.message);}};
+   const reject=document.createElement('button');reject.className='btn';reject.textContent='拒绝';reject.onclick=async()=>{reject.disabled=true;try{await window.NEBULA_LOCAL.applyProposal(proposal.id,'reject','用户拒绝');await refreshCognitiveDashboard();}catch(error){reject.disabled=false;toast('操作失败：'+error.message);}};
+   actions.append(accept,reject);card.appendChild(actions);queue.appendChild(card);
+  });
+ }catch(error){stats.textContent='读取认知数据失败：'+error.message;queue.textContent='';}
+}
+document.querySelector('#cognitiveBtn').onclick=async()=>{document.querySelector('#cognitiveDashboard').style.display='flex';await refreshCognitiveDashboard();};
+document.querySelector('#refreshCognitive').onclick=refreshCognitiveDashboard;
+document.querySelector('#closeCognitive').onclick=()=>{document.querySelector('#cognitiveDashboard').style.display='none';};
 
 /* Shared DeepSeek sync state/helpers must exist before any handlers reference them. */
 let deepseekPending=null;
