@@ -170,7 +170,7 @@ function levelOf(n,seen=new Set()){
 function parentOf(n){return n.parentId?nodes.find(x=>x.id===n.parentId)||null:null;}
 function childrenOf(parent){
  const list=parent?nodes.filter(n=>n.parentId===parent.id):nodes.filter(n=>!n.parentId);
- return list.sort((a,b)=>String(a.name).localeCompare(String(b.name),'zh-CN'));
+ return list.map((n,i)=>({n,i})).sort((a,b)=>{const ao=Number(a.n.sortOrder??a.n.order??a.n.position),bo=Number(b.n.sortOrder??b.n.order??b.n.position);const av=Number.isFinite(ao)?ao:null,bv=Number.isFinite(bo)?bo:null;return av!==null&&bv!==null?av-bv:av!==null?-1:bv!==null?1:a.i-b.i;}).map(x=>x.n);
 }
 function normalizeHierarchy(){
  const byName=new Map(nodes.map(n=>[String(n.name),n]));
