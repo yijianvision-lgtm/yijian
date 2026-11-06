@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEBULA · B / ORBITAL INDEX · NEBULA</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07090d;color:#e9edf4;font:13px Inter,"PingFang SC","Microsoft YaHei",sans-serif}
+:root{--line:rgba(205,218,239,.13);--muted:#7f8b9d;--soft:#b9c4d5;--glow:rgba(225,235,255,.55)}
+button,input{font:inherit;color:inherit}button{background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:8px;padding:8px 11px;cursor:pointer}button:hover,.active{background:rgba(225,235,255,.12);border-color:rgba(225,235,255,.35)}
+input{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:8px;padding:9px 11px;outline:none;min-width:0}
+#space{position:absolute;inset:0;z-index:0}#space canvas{display:block}
+.brand{font-size:12px;letter-spacing:.28em;color:#dce5f4}.brand b{font-weight:500;color:#fff}
+.muted{color:var(--muted)}.tiny{font-size:10px;letter-spacing:.13em;color:#7f8b9d}.panel{background:rgba(10,14,21,.78);border:1px solid var(--line);backdrop-filter:blur(18px);border-radius:13px;box-shadow:0 12px 48px #0005}
+.node{padding:9px 10px;border-radius:8px;cursor:pointer;color:#b9c4d5;border:1px solid transparent}.node:hover,.node.sel{background:#dce8ff12;border-color:#dce8ff24;color:#fff}
+h3{font-size:13px;font-weight:500;margin:0 0 12px}p{line-height:1.65;color:#9ca9ba}.eyebrow{font-size:9px;letter-spacing:.18em;color:#8290a3;text-transform:uppercase}
+#detailTitle{font-size:20px;font-weight:400;letter-spacing:.02em;margin:8px 0 5px}
+.top{position:absolute;top:24px;left:30px;right:30px;display:flex;align-items:center;justify-content:space-between;z-index:2}.left{position:absolute;left:28px;top:92px;width:225px;padding:18px;z-index:2}.right{position:absolute;right:28px;top:92px;bottom:24px;width:300px;padding:20px;z-index:2;overflow:auto}.bottom{position:absolute;left:50%;bottom:25px;transform:translateX(-50%);display:flex;gap:8px;z-index:2}.tag{display:inline-block;border:1px solid var(--line);border-radius:20px;padding:4px 8px;margin:3px;color:#aab8cc;font-size:10px}.fouritem{padding:10px 0;border-top:1px solid var(--line);font-size:11px;color:#b7c2d2;line-height:1.6}.fouritem small{display:block;color:#8c9db5;margin-bottom:4px}.stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);color:#9eabbd}.logicmode #space{opacity:.2}.logicmode .left{width:260px}
+</style></head><body>
+<div id="space"></div>
+<header class="top"><div class="brand">N E B U L A <b> / ORBITAL INDEX</b></div><div style="display:flex;gap:8px"><button data-mode="space" class="active">星图</button><button data-mode="logic">逻辑索引</button></div><div class="tiny">KNOWLEDGE FIELD · 05 NODES</div></header>
+<aside class="panel left"><div class="eyebrow">COLLECTION / 01</div><h3 style="margin-top:9px">知识目录</h3><input id="search" placeholder="搜索概念…" style="width:100%;margin-bottom:12px"><div class="node sel" data-id="1">✧ 认知的边界</div><div class="node" data-id="2">◦ 系统思维</div><div class="node" data-id="3">◦ 时间与演化</div><div class="node" data-id="4">◦ 知识图谱</div><div class="node" data-id="5">◦ 创造性连接</div><div class="stat"><span>节点</span><b>05</b></div><div class="stat"><span>关系</span><b>07</b></div><div class="stat"><span>来源</span><b>03</b></div></aside>
+<aside class="panel right"><div class="eyebrow">SELECTED KNOWLEDGE</div><div id="detailTitle">认知的边界</div><p id="detailDesc">知识并非静态容器，而是不断被经验、语言与模型重新组织的结构。</p><div id="detailTags"><span class="tag">认知科学</span><span class="tag">哲学</span></div><div style="height:18px"></div><div class="eyebrow">FOUR-WAY THINKING</div><div id="four"></div><div class="eyebrow" style="margin-top:18px">SOURCE TRACE</div><p>DeepSeek 对话 · 2026.11.06<br>参考资料 02 项 · 关联路径 04</p></aside>
+<div class="bottom"><button data-action="links" class="active">关系线</button><button data-action="reset">重置视角</button><button>＋ 新建知识</button><button>资料库</button></div>
+<script>
+const nodes=[
+{id:1,name:"认知的边界",type:"核心概念",pos:[0,0,0],desc:"知识并非静态容器，而是不断被经验、语言与模型重新组织的结构。",tags:["认知科学","哲学"],four:["感知、语言与记忆如何形成边界","边界会影响判断与行动","与信息论、语言学和学习理论相连","边界也可能制造认知偏差"]},
+{id:2,name:"系统思维",type:"方法论",pos:[-3,1.2,-1],desc:"从关系、反馈与整体行为理解复杂问题。",tags:["复杂系统","方法"],four:["控制论与整体论的思想源头","可用于组织设计与策略推演","连接生态学、经济学与工程学","系统边界与因果归因存在争议"]},
+{id:3,name:"时间与演化",type:"研究主题",pos:[2.7,-.6,-1.5],desc:"结构在时间中发生变化，路径依赖塑造当前状态。",tags:["时间","演化"],four:["历史条件与初始状态","长期影响与可能路径","连接演化论、历史学和预测","线性进步叙事的局限"]},
+{id:4,name:"知识图谱",type:"工具模型",pos:[-1.4,-2,1.5],desc:"通过实体、关系和来源组织可检索的知识网络。",tags:["数据结构","AI"],four:["本体与语义网基础","支持推理、检索与追溯","关联数据库、向量检索","关系定义可能带来偏置"]},
+{id:5,name:"创造性连接",type:"思考方式",pos:[3,1.8,1.4],desc:"让远距离概念相遇，产生新的解释与问题。",tags:["创造力","跨学科"],four:["类比与组合的认知机制","形成新假设与新作品","连接设计、科学与艺术","相似性不等于因果关系"]}
+];
+let selected=nodes[0],mode="space",showLinks=true;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x07090d);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);camera.position.set(0,1,9);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);document.querySelector('#space').appendChild(renderer.domElement);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.055;controls.minDistance=4;controls.maxDistance=18;
+scene.add(new THREE.AmbientLight(0xb9c8e2,1.25));const light=new THREE.PointLight(0xeaf2ff,22,30);light.position.set(2,4,5);scene.add(light);
+const group=new THREE.Group();scene.add(group);const meshById={};
+nodes.forEach((n,i)=>{const g=new THREE.Group();g.position.set(...n.pos);const m=new THREE.Mesh(new THREE.SphereGeometry(i===0?.19:.12,24,24),new THREE.MeshStandardMaterial({color:i===0?0xf1f5ff:0xaebed7,emissive:i===0?0x8799b9:0x26364d,emissiveIntensity:i===0?1.1:.55,roughness:.3}));g.add(m);const halo=new THREE.Mesh(new THREE.SphereGeometry(i===0?.29:.21,24,24),new THREE.MeshBasicMaterial({color:0xdce8ff,transparent:true,opacity:.045,wireframe:true}));g.add(halo);group.add(g);meshById[n.id]=g;});
+const lineMat=new THREE.LineBasicMaterial({color:0x8499b8,transparent:true,opacity:.23});
+[[1,2],[1,3],[1,4],[1,5],[2,4],[3,5],[4,5]].forEach(([a,b])=>{const pts=[new THREE.Vector3(...nodes.find(n=>n.id===a).pos),new THREE.Vector3(...nodes.find(n=>n.id===b).pos)];group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),lineMat));});
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();renderer.domElement.addEventListener('click',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(mouse,camera);const hits=ray.intersectObjects(group.children,true);if(hits.length){let obj=hits[0].object;while(obj.parent&&obj.parent!==group)obj=obj.parent;const id=Object.keys(meshById).find(k=>meshById[k]===obj);if(id)select(+id);}});
+function select(id){selected=nodes.find(n=>n.id===id)||nodes[0];document.querySelectorAll('.node').forEach(el=>el.classList.toggle('sel',+el.dataset.id===id));const t=document.querySelector('#detailTitle');if(t)t.textContent=selected.name;const d=document.querySelector('#detailDesc');if(d)d.textContent=selected.desc;const tags=document.querySelector('#detailTags');if(tags)tags.innerHTML=selected.tags.map(x=>'<span class="tag">'+x+'</span>').join('');const four=document.querySelector('#four');if(four)four.innerHTML=selected.four.map((x,i)=>'<div class="fouritem"><small>'+['前瞻','顾后','左顾','右盼'][i]+'</small><div>'+x+'</div></div>').join('');Object.entries(meshById).forEach(([k,g])=>g.scale.setScalar(+k===id?1.35:1));}
+function toggleMode(){mode=mode==='space'?'logic':'space';document.body.classList.toggle('logicmode',mode==='logic');document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));}
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=toggleMode);
+document.querySelectorAll('.node').forEach(el=>el.onclick=()=>select(+el.dataset.id));
+const search=document.querySelector('#search');if(search)search.oninput=()=>{const q=search.value.toLowerCase();document.querySelectorAll('.node').forEach(el=>el.style.display=el.textContent.toLowerCase().includes(q)?'':'none');};
+document.querySelectorAll('[data-action="links"]').forEach(b=>b.onclick=()=>{showLinks=!showLinks;group.children.forEach(o=>{if(o.isLine)o.visible=showLinks;});b.classList.toggle('active',showLinks);});
+document.querySelectorAll('[data-action="reset"]').forEach(b=>b.onclick=()=>{camera.position.set(0,1,9);controls.target.set(0,0,0);controls.update();});
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+select(1);
+
+</script></body></html>
