@@ -14,7 +14,23 @@ h1{font-size:15px;letter-spacing:.22em;margin:0;font-weight:650}.sub{font-size:9
 .tools{display:flex;gap:8px;pointer-events:auto;align-items:center}.btn,.search{border:1px solid var(--line);background:rgba(10,16,34,.78);color:var(--text);border-radius:10px;padding:9px 12px;font-size:11px;backdrop-filter:blur(16px)}.btn{cursor:pointer}.btn:hover{border-color:#8a9dff;background:#172044}.search{width:190px;outline:none}.search::placeholder{color:#69769c}
 .hint{position:fixed;z-index:3;left:25px;bottom:82px;color:#7481a5;font-size:10px;letter-spacing:.08em;line-height:1.8;pointer-events:none}
 .stats{position:fixed;z-index:3;right:25px;bottom:85px;color:#8794b8;font-size:10px;text-align:right;line-height:1.8;pointer-events:none}
-#panels{position:fixed;inset:0;pointer-events:none;z-index:4}.panel{position:absolute;width:min(230px,27vw);padding:13px 15px;border:1px solid rgba(135,160,255,.25);border-radius:13px;background:linear-gradient(135deg,rgba(18,27,58,.84),rgba(8,13,29,.72));backdrop-filter:blur(18px);box-shadow:0 10px 40px #0008, inset 0 1px #ffffff0c;pointer-events:auto;transition:opacity .2s}.panel h3{font-size:11px;letter-spacing:.12em;margin:0 0 7px;color:var(--cyan)}.panel p{font-size:11px;line-height:1.65;color:#c2cbe7;margin:0}.panel .tag{font-size:9px;color:#7383ae;margin-top:8px}
+#panels{position:fixed;inset:0;pointer-events:none;z-index:4;perspective:1100px;transform-style:preserve-3d}
+.panel{position:absolute;width:min(250px,27vw);padding:13px 15px;border:1px solid rgba(135,160,255,.3);border-radius:13px;background:linear-gradient(135deg,rgba(18,27,58,.9),rgba(8,13,29,.78));backdrop-filter:blur(18px);box-shadow:0 10px 40px #0008,inset 0 1px #ffffff0c;pointer-events:auto;transition:opacity .2s,transform .25s;transform-style:preserve-3d}
+.panel h3{font-size:11px;letter-spacing:.12em;margin:0 0 7px;color:var(--cyan)}.panel p{font-size:11px;line-height:1.65;color:#c2cbe7;margin:0}.panel .tag{font-size:9px;color:#7383ae;margin-top:8px}
+.panel.dir-up{left:50%;top:calc(50% - 235px);transform:translateX(-50%) perspective(900px) rotateX(45deg)}
+.panel.dir-down{left:50%;top:calc(50% + 105px);transform:translateX(-50%) perspective(900px) rotateX(-45deg)}
+.panel.dir-left{left:calc(50% - 340px);top:50%;transform:translateY(-50%) perspective(900px) rotateY(-45deg)}
+.panel.dir-right{left:calc(50% + 90px);top:50%;transform:translateY(-50%) perspective(900px) rotateY(45deg)}
+.panel.center-node{left:50%;top:50%;transform:translate(-50%,-50%);width:auto;min-width:130px;text-align:center;border-color:rgba(115,228,255,.6);box-shadow:0 0 35px #73e4ff30,0 10px 40px #0008}
+@media(max-width:700px){
+ .panel{width:min(42vw,210px);padding:9px}
+ .panel p{font-size:10px}
+ .panel.dir-up{top:calc(50% - 205px)}
+ .panel.dir-down{top:calc(50% + 90px)}
+ .panel.dir-left{left:3vw}
+ .panel.dir-right{left:auto;right:3vw}
+ .panel.center-node{min-width:95px}
+}
 #timeline{position:fixed;z-index:6;bottom:17px;left:50%;transform:translateX(-50%);width:min(680px,75vw);padding:11px 16px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(8,13,29,.78);backdrop-filter:blur(18px)}
 .timehead{display:flex;justify-content:space-between;color:#8391b7;font-size:9px;letter-spacing:.15em;margin-bottom:9px}.events{display:flex;align-items:center;gap:0;position:relative}.events:before{content:"";position:absolute;left:0;right:0;top:4px;height:1px;background:linear-gradient(90deg,#5c68a0,#72dfff,#9e7aff)}.event{position:relative;flex:1;text-align:center;cursor:pointer;color:#8290b6;font-size:9px;padding-top:13px}.event:before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:7px;height:7px;border-radius:50%;background:#8c85ff;box-shadow:0 0 9px #8c85ff}.event.active{color:#e7f6ff}
 #toast{position:fixed;z-index:10;top:76px;left:50%;transform:translateX(-50%);font-size:11px;color:#d9e6ff;background:#141d3b;border:1px solid #5468a0;border-radius:9px;padding:9px 13px;opacity:0;transition:opacity .2s;pointer-events:none}
@@ -63,7 +79,22 @@ function renderTimeline(){const ev=document.querySelector('#events');ev.innerHTM
 function renderLogical(){document.querySelector('#logical').innerHTML=nodes.map(n=>'<div class="logic-item" data-id="'+n.id+'"><strong>'+esc(n.name)+'</strong><small>'+esc(n.desc||'')+'　·　XYZ ('+[n.x,n.y,n.z].map(v=>Number(v).toFixed(1)).join(', ')+')</small></div>').join('');document.querySelectorAll('.logic-item').forEach(el=>el.onclick=()=>{const n=nodes.find(x=>x.id===el.dataset.id);select(n);logical=false;toggleView();});}
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function select(n){selected=n;build();showPanels(n);const obj=nodeMeshes.get(n.id);if(obj){const p=obj.position.clone();controls.target.copy(p);}}
-function showPanels(n){const root=document.querySelector('#panels');root.innerHTML='';if(!n)return;const entries=[['前瞻',n.before,'PREREQUISITES'],['顾后',n.after,'CONSEQUENCES'],['左顾',n.left,'LATERAL LINKS'],['右盼',n.right,'COUNTERPOINTS']];const positions=[['calc(50% - 255px)','calc(50% - 170px)'],['calc(50% + 25px)','calc(50% - 170px)'],['calc(50% - 255px)','calc(50% + 25px)'],['calc(50% + 25px)','calc(50% + 25px)']];entries.forEach((a,i)=>{const d=document.createElement('div');d.className='panel';d.style.left=positions[i][0];d.style.top=positions[i][1];d.innerHTML='<h3>'+a[0]+'　/　'+a[2]+'</h3><p>'+esc(a[1]||'尚未填写，可通过编辑节点补充。')+'</p><div class="tag">'+esc(n.name)+'</div>';root.append(d);});const title=document.createElement('div');title.className='panel';title.style.left='50%';title.style.top='calc(50% - 28px)';title.style.transform='translate(-50%,-50%)';title.style.width='auto';title.style.textAlign='center';title.innerHTML='<h3 style="margin:0;color:#fff">'+esc(n.name)+'</h3>';root.append(title);}
+function showPanels(n){
+ const root=document.querySelector('#panels');root.innerHTML='';if(!n)return;
+ const entries=[
+  {title:'前瞻',tag:'PREREQUISITES',body:n.before,dir:'up'},
+  {title:'顾后',tag:'CONSEQUENCES',body:n.after,dir:'down'},
+  {title:'左顾',tag:'LATERAL LINKS',body:n.left,dir:'left'},
+  {title:'右盼',tag:'COUNTERPOINTS',body:n.right,dir:'right'}
+ ];
+ entries.forEach(a=>{
+  const d=document.createElement('div');d.className='panel dir-'+a.dir;
+  d.innerHTML='<h3>'+a.title+'　/　'+a.tag+'</h3><p>'+esc(a.body||'尚未填写，可通过编辑节点补充。')+'</p><div class="tag">'+esc(n.name)+'</div>';
+  root.append(d);
+ });
+ const title=document.createElement('div');title.className='panel center-node';
+ title.innerHTML='<h3 style="margin:0;color:#fff">'+esc(n.name)+'</h3>';root.append(title);
+}
 function toggleView(){logical=!logical;document.querySelector('#logical').style.display=logical?'block':'none';document.querySelector('#scene').style.opacity=logical?'.18':'1';document.querySelector('#viewBtn').textContent=logical?'返回 3D 宇宙':'逻辑视图';}
 renderer.domElement.addEventListener('pointerdown',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(mouse,camera);const hits=ray.intersectObjects(group.children,true);if(hits.length){let o=hits[0].object;while(o&&!o.userData.node)o=o.parent;if(o?.userData.node)select(o.userData.node);}});
 function toast(t){const el=document.querySelector('#toast');el.textContent=t;el.style.opacity=1;setTimeout(()=>el.style.opacity=0,1900);}
