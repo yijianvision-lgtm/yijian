@@ -476,9 +476,12 @@ async function nebulaRefPut(v){const d=await nebulaDB();return new Promise((reso
 window.nebulaRenderReferences=async()=>{
  const box=document.getElementById('referenceList');if(!box)return;
  try{
-  const items=window.NEBULA_LOCAL?await window.NEBULA_LOCAL.listReferences():await nebulaRefAll();
-  box.textContent=items.length?items.map((x,i)=>(i+1)+'. '+x.name+'｜'+(x.extension||x.type||'FILE').toUpperCase()+'｜'+new Date(x.savedAt).toLocaleString()+'｜'+(x.text?'已提取文字':'原文件已保存')+'\\n'+(x.text||'').slice(0,1200)+(x.warnings?.length?'\\n提示：'+x.warnings.join('；'):'')).join('\\n\\n'):'尚未保存参考资料。';
- }catch(e){box.textContent='读取本地资料失败：'+e.message;}
+  const lectures=window.NEBULA_LOCAL?await window.NEBULA_LOCAL.listReferences():await nebulaRefAll();
+  const conversations=window.NEBULA_LOCAL?await window.NEBULA_LOCAL.listConversations():[];
+  const a=lectures.length?lectures.map((x,i)=>(i+1)+'. '+x.name+'｜'+(x.extension||x.type||'FILE').toUpperCase()+'｜'+new Date(x.savedAt).toLocaleString()+'｜'+(x.text?'已提取文字':'原文件已保存')+'\n'+(x.text||'').slice(0,800)+(x.warnings?.length?'\n提示：'+x.warnings.join('；'):'')).join('\n\n'):'（暂无原始讲义）';
+  const b=conversations.length?conversations.map((x,i)=>(i+1)+'. '+x.title+'｜'+new Date(x.savedAt).toLocaleString()+'｜'+(x.analysis?'已完成 AI 分析':'已导入，待分析')+'\n'+(x.transcript||'').slice(0,800)).join('\n\n'):'（暂无 AI 对话）';
+  box.textContent='【原始讲义库】\n'+a+'\n\n【AI 已学习对话库】\n'+b;
+ }catch(e){box.textContent='读取本地资料库失败：'+e.message;}
 };
 const librarySelect=document.getElementById('referenceLibrary');
 const libraryInput=document.getElementById('referenceUpload');
@@ -487,16 +490,21 @@ librarySelect?.addEventListener('change',()=>{
  document.getElementById('referenceUploadLabel').textContent=ai?'导入 AI 对话档案':'导入原始讲义';
  libraryInput.accept=ai?'.json,.txt,.md,.markdown,application/json,text/plain,text/markdown':'.pdf,.docx,.doc,.emmx,.xmind,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 });
-document.getElementById('referenceUpload')?.addEventListener('change',async e=>{
- const files=[...(e.target.files||[])],status=document.getElementById('referenceStatus');
- if(window.NEBULA_LOCAL){
-  let saved=0;const errors=[];
-  for(const f of files){try{const item=await window.NEBULA_LOCAL.saveReference(f);saved++;if(item.warnings?.length)errors.push(f.name+'：'+item.warnings.join('；'));}
-   catch(err){errors.push(f.name+'：'+err.message);}}
-  status.textContent='本地保存完成：'+saved+' 个文件。原件和提取内容保存在此浏览器。'+(errors.length?'\\n'+errors.join('\\n'):'');
-  e.target.value='';await window.nebulaRenderReferences();return;
- }
- status.textContent='本地知识模块正在加载，请稍后重试。';e.target.value='';
+libraryInput?.addEventListener('change',async e=>{
+ const files=[...(e.target.files||[])],status=document.getElementById('referenceStatus'),target=librarySelect?.value||'lecture';
+ if(!window.NEBULA_LOCAL){status.textContent='本地知识模块正在加载，请稍后重试。';e.target.value='';return;}
+ let saved=0;const errors=[];
+ for(const f of files){try{
+  if(target==='ai'){
+   const transcript=await f.text();if(!transcript.trim())throw new Error('文件没有可读取的对话文字');
+   await window.NEBULA_LOCAL.saveConversation({title:f.name,transcript,source:'conversation-file',fileName:f.name,blob:f});
+  }else{
+   const item=await window.NEBULA_LOCAL.saveReference(f);if(item.warnings?.length)errors.push(f.name+'：'+item.warnings.join('；'));
+  }
+  saved++;
+ }catch(err){errors.push(f.name+'：'+err.message);}}
+ status.textContent=(target==='ai'?'AI 对话库':'原始讲义库')+'保存完成：'+saved+' 个文件。内容保存在此浏览器。'+(errors.length?'\n'+errors.join('\n'):'');
+ e.target.value='';await window.nebulaRenderReferences();
 });
 window.nebulaChooseLectureFolder=async()=>{
  try{const name=await window.NEBULA_LOCAL.chooseFolder();document.getElementById('referenceStatus').textContent='已授权讲义文件夹：'+name+'。可在文件夹授权后扫描支持格式。';}
