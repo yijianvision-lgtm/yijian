@@ -1,0 +1,26 @@
+name: NEBULA backend validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api-worker.js"
+      - "migrations/**"
+      - "wrangler.toml"
+      - ".github/workflows/worker-check.yml"
+  pull_request:
+    paths:
+      - "api-worker.js"
+      - "migrations/**"
+      - "wrangler.toml"
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check Worker JavaScript syntax
+        run: node --check api-worker.js
+      - name: Check migration file exists
+        run: test -s migrations/0001_private_data.sql
