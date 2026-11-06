@@ -1,0 +1,11 @@
+name = "nebula-deepseek-bridge"
+main = "deepseek-worker.js"
+compatibility_date = "2026-11-06"
+workers_dev = true
+
+[vars]
+DEEPSEEK_MODEL = "deepseek-v4-pro"
+
+# Secrets are configured separately and are never committed:
+# npx wrangler secret put DEEPSEEK_API_KEY
+# npx wrangler secret put NEBULA_SYNC_TOKEN
