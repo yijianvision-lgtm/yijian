@@ -366,10 +366,10 @@ const dsEl=id=>document.getElementById(id);
 
 /* Batch import DeepSeek public share URLs through the secured Worker. */
 dsEl('fetchDeepSeekShares').onclick=async()=>{
- const base=dsEl('deepseekWorkerUrl').value.trim().replace(/\\/$/,'').replace(/\\/(analyze|share)$/,'');
+  let base=dsEl('deepseekWorkerUrl').value.trim(); while(base.endsWith('/')) base=base.slice(0,-1); for(const suffix of ['/analyze','/share']) if(base.endsWith(suffix)) base=base.slice(0,-suffix.length);
  const token=dsEl('deepseekSyncToken').value.trim();
- const urls=dsEl('deepseekShareUrls').value.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
- if(!/^https:\\/\\//i.test(base))return toast('请填写已部署的 Worker 根地址');
+  const urls=dsEl('deepseekShareUrls').value.split(String.fromCharCode(10)).map(x=>x.trim()).filter(Boolean);
+  if(!base.startsWith('https://'))return toast('请填写已部署的 HTTPS Worker 根地址');
  if(!token)return toast('请填写 NEBULA_SYNC_TOKEN');
  if(!urls.length)return toast('请先粘贴至少一条 DeepSeek 分享链接');
  localStorage.setItem('nebula_deepseek_worker_url',base);
@@ -401,7 +401,7 @@ dsEl('syncDeepSeekBtn').onclick=()=>{dsEl('deepseekSync').style.display='flex';d
 dsEl('closeDeepSeekSync').onclick=()=>{dsEl('deepseekSync').style.display='none';};
 dsEl('analyzeDeepSeekArchive').onclick=async()=>{
  const endpoint=dsEl('deepseekWorkerUrl').value.trim();
- if(!/^https:\/\//i.test(endpoint))return toast('请先部署 Worker，并填写 HTTPS /analyze 地址');
+ if(!endpoint.startsWith('https://'))return toast('请先部署 Worker，并填写 HTTPS /analyze 地址');
  let text=dsEl('deepseekArchiveText').value.trim();
  const file=dsEl('deepseekArchiveFile').files?.[0];
  if(file){
