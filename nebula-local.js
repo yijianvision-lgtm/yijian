@@ -762,14 +762,31 @@ NEBULA_LOCAL.saveConversation = async function(record) {
   const transcript=String(record?.transcript||record?.text||"");
   const contentHash=await sha256Hex(transcript);
   const previous=(await this.listConversations()).find(x=>x.contentHash===contentHash);
-  if(previous && !record?.id) return {...previous,duplicate:true};
+  if(previous && !record?.id) {
+    const sourceId="src_"+previous.id;
+    const batches=await this.listExtractionBatches(sourceId);
+    if(!batches.length) {
+      const source=await this.getSource(sourceId);
+      if(source) {
+        const pipeline=await this.createExtractionFromParsedSource({sourceId,referenceId:previous.id,name:previous.title||"AI 对话",text:previous.transcript||"",warnings:[]});
+        return {...previous,duplicate:true,extractionBatchId:pipeline.id,extractionItemCount:pipeline.items.length,filterCaseId:pipeline.filterCase?.id||null,extractionStatus:pipeline.status};
+      }
+    }
+    return {...previous,duplicate:true};
+  }
   const item=await originalSaveConversation(record);
   const stored=await this.getConversation(item.id);
   stored.contentHash=contentHash;
   await request("aiConversations","readwrite",s=>s.put(stored));
   item.contentHash=contentHash;
-  await this.saveSource({id:"src_"+item.id,sourceType:"ai_conversation",title:item.title,referenceId:item.id,fileName:item.fileName||"",origin:item.source||"manual-import",contentHash,createdAt:item.savedAt||Date.now()});
-  return item;
+  const sourceId="src_"+item.id;
+  await this.saveSource({id:sourceId,sourceType:"ai_conversation",title:item.title,referenceId:item.id,fileName:item.fileName||"",origin:item.source||"manual-import",contentHash,createdAt:item.savedAt||Date.now()});
+  try {
+    const pipeline=await this.createExtractionFromParsedSource({sourceId,referenceId:item.id,name:item.title||"AI 对话",text:transcript,warnings:[]});
+    return {...item,extractionBatchId:pipeline.id,extractionItemCount:pipeline.items.length,filterCaseId:pipeline.filterCase?.id||null,extractionStatus:pipeline.status};
+  } catch(error) {
+    return {...item,extractionStatus:"failed",extractionError:error.message};
+  }
 };
 Object.assign(NEBULA_LOCAL,{
   async saveKnowledgeRelation(record) {
@@ -1662,16 +1679,16 @@ Object.assign(NEBULA_LOCAL,{
   async resolveExtractionEvidence(itemId) {
     const item=await this.getExtractionItem(itemId);
     if(!item) throw new Error("找不到提取候选。");
-    const [source,reference,batch]=await Promise.all([
-      item.sourceId?this.getSource(item.sourceId):null,
-      item.referenceId?this.getReference(item.referenceId):null,
+    const source=item.sourceId?await this.getSource(item.sourceId):null;
+    const [reference,batch]=await Promise.all([
+      item.referenceId?(source?.sourceType==="ai_conversation"?this.getConversation(item.referenceId):this.getReference(item.referenceId)):null,
       item.batchId?this.getExtractionBatch(item.batchId):null
     ]);
     const locator=item.locator||{};
     const locatedText=resolveMindLocatorText(reference,locator)||item.excerpt||item.content||"";
     const cases=await this.listFilterCases();
     const decisions=(await Promise.all(cases.filter(x=>x.batchId===item.batchId).map(x=>this.listFilterDecisions(x.id)))).flat();
-    return {item,source,reference:reference?{id:reference.id,name:reference.name,extension:reference.extension,mime:reference.mime}:null,
+    return {item,source,reference:reference?{id:reference.id,name:reference.name||reference.title,extension:reference.extension,mime:reference.mime}:null,
       batch,locator,locatedText,decisions:decisions.filter(d=>d.before?.itemId===itemId||d.evidenceIds?.includes(item.sourceId))};
   },
   async resolveNodeEvidence(nodeId) {
