@@ -1079,6 +1079,12 @@ function addStarLayer(count,width,height,depth,size,opacity,color,seed){const ra
 const starLayers=[addStarLayer(210,112,72,92,.018,.075,0x879db1,22),addStarLayer(132,78,50,62,.026,.105,0xa8bac9,41),addStarLayer(58,42,28,34,.038,.13,0xc6d6e1,73)];
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;let focusActive=false;let focusGoal=null;const focusRotationGoal=new THREE.Euler(0,0,0,'XYZ');let focusRollGoal=0;let focusHistory=[];let focusCursor=-1;const continuationDescriptions={};const continuationMeta={};let idToIndex=new Map();let isDemoUniverse=true;const focusDefinition=i=>continuationDescriptions[i]||(localGraphNodes[i]?.desc||localGraphNodes[i]?.coreWord|| (isDemoUniverse?'此处为视觉与交互示例，不是已确认的正式知识。':nodes[i]?.[0]+' 尚未补充定义。'));const directionNames={forward:'瞻前',backward:'顾后',left:'向内',right:'向外'};let directionalMap={};let activeExplorationPathId=null;let activeExplorationStepId=null;async function recordFormalExploration(targetIndex,direction){
  const from=localGraphNodes[selected],to=localGraphNodes[targetIndex];if(!from||!to)return;
+ if(activeExplorationPathId){
+  const snapshot=await NEBULA_LOCAL.getExplorationPathSnapshot(activeExplorationPathId);
+  const currentStep=snapshot.steps.find(step=>String(step.id)===String(activeExplorationStepId));
+  const pathFocus=currentStep?.toNodeId||snapshot.path.rootNodeId;
+  if(String(pathFocus)!==String(from.id)){activeExplorationPathId=null;activeExplorationStepId=null;}
+ }
  if(!activeExplorationPathId){const path=await NEBULA_LOCAL.createExplorationPath({title:(from.name||from.coreWord||'知识探索')+' · 探索路径',frameworkId:localFramework?.id||null,rootNodeId:from.id});activeExplorationPathId=path.id;activeExplorationStepId=null;}
  const directionName={forward:'瞻前',backward:'顾后',left:'向内',right:'向外'}[direction];
  const relation=localGraphRelations.find(r=>r.status==='confirmed'&&((String(r.sourceNodeId)===String(from.id)&&String(r.targetNodeId)===String(to.id))||(String(r.sourceNodeId)===String(to.id)&&String(r.targetNodeId)===String(from.id)))&&((directionalMap[selected]?.[direction]||[]).includes(targetIndex)));
