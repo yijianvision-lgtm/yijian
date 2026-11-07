@@ -1249,7 +1249,7 @@ function sourceCategory(ref){
  const ext=String(ref.extension||"").toLowerCase();
  if(["emmx","xmind"].includes(ext))return "mindmap";
  if(["png","jpg","jpeg","webp"].includes(ext))return "image";
- if(["pdf","doc","docx"].includes(ext))return "document";
+ if(["pdf","doc","docx"].includes(ext))return /论文|paper|journal/i.test(ref.name||"")?"paper":"document";
  return "all";
 }
 async function refreshSourceLibrary(){
@@ -1321,8 +1321,8 @@ document.addEventListener("change",async event=>{
  }
  status.textContent="本机处理完成：成功 "+saved+" 个，异常 "+failed.length+" 个。原始文件保留在本地；提取候选进入知识过滤队列。"+(failed.length?"\n"+failed.join("\n"):"");
  sourceInput.value="";
- await refreshSourceLibrary();
  const refs=await NEBULA_LOCAL.listReferences();activeSourceId=refs[0]?.id||null;
+ await refreshSourceLibrary();
  if(activeSourceId){const selected=refs[0];$("sourceImportState").textContent="已选中："+selected.name+" · 原件保存在本地 IndexedDB。";["sourceInspect","sourcePreviewBtn","sourceReviewBtn"].forEach(id=>$(id).disabled=false);}
  await refreshFilterWorkbench();
 },true);
