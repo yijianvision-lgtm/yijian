@@ -99,3 +99,6 @@ assert.ok(preview.includes('activeSourceCategory=row.dataset.sourceKind||"all"')
 assert.ok(preview.includes("const domainNeighbor=null"), "A shared domain tag must not fabricate a direct spatial relationship.");
 assert.ok(preview.includes("领域标签："), "Domain context may be shown without pretending it is a confirmed spatial link.");
 assert.ok(!preview.includes("备份范围确认（演示）"), "The active backup flow must not retain misleading demo-only handlers.");
+
+assert.ok(local.includes("normalizeConversationExport"), "DeepSeek export normalization must live in the tested local data layer.");
+assert.ok(preview.includes("NEBULA_LOCAL.normalizeConversationExport(raw,ext)"), "The file intake UI must use the tested DeepSeek normalizer.");
