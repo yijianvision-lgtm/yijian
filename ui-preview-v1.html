@@ -933,7 +933,7 @@ const positions=nodes.map(n=>new THREE.Vector3(n[1],n[2],n[3]));const spheres=[]
 nodes.forEach((n,i)=>{const g=new THREE.IcosahedronGeometry(n[4]*.70,1);const m=new THREE.MeshStandardMaterial({color:i===0?0xd5dde2:0x9aa8b1,roughness:.44,metalness:.2,emissive:i===0?0x626d75:0x303a42,emissiveIntensity:i===0?.19:.12});const s=new THREE.Mesh(g,m);s.position.copy(positions[i]);s.userData.index=i;core.add(s);spheres.push(s);const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(n[4]*.94,1),new THREE.MeshBasicMaterial({color:0xe0e9ef,transparent:true,opacity:.032,side:THREE.BackSide}));s.add(halo)});
 const lineMat=new THREE.LineBasicMaterial({color:0x83919a,transparent:true,opacity:.19});const edges=[[0,1],[0,2],[0,3],[0,4],[0,7],[1,5],[1,8],[2,6],[2,11],[3,10],[3,9],[4,9],[7,8],[7,11],[2,7],[1,3],[4,11]];edges.forEach(([a,b])=>{const geo=new THREE.BufferGeometry().setFromPoints([positions[a],positions[b]]);core.add(new THREE.Line(geo,lineMat))});
 const starGeo=new THREE.BufferGeometry();const starPts=[];for(let i=0;i<36;i++){starPts.push((Math.random()-.5)*65,(Math.random()-.5)*42,(Math.random()-.5)*48)}starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starPts,3));const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xaebbc4,size:.028,transparent:true,opacity:.11}));scene.add(stars);
-const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;let focusActive=false;let focusGoal=null;const focusRotationGoal=new THREE.Euler(0,0,0,'XYZ');let focusRollGoal=0;let focusHistory=[];let focusCursor=-1;const continuationDescriptions={};const continuationMeta={};const focusDefinition=i=>continuationDescriptions[i]||(i===0?'理解复杂系统中结构、反馈与演化之间的关系。':nodes[i][0]+' 是知识宇宙中的一个关联概念，可从其定义、机制、证据、应用与边界继续展开。');const directionNames={forward:'前置与来源',backward:'后续与影响',left:'横向与类比',right:'反向与边界'};const directionalMap={0:{forward:5,backward:7,left:18,right:9},1:{forward:0,backward:17,left:3,right:6},2:{forward:0,backward:7,left:11,right:14},3:{forward:0,backward:4,left:10,right:19},4:{forward:3,backward:7,left:9,right:22},5:{forward:0,backward:1,left:18,right:21},6:{forward:2,backward:13,left:14,right:15},7:{forward:0,backward:13,left:8,right:16},8:{forward:7,backward:13,left:18,right:12},9:{forward:3,backward:19,left:4,right:14},10:{forward:3,backward:23,left:1,right:19},11:{forward:2,backward:4,left:0,right:15},12:{forward:8,backward:18,left:5,right:21},13:{forward:7,backward:19,left:6,right:22},14:{forward:6,backward:19,left:2,right:21},15:{forward:2,backward:17,left:11,right:6},16:{forward:7,backward:20,left:8,right:19},17:{forward:1,backward:20,left:15,right:23},18:{forward:5,backward:12,left:8,right:0},19:{forward:9,backward:20,left:14,right:4},20:{forward:19,backward:7,left:16,right:17},21:{forward:5,backward:22,left:12,right:14},22:{forward:7,backward:13,left:4,right:16},23:{forward:10,backward:17,left:1,right:3}};function updateFocusTrail(){const box=document.getElementById('continuumTrail');box.innerHTML='';focusHistory.forEach((idx,k)=>{if(k){const sep=document.createElement('span');sep.textContent='›';box.appendChild(sep)}const b=document.createElement('button');b.textContent=nodes[idx][0];b.classList.toggle('current',k===focusCursor);b.onclick=()=>{focusCursor=k;selectNode(idx,false)};box.appendChild(b)});document.getElementById('continuumTrailCount').textContent=(focusCursor+1)+' / '+focusHistory.length+' 个位置';document.getElementById('continuumBack').disabled=focusCursor<=0;document.getElementById('continuumForward').disabled=focusCursor>=focusHistory.length-1;document.getElementById('continuumPath').textContent='知识宇宙 / '+focusHistory.slice(0,focusCursor+1).map(i=>nodes[i][0]).join(' / ')}function renderContinuum(){const i=selected,links=directionalMap[i]||{},descriptions={forward:'追溯前置概念、来源与形成条件',backward:'沿发展脉络查看后续结果与影响',left:'进入横向联系、类比与跨学科概念',right:'进入反向观点、反例与适用边界'};['forward','backward','left','right'].forEach(d=>{const target=links[d],valid=Number.isInteger(target)&&!!nodes[target],key='cq'+d[0].toUpperCase()+d.slice(1);document.getElementById(key+'Title').textContent=valid?nodes[target][0]:'继续延伸此方向';document.getElementById(key+'Desc').textContent=valid?descriptions[d]+' · '+nodes[target][0]:descriptions[d]+' · 尚未建立节点，点击后创建待研究草稿'});document.getElementById('continuumCoreTitle').textContent=nodes[i][0];document.getElementById('continuumCoreDefinition').textContent=focusDefinition(i);document.getElementById('continuumCoreDepth').textContent='NODE '+String(i+1).padStart(2,'0');document.getElementById('selectedName').textContent=nodes[i][0];document.getElementById('selectedDesc').textContent=focusDefinition(i);document.getElementById('detailTitle').textContent=nodes[i][0];document.getElementById('detailDefinition').textContent=focusDefinition(i);const meta=continuationMeta[i];document.getElementById('detailPath').textContent=meta?'系统思维 / '+meta.parentTitle+' / '+nodes[i][0]:'系统思维 / '+nodes[i][0];const status=document.getElementById('detailStatusMeta');if(status){status.innerHTML='';(meta?['连续探索草稿 · 待审核','来源：尚未关联','版本：v'+meta.version]:['正式知识 · 演示','认知状态：已确认','掌握程度：待评估']).forEach(label=>{const tag=document.createElement('span');tag.className='status';tag.textContent=label;status.appendChild(tag)})}document.getElementById('selectedRelationCount').textContent='空间关联 '+edges.filter(e=>e.includes(i)).length+' 项';renderTrailOnly();}function renderTrailOnly(){updateFocusTrail()}function createContinuationNode(direction){const base=nodes[selected][0],labels={forward:'前置延伸',backward:'后续延伸',left:'横向延伸',right:'反向延伸'},offsets={forward:new THREE.Vector3(0,3.2,-3.4),backward:new THREE.Vector3(0,-3.2,3.4),left:new THREE.Vector3(-3.8,0,0),right:new THREE.Vector3(3.8,0,0)},relation={forward:'前置关系',backward:'后续影响',left:'横向关联',right:'反向检验'};const count=nodes.filter(n=>n[0].startsWith(labels[direction])).length+1;const title=labels[direction]+' '+String(count).padStart(2,'0')+' · '+base;const pos=positions[selected].clone().add(offsets[direction]);const parentIndex=selected,idx=nodes.length;nodes.push([title,pos.x,pos.y,pos.z,.105]);positions.push(pos);continuationDescriptions[idx]='这是从「'+base+'」沿'+({forward:'前置与来源',backward:'后续与影响',left:'横向联系',right:'反向与边界'}[direction])+'方向继续展开的延伸位置。它目前是待研究草稿，不代表已验证知识；正式内容需补充定义、来源证据并经过审核。';continuationMeta[idx]={parent:parentIndex,parentTitle:base,direction,relationType:relation[direction],reviewStatus:'待审核',sourceStatus:'未关联来源',version:1};const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(.105,1),new THREE.MeshStandardMaterial({color:0xb2bec6,roughness:.44,metalness:.2,emissive:0x39434a,emissiveIntensity:.13,transparent:true,opacity:.25}));mesh.position.copy(pos);mesh.userData.index=idx;core.add(mesh);spheres.push(mesh);edges.push([selected,idx]);core.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([positions[selected],pos]),new THREE.LineBasicMaterial({color:0x83919a,transparent:true,opacity:.19})));directionalMap[idx]={forward:null,backward:null,left:null,right:null};const parent=logicData[base]||(logicData[base]={desc:'由连续探索建立的逻辑分支。',children:[]});if(!parent.children.some(child=>child[0]===title))parent.children.push([title,continuationDescriptions[idx]]);logicData[title]={desc:continuationDescriptions[idx],children:[['核心定义待补充','待研究草稿，尚未填写'],['来源证据待补充','尚未关联原始资料'],['应用场景待补充','等待验证与案例'],['反例边界待补充','等待反向检验']]};return idx}function selectNode(i,append=true){selected=i;focusActive=true;document.body.classList.add("focus-active");window.__guanfuSelectedNodeId=localGraphNodes[i]?.id||null;if(localGraphNodes[i])NEBULA_LOCAL.getMindContext(localGraphNodes[i].id,{focusMode:'focus'}).then(ctx=>{const path=document.getElementById('continuumPath');if(path)path.textContent=ctx.ancestorPath.map(x=>x.name).join(' / ');const depth=document.getElementById('continuumCoreDepth');if(depth)depth.textContent='LEVEL '+String(ctx.currentLevel).padStart(2,'0');const detailPath=document.getElementById('detailPath');if(detailPath)detailPath.textContent=ctx.ancestorPath.map(x=>x.name).join(' / ');}).catch(()=>{});controls.autoRotate=false;focusGoal=positions[i].clone();focusRotationGoal.set(-Math.atan2(positions[i].y,Math.hypot(positions[i].x,positions[i].z))*.34,Math.atan2(positions[i].x,positions[i].z)*.48,-Math.atan2(positions[i].x,Math.max(.001,positions[i].y))*.12);focusRollGoal=Math.max(-.16,Math.min(.16,positions[i].x*.012));if(append){focusHistory=focusHistory.slice(0,focusCursor+1);if(focusHistory[focusHistory.length-1]!==i)focusHistory.push(i);focusCursor=focusHistory.length-1;}spheres.forEach((s,j)=>{s.userData.targetOpacity=j===i?1:.16;s.userData.targetScale=j===i?1.58:1;s.userData.targetGlow=j===i?.24:.018;s.material.transparent=true});const panel=document.getElementById('continuumFocus');panel.classList.add('open');panel.classList.remove('arriving');void panel.offsetWidth;panel.classList.add('arriving');renderContinuum();drawMini()}function navigateContinuum(direction){const links=directionalMap[selected]||{};let target=links[direction];if(target===null||target===undefined||focusHistory.slice(0,focusCursor+1).includes(target))target=createContinuationNode(direction);selectNode(target,true)}document.querySelectorAll('[data-continuum]').forEach(b=>b.addEventListener('click',()=>navigateContinuum(b.dataset.continuum)));document.getElementById('continuumBack').onclick=()=>{if(focusCursor>0){focusCursor--;selectNode(focusHistory[focusCursor],false)}};document.getElementById('continuumForward').onclick=()=>{if(focusCursor<focusHistory.length-1){focusCursor++;selectNode(focusHistory[focusCursor],false)}};document.getElementById('continuumExit').onclick=()=>{focusActive=false;document.body.classList.remove('focus-active');document.getElementById('continuumFocus').classList.remove('open');controls.autoRotate=true;focusGoal=null;focusRotationGoal.set(0,0,0);focusRollGoal=0;core.rotation.set(0,0,0);camera.up.set(0,1,0);focusHistory=[];focusCursor=-1;spheres.forEach(s=>{s.userData.targetOpacity=1;s.userData.targetGlow=.1;s.userData.targetScale=1});controls.target.set(0,0,0);camera.position.set(0,1.8,18);controls.update();drawMini()};document.getElementById('continuumOpenDetail').onclick=async()=>{
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;let focusActive=false;let focusGoal=null;const focusRotationGoal=new THREE.Euler(0,0,0,'XYZ');let focusRollGoal=0;let focusHistory=[];let focusCursor=-1;const continuationDescriptions={};const continuationMeta={};const focusDefinition=i=>continuationDescriptions[i]||(i===0?'理解复杂系统中结构、反馈与演化之间的关系。':nodes[i][0]+' 是知识宇宙中的一个关联概念，可从其定义、机制、证据、应用与边界继续展开。');const directionNames={forward:'前置与来源',backward:'后续与影响',left:'横向与类比',right:'反向与边界'};const directionalMap={0:{forward:5,backward:7,left:18,right:9},1:{forward:0,backward:17,left:3,right:6},2:{forward:0,backward:7,left:11,right:14},3:{forward:0,backward:4,left:10,right:19},4:{forward:3,backward:7,left:9,right:22},5:{forward:0,backward:1,left:18,right:21},6:{forward:2,backward:13,left:14,right:15},7:{forward:0,backward:13,left:8,right:16},8:{forward:7,backward:13,left:18,right:12},9:{forward:3,backward:19,left:4,right:14},10:{forward:3,backward:23,left:1,right:19},11:{forward:2,backward:4,left:0,right:15},12:{forward:8,backward:18,left:5,right:21},13:{forward:7,backward:19,left:6,right:22},14:{forward:6,backward:19,left:2,right:21},15:{forward:2,backward:17,left:11,right:6},16:{forward:7,backward:20,left:8,right:19},17:{forward:1,backward:20,left:15,right:23},18:{forward:5,backward:12,left:8,right:0},19:{forward:9,backward:20,left:14,right:4},20:{forward:19,backward:7,left:16,right:17},21:{forward:5,backward:22,left:12,right:14},22:{forward:7,backward:13,left:4,right:16},23:{forward:10,backward:17,left:1,right:3}};function updateFocusTrail(){const box=document.getElementById('continuumTrail');box.innerHTML='';focusHistory.forEach((idx,k)=>{if(k){const sep=document.createElement('span');sep.textContent='›';box.appendChild(sep)}const b=document.createElement('button');b.textContent=nodes[idx][0];b.classList.toggle('current',k===focusCursor);b.onclick=()=>{focusCursor=k;selectNode(idx,false)};box.appendChild(b)});document.getElementById('continuumTrailCount').textContent=(focusCursor+1)+' / '+focusHistory.length+' 个位置';document.getElementById('continuumBack').disabled=focusCursor<=0;document.getElementById('continuumForward').disabled=focusCursor>=focusHistory.length-1;document.getElementById('continuumPath').textContent='知识宇宙 / '+focusHistory.slice(0,focusCursor+1).map(i=>nodes[i][0]).join(' / ')}function renderContinuum(){const i=selected,links=directionalMap[i]||{},descriptions={forward:'追溯前置概念、来源与形成条件',backward:'沿发展脉络查看后续结果与影响',left:'进入横向联系、类比与跨学科概念',right:'进入反向观点、反例与适用边界'};['forward','backward','left','right'].forEach(d=>{const target=links[d],valid=Number.isInteger(target)&&!!nodes[target],key='cq'+d[0].toUpperCase()+d.slice(1);document.getElementById(key+'Title').textContent=valid?nodes[target][0]:'继续延伸此方向';document.getElementById(key+'Desc').textContent=valid?descriptions[d]+' · '+nodes[target][0]:descriptions[d]+' · 尚未建立节点，点击后创建待研究草稿'});document.getElementById('continuumCoreTitle').textContent=nodes[i][0];document.getElementById('continuumCoreDefinition').textContent=focusDefinition(i);document.getElementById('continuumCoreDepth').textContent='NODE '+String(i+1).padStart(2,'0');document.getElementById('selectedName').textContent=nodes[i][0];document.getElementById('selectedDesc').textContent=focusDefinition(i);document.getElementById('detailTitle').textContent=nodes[i][0];document.getElementById('detailDefinition').textContent=focusDefinition(i);const meta=continuationMeta[i];document.getElementById('detailPath').textContent=meta?'系统思维 / '+meta.parentTitle+' / '+nodes[i][0]:'系统思维 / '+nodes[i][0];const status=document.getElementById('detailStatusMeta');if(status){status.innerHTML='';(meta?['连续探索草稿 · 待审核','来源：尚未关联','版本：v'+meta.version]:['正式知识 · 演示','认知状态：已确认','掌握程度：待评估']).forEach(label=>{const tag=document.createElement('span');tag.className='status';tag.textContent=label;status.appendChild(tag)})}document.getElementById('selectedRelationCount').textContent='空间关联 '+edges.filter(e=>e.includes(i)).length+' 项';renderTrailOnly();}function renderTrailOnly(){updateFocusTrail()}function createContinuationNode(direction){const base=nodes[selected][0],labels={forward:'前置延伸',backward:'后续延伸',left:'横向延伸',right:'反向延伸'},offsets={forward:new THREE.Vector3(0,3.2,-3.4),backward:new THREE.Vector3(0,-3.2,3.4),left:new THREE.Vector3(-3.8,0,0),right:new THREE.Vector3(3.8,0,0)},relation={forward:'前置关系',backward:'后续影响',left:'横向关联',right:'反向检验'};const count=nodes.filter(n=>n[0].startsWith(labels[direction])).length+1;const title=labels[direction]+' '+String(count).padStart(2,'0')+' · '+base;const pos=positions[selected].clone().add(offsets[direction]);const parentIndex=selected,idx=nodes.length;nodes.push([title,pos.x,pos.y,pos.z,.105]);positions.push(pos);continuationDescriptions[idx]='这是从「'+base+'」沿'+({forward:'前置与来源',backward:'后续与影响',left:'横向联系',right:'反向与边界'}[direction])+'方向继续展开的延伸位置。它目前是待研究草稿，不代表已验证知识；正式内容需补充定义、来源证据并经过审核。';continuationMeta[idx]={parent:parentIndex,parentTitle:base,direction,relationType:relation[direction],reviewStatus:'待审核',sourceStatus:'未关联来源',version:1};const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(.105,1),new THREE.MeshStandardMaterial({color:0xb2bec6,roughness:.44,metalness:.2,emissive:0x39434a,emissiveIntensity:.13,transparent:true,opacity:.25}));mesh.position.copy(pos);mesh.userData.index=idx;core.add(mesh);spheres.push(mesh);edges.push([selected,idx]);core.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([positions[selected],pos]),new THREE.LineBasicMaterial({color:0x83919a,transparent:true,opacity:.19})));directionalMap[idx]={forward:null,backward:null,left:null,right:null};const parent=logicData[base]||(logicData[base]={desc:'由连续探索建立的逻辑分支。',children:[]});if(!parent.children.some(child=>child[0]===title))parent.children.push([title,continuationDescriptions[idx]]);logicData[title]={desc:continuationDescriptions[idx],children:[['核心定义待补充','待研究草稿，尚未填写'],['来源证据待补充','尚未关联原始资料'],['应用场景待补充','等待验证与案例'],['反例边界待补充','等待反向检验']]};return idx}function selectNode(i,append=true){selected=i;focusActive=true;document.body.classList.add("focus-active");window.__guanfuSelectedNodeId=localGraphNodes[i]?.id||null;if(localGraphNodes[i])NEBULA_LOCAL.getMindContext(localGraphNodes[i].id,{focusMode:'focus'}).then(ctx=>{const path=document.getElementById('continuumPath');if(path)path.textContent=ctx.ancestorPath.map(x=>x.name).join(' / ');const depth=document.getElementById('continuumCoreDepth');if(depth)depth.textContent='LEVEL '+String(ctx.currentLevel).padStart(2,'0');const detailPath=document.getElementById('detailPath');if(detailPath)detailPath.textContent=ctx.ancestorPath.map(x=>x.name).join(' / ');}).catch(()=>{});controls.autoRotate=false;focusGoal=positions[i].clone();focusRotationGoal.set(-Math.atan2(positions[i].y,Math.hypot(positions[i].x,positions[i].z))*.34,Math.atan2(positions[i].x,positions[i].z)*.48,-Math.atan2(positions[i].x,Math.max(.001,positions[i].y))*.12);focusRollGoal=Math.max(-.16,Math.min(.16,positions[i].x*.012));if(append){focusHistory=focusHistory.slice(0,focusCursor+1);if(focusHistory[focusHistory.length-1]!==i)focusHistory.push(i);focusCursor=focusHistory.length-1;}spheres.forEach((s,j)=>{s.userData.targetOpacity=j===i?1:.16;s.userData.targetScale=j===i?1.58:1;s.userData.targetGlow=j===i?.24:.018;s.material.transparent=true});const panel=document.getElementById('continuumFocus');panel.classList.add('open');panel.classList.remove('arriving');void panel.offsetWidth;panel.classList.add('arriving');renderContinuum();renderLogic();drawMini()}function navigateContinuum(direction){const links=directionalMap[selected]||{};let target=links[direction];if((target===null||target===undefined||focusHistory.slice(0,focusCursor+1).includes(target))&&localGraphNodes.length){toast('当前方向尚无已确认的知识关系；请先在过滤审核中建立并确认关系。');return;}if(target===null||target===undefined||focusHistory.slice(0,focusCursor+1).includes(target))target=createContinuationNode(direction);selectNode(target,true)}document.querySelectorAll('[data-continuum]').forEach(b=>b.addEventListener('click',()=>navigateContinuum(b.dataset.continuum)));document.getElementById('continuumBack').onclick=()=>{if(focusCursor>0){focusCursor--;selectNode(focusHistory[focusCursor],false)}};document.getElementById('continuumForward').onclick=()=>{if(focusCursor<focusHistory.length-1){focusCursor++;selectNode(focusHistory[focusCursor],false)}};document.getElementById('continuumExit').onclick=()=>{focusActive=false;document.body.classList.remove('focus-active');document.getElementById('continuumFocus').classList.remove('open');controls.autoRotate=true;focusGoal=null;focusRotationGoal.set(0,0,0);focusRollGoal=0;core.rotation.set(0,0,0);camera.up.set(0,1,0);focusHistory=[];focusCursor=-1;spheres.forEach(s=>{s.userData.targetOpacity=1;s.userData.targetGlow=.1;s.userData.targetScale=1});controls.target.set(0,0,0);camera.position.set(0,1.8,18);controls.update();drawMini()};document.getElementById('continuumOpenDetail').onclick=async()=>{
  document.getElementById('nodeDetail').classList.add('open');
  const host=document.getElementById('nodeEvidenceList'),nodeId=window.__guanfuSelectedNodeId;
  host.replaceChildren();
@@ -987,91 +987,174 @@ function openLayer(name){const data=layerData[name]||{desc:'继续探索该概�
 function renderLayer(data){const name=layerStack[layerStack.length-1];document.getElementById('layerCrumb').textContent='知识宇宙 / '+layerStack.join(' / ');document.getElementById('layerTitle').textContent=name;document.getElementById('layerIntro').textContent=data.desc;document.getElementById('layerDepth').textContent='LEVEL '+String(layerStack.length).padStart(2,'0');document.getElementById('layerGrid').innerHTML='';data.children.forEach(([title,desc])=>{const b=document.createElement('button');b.className='layer-card';const strong=document.createElement('strong');strong.textContent=title;const small=document.createElement('small');small.textContent=desc;b.append(strong,small);b.onclick=()=>openLayer(title);document.getElementById('layerGrid').appendChild(b)});document.getElementById('layerBack').textContent=layerStack.length>1?'← 返回上一级':'关闭页面 ×';document.getElementById('layerPage').classList.add('open');}
 document.getElementById('layerBack').onclick=()=>{if(layerStack.length>1){layerStack.pop();const parent=layerStack[layerStack.length-1];renderLayer(layerData[parent]||{desc:'继续探索该概念的子主题。',children:[['核心定义','概念的边界与关键特征'],['形成机制','产生与运行的内在机制'],['相关理论','相邻理论与不同解释']]});}else{layerStack=[];document.getElementById('layerPage').classList.remove('open')}};
 
-const logicStack=['系统思维'];
-const logicData=layerData;
-function logicFallback(name){return {desc:'继续探索该概念的定义、组成、机制、证据与应用。',children:[['核心定义','概念边界与关键特征'],['形成机制','产生与运行的内在机制'],['关键组成','构成要素与相互作用'],['实际应用','案例、场景与迁移']]}};
-function renderLogic(){const name=logicStack[logicStack.length-1],data=logicData[name]||logicFallback(name);document.getElementById('logicPath').textContent='我的知识宇宙 / '+logicStack.join(' / ');document.getElementById('logicCurrent').textContent=name;document.getElementById('logicCaption').textContent=data.desc;document.getElementById('logicDepth').textContent='LEVEL '+String(logicStack.length).padStart(2,'0');const box=document.getElementById('logicChildren');box.innerHTML='';data.children.forEach(([title,desc])=>{const b=document.createElement('button');b.className='logic-child';const st=document.createElement('strong');st.textContent=title;const sm=document.createElement('small');sm.textContent=desc;const em=document.createElement('em');em.textContent=(logicData[title]||logicFallback(title)).children.length+' 个下级方向 · 进入下一层 ↗';b.append(st,sm,em);b.onclick=()=>{const nodeIndex=nodes.findIndex(n=>n[0]===title);if(nodeIndex>=0){selectNode(nodeIndex);document.getElementById('hierarchy').classList.remove('open');}else{logicStack.push(title);renderLogic()}};if(nodes.some(n=>n[0]===title)){b.classList.add('is-live-node');const badge=document.createElement('em');badge.textContent='与3D宇宙同一节点 · 点击聚焦';b.appendChild(badge)}box.appendChild(b)});document.getElementById('logicUp').disabled=logicStack.length===1;document.getElementById('logicUp').style.opacity=logicStack.length===1?'.35':'1';document.getElementById('logicRelations').innerHTML='';['反馈控制','复杂适应系统','因果推断'].filter(x=>x!==name).forEach(x=>{const s=document.createElement('span');s.className='status';s.textContent=x;s.title='横向关联，不属于当前父子层级';document.getElementById('logicRelations').appendChild(s)})}
-document.getElementById('logicUp').onclick=()=>{if(logicStack.length>1){logicStack.pop();renderLogic()}};document.getElementById('logicRoot').onclick=()=>{logicStack.splice(0,logicStack.length,'系统思维');renderLogic()};
+// Framework view is always derived from the user's confirmed local graph.
+// Demo content is never substituted for an empty formal framework.
+let logicStack=[];
+let localGraphNodes=[];
+let localGraphRelations=[];
+let localFramework=null;
+function localNodeById(id){return localGraphNodes.find(n=>String(n.id)===String(id))||null;}
+function localNodeChildren(id){return localGraphNodes.filter(n=>String(n.parentId||"")===String(id)).sort((a,b)=>Number(a.sortOrder??a.order??0)-Number(b.sortOrder??b.order??0)||String(a.name||"").localeCompare(String(b.name||""),"zh-CN"));}
+function localNodePath(id){const path=[],seen=new Set();let node=localNodeById(id);while(node&&!seen.has(String(node.id))){seen.add(String(node.id));path.unshift(node);node=localNodeById(node.parentId);}return path;}
+function renderLogic(){
+ const box=document.getElementById('logicChildren'),relationsBox=document.getElementById('logicRelations');
+ box.replaceChildren();relationsBox.replaceChildren();
+ if(!localGraphNodes.length){
+  document.getElementById('logicPath').textContent='我的知识宇宙 / 尚未建立正式框架';
+  document.getElementById('logicCurrent').textContent='暂无正式知识节点';
+  document.getElementById('logicCaption').textContent='导入资料并完成知识审核后，已确认的知识才会进入这里。示例空间不会混入正式框架。';
+  document.getElementById('logicDepth').textContent='NO DATA';
+  box.append(safeText('p','当前本地知识库中没有正式知识节点。待审核候选不会显示在正式框架中。','filter-empty'));
+  document.getElementById('logicUp').disabled=true;
+  document.getElementById('logicRoot').disabled=true;
+  relationsBox.append(safeText('span','暂无已确认的横向关系','status'));
+  return;
+ }
+ document.getElementById('logicRoot').disabled=false;
+ let currentId=logicStack.at(-1);
+ if(!currentId||!localNodeById(currentId)){
+  const selectedNode=localGraphNodes.find(n=>String(n.id)===String(localGraphNodes[selected]?.id));
+  const path=selectedNode?localNodePath(selectedNode.id):[];
+  currentId=(path.at(-1)||localGraphNodes.find(n=>!n.parentId)||localGraphNodes[0]).id;
+  logicStack=path.length?path.map(n=>n.id):[currentId];
+ }
+ const current=localNodeById(currentId);
+ const path=localNodePath(currentId);
+ logicStack=path.map(n=>n.id);
+ document.getElementById('logicPath').textContent='我的知识宇宙 / '+path.map(n=>n.name||n.coreWord||'未命名知识').join(' / ');
+ document.getElementById('logicCurrent').textContent=current.name||current.coreWord||'未命名知识';
+ document.getElementById('logicCaption').textContent=current.desc||'当前正式知识节点的直接子级；横向关系独立显示，不混入谱系。';
+ document.getElementById('logicDepth').textContent='LEVEL '+String(path.length||current.level||1).padStart(2,'0');
+ const children=localNodeChildren(currentId);
+ if(!children.length)box.append(safeText('p','当前节点尚无已确认的下级知识。可以从过滤审核中归位新知识。','filter-empty'));
+ children.forEach(child=>{
+  const b=document.createElement('button');b.className='logic-child';
+  b.append(safeText('strong',child.name||child.coreWord||'未命名知识'),safeText('small',child.desc||'暂无说明'));
+  const descendants=localNodeChildren(child.id).length;
+  b.append(safeText('em',descendants+' 个直接下级 · 进入下一层 ↗'));
+  const index=localGraphNodes.findIndex(n=>String(n.id)===String(child.id));
+  b.onclick=()=>{logicStack.push(child.id);if(index>=0)selectNode(index);renderLogic();};
+  if(String(child.id)===String(localGraphNodes[selected]?.id))b.classList.add('is-live-node');
+  box.appendChild(b);
+ });
+ document.getElementById('logicUp').disabled=path.length<=1;
+ document.getElementById('logicUp').style.opacity=path.length<=1?'.35':'1';
+ const related=localGraphRelations.filter(r=>String(r.sourceNodeId)===String(currentId)||String(r.targetNodeId)===String(currentId));
+ if(!related.length)relationsBox.append(safeText('span','暂无已确认的横向关系','status'));
+ related.forEach(relation=>{
+  const otherId=String(relation.sourceNodeId)===String(currentId)?relation.targetNodeId:relation.sourceNodeId;
+  const other=localNodeById(otherId);if(!other)return;
+  const chip=safeText('button',(relation.label||relation.type||'关联')+' · '+(other.name||other.coreWord||'知识节点'),'status');
+  chip.title='已确认的横向关系；不改变父子层级';
+  chip.onclick=()=>{const index=localGraphNodes.findIndex(n=>String(n.id)===String(other.id));if(index>=0){selectNode(index);document.getElementById('hierarchy').classList.remove('open');}};
+  relationsBox.append(chip);
+ });
+}
+document.getElementById('logicUp').onclick=()=>{if(logicStack.length>1){logicStack.pop();const id=logicStack.at(-1),index=localGraphNodes.findIndex(n=>String(n.id)===String(id));if(index>=0)selectNode(index);renderLogic();}};
+document.getElementById('logicRoot').onclick=()=>{if(!localGraphNodes.length)return;const root=localNodePath(logicStack[0]||localGraphNodes[selected]?.id)[0]||localGraphNodes.find(n=>!n.parentId);if(root){logicStack=[root.id];const index=localGraphNodes.findIndex(n=>String(n.id)===String(root.id));if(index>=0)selectNode(index);renderLogic();}};
 renderLogic();
 
-// Load the user's actual local graph when one exists; otherwise retain clearly-labelled preview nodes.
+// Load the user's actual local graph and its persisted framework projection; otherwise retain clearly-labelled preview nodes.
 let localGraphNodes=[];
 async function connectLocalKnowledgeUniverse(){
  try{
   const graph=await NEBULA_LOCAL.loadGraph();
   if(!graph||!Array.isArray(graph.nodes)||!graph.nodes.length){
+   localGraphNodes=[];localGraphRelations=[];localFramework=null;logicStack=[];renderLogic();
    const state=document.getElementById("universeState");if(state)state.textContent="示例空间 · 尚无本地正式节点";
    return;
   }
   const records=graph.nodes.slice(0,220),recordById=new Map(records.map(n=>[String(n.id),n]));
-  const childMap=new Map(records.map(n=>[String(n.id),[]]));
-  records.forEach(n=>{if(n.parentId&&childMap.has(String(n.parentId)))childMap.get(String(n.parentId)).push(n);});
-  const roots=records.filter(n=>!n.parentId||!recordById.has(String(n.parentId)));
-  const posById=new Map();
-  function place(node,depth,parentPos,index,count){
-   const saved=[node.x,node.y,node.z].every(v=>Number.isFinite(Number(v)))&&
-     Math.abs(Number(node.x)||0)+Math.abs(Number(node.y)||0)+Math.abs(Number(node.z)||0)>.001;
-   let pos;
-   if(saved)pos=new THREE.Vector3(Number(node.x)||0,Number(node.y)||0,Number(node.z)||0);
-   else if(!parentPos){const angle=2*Math.PI*index/Math.max(1,count);pos=new THREE.Vector3(Math.cos(angle)*10,0,Math.sin(angle)*10);}
-   else{const angle=2*Math.PI*index/Math.max(1,count)+depth*.31,radius=depth===2?6.2:4.4;pos=new THREE.Vector3(parentPos.x+Math.cos(angle)*radius,parentPos.y+((index%2)?2.1:-2.1),parentPos.z+Math.sin(angle)*radius);}
-   posById.set(String(node.id),pos);
-   const kids=childMap.get(String(node.id))||[];kids.forEach((child,i)=>place(child,depth+1,pos,i,kids.length));
+  let frameworks=await NEBULA_LOCAL.listFrameworks();
+  let framework=frameworks.find(f=>f.status!=="archived")||null;
+  if(!framework)framework=await NEBULA_LOCAL.createFrameworkFromCurrentGraph("我的知识框架","由已确认的本地正式知识节点建立；候选与演示节点不进入框架。");
+  else if(Number(framework.metadata?.graphSavedAt||0)<Number(graph.savedAt||0)){
+   await NEBULA_LOCAL.syncFrameworkFromGraph(framework.id,{reason:"正式知识图谱更新后同步框架"});
+   framework=await NEBULA_LOCAL.getFramework(framework.id);
   }
-  roots.forEach((root,i)=>place(root,1,null,i,roots.length));
-  records.forEach((node,i)=>{if(!posById.has(String(node.id)))place(node,1,null,i,records.length);});
-  const idToIndex=new Map(records.map((n,i)=>[String(n.id),i]));
-  const nextNodes=records.map((n,i)=>{const p=posById.get(String(n.id));return [String(n.name||n.coreWord||"未命名知识"),p.x,p.y,p.z,i===0?.34:(Number(n.level)||1)===1?.24:.13];});
+  const [tree,projection]=await Promise.all([
+   NEBULA_LOCAL.getFrameworkTree(framework.id),
+   NEBULA_LOCAL.getSpatialProjection(framework.id)
+  ]);
+  const treeNodes=[];
+  const walkTree=(items)=>items.forEach(node=>{treeNodes.push(node);walkTree(node.children||[]);});
+  walkTree(tree.roots||[]);
+  const allowedIds=new Set(treeNodes.map(n=>String(n.id)));
+  const actualRecords=records.filter(n=>allowedIds.has(String(n.id)));
+  const ordered=treeNodes.map(n=>recordById.get(String(n.id))||n).filter(Boolean);
+  const childrenById=new Map(ordered.map(n=>[String(n.id),[]]));
+  ordered.forEach(n=>{if(n.parentId&&childrenById.has(String(n.parentId)))childrenById.get(String(n.parentId)).push(n);});
+  const roots=ordered.filter(n=>!n.parentId||!allowedIds.has(String(n.parentId)));
+  const projectionById=new Map((projection.nodes||[]).map(n=>[String(n.id),n]));
+  const positionById=new Map();
+  const savedPositions=await NEBULA_LOCAL.listNodePositions(framework.id);
+  savedPositions.forEach(p=>positionById.set(String(p.nodeId),p));
+  function deterministicPlace(node,depth,parentPos,index,count){
+   const saved=positionById.get(String(node.id))||projectionById.get(String(node.id));
+   const savedXYZ=saved?.layoutCoordinates;
+   if(savedXYZ&&[savedXYZ.x,savedXYZ.y,savedXYZ.z].every(v=>Number.isFinite(Number(v)))&&Math.abs(Number(savedXYZ.x)||0)+Math.abs(Number(savedXYZ.y)||0)+Math.abs(Number(savedXYZ.z)||0)>.001)
+    return new THREE.Vector3(Number(savedXYZ.x)||0,Number(savedXYZ.y)||0,Number(savedXYZ.z)||0);
+   if([node.x,node.y,node.z].every(v=>Number.isFinite(Number(v)))&&Math.abs(Number(node.x)||0)+Math.abs(Number(node.y)||0)+Math.abs(Number(node.z)||0)>.001)
+    return new THREE.Vector3(Number(node.x)||0,Number(node.y)||0,Number(node.z)||0);
+   const angle=2*Math.PI*index/Math.max(1,count)+depth*.31;
+   if(!parentPos)return new THREE.Vector3(Math.cos(angle)*10,0,Math.sin(angle)*10);
+   const radius=depth===2?6.2:4.4;
+   return new THREE.Vector3(parentPos.x+Math.cos(angle)*radius,parentPos.y+((index%2)?2.1:-2.1),parentPos.z+Math.sin(angle)*radius);
+  }
+  const posById=new Map();
+  function placeBranch(node,depth,parentPos,index,count){
+   const pos=deterministicPlace(node,depth,parentPos,index,count);posById.set(String(node.id),pos);
+   const kids=childrenById.get(String(node.id))||[];kids.forEach((child,i)=>placeBranch(child,depth+1,pos,i,kids.length));
+  }
+  roots.forEach((root,i)=>placeBranch(root,1,null,i,roots.length));
+  ordered.forEach((node,i)=>{if(!posById.has(String(node.id)))placeBranch(node,1,null,i,ordered.length);});
+  // Persist deterministic XYZ once so the spatial projection remains stable across sessions.
+  for(const node of ordered){
+   if(!positionById.has(String(node.id))){
+    const p=posById.get(String(node.id));
+    await NEBULA_LOCAL.saveNodePosition({frameworkId:framework.id,nodeId:node.id,
+     semanticCoordinates:{lineageLevel:Number(node.level)||localNodePath(node.id).length||1,parentId:node.parentId||null,timeKey:node.knowledgeTime||node.date||null,domainKey:node.domain||node.domainPath||null},
+     layoutCoordinates:{x:p.x,y:p.y,z:p.z},positionSource:"deterministic-framework-layout"});
+   }
+  }
+  const idToIndex=new Map(ordered.map((n,i)=>[String(n.id),i]));
+  const nextNodes=ordered.map((n,i)=>{const p=posById.get(String(n.id));return [String(n.name||n.coreWord||"未命名知识"),p.x,p.y,p.z,(Number(n.level)||1)===1?.24:.13];});
   const nextEdges=[],edgeSet=new Set();
   function addEdge(a,b){if(a===undefined||b===undefined||a===b)return;const key=[Math.min(a,b),Math.max(a,b)].join(":");if(edgeSet.has(key))return;edgeSet.add(key);nextEdges.push([a,b]);}
-  records.forEach(n=>{if(n.parentId&&idToIndex.has(String(n.parentId)))addEdge(idToIndex.get(String(n.id)),idToIndex.get(String(n.parentId)));});
-  (graph.links||[]).forEach(link=>addEdge(idToIndex.get(String(link.source??link.sourceNodeId)),idToIndex.get(String(link.target??link.targetNodeId))));
-  const relations=await NEBULA_LOCAL.listKnowledgeRelations();
-  relations.forEach(link=>addEdge(idToIndex.get(String(link.sourceNodeId)),idToIndex.get(String(link.targetNodeId))));
-  nodes.splice(0,nodes.length,...nextNodes);
-  positions.splice(0,positions.length,...records.map(n=>posById.get(String(n.id)).clone()));
-  localGraphNodes=records;
-  edges.splice(0,edges.length,...nextEdges);
+  ordered.forEach(n=>{if(n.parentId&&idToIndex.has(String(n.parentId)))addEdge(idToIndex.get(String(n.id)),idToIndex.get(String(n.parentId)));});
+  localGraphRelations=tree.relations||await NEBULA_LOCAL.listKnowledgeRelations();
+  localGraphRelations.forEach(link=>addEdge(idToIndex.get(String(link.sourceNodeId)),idToIndex.get(String(link.targetNodeId))));
+  nodes.splice(0,nodes.length,...nextNodes);positions.splice(0,positions.length,...ordered.map(n=>posById.get(String(n.id)).clone()));
+  localGraphNodes=ordered;localFramework=framework;edges.splice(0,edges.length,...nextEdges);
   Object.keys(directionalMap).forEach(k=>delete directionalMap[k]);
   Object.keys(continuationDescriptions).forEach(k=>delete continuationDescriptions[k]);
   Object.keys(continuationMeta).forEach(k=>delete continuationMeta[k]);
   Object.keys(layerData).forEach(k=>delete layerData[k]);
-  records.forEach((node,i)=>{
-   const kids=childMap.get(String(node.id))||[];
-   const related=relations.filter(r=>String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id))
+  ordered.forEach((node,i)=>{
+   const kids=childrenById.get(String(node.id))||[];
+   const related=localGraphRelations.filter(r=>String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id))
     .map(r=>String(r.sourceNodeId)===String(node.id)?r.targetNodeId:r.sourceNodeId).map(id=>idToIndex.get(String(id))).filter(x=>Number.isInteger(x)&&x!==i);
-   directionalMap[i]={
-    forward:node.parentId&&idToIndex.has(String(node.parentId))?idToIndex.get(String(node.parentId)):null,
-    backward:kids.length?idToIndex.get(String(kids[0].id)):null,
-    left:related[0]??null,right:related[1]??null
-   };
+   directionalMap[i]={forward:node.parentId&&idToIndex.has(String(node.parentId))?idToIndex.get(String(node.parentId)):null,
+    backward:kids.length?idToIndex.get(String(kids[0].id)):null,left:related[0]??null,right:related[1]??null};
    continuationDescriptions[i]=String(node.desc||node.coreWord||node.name||"");
-   layerData[node.name||node.coreWord||String(node.id)]={desc:node.desc||"",children:[]};
+   layerData[node.name||node.coreWord||String(node.id)]={desc:node.desc||"",children:kids.map(child=>[child.name||child.coreWord||String(child.id),child.desc||""])};
   });
-  records.forEach(node=>{
-   const parent=recordById.get(String(node.parentId));
-   if(parent){const key=parent.name||parent.coreWord||String(parent.id),child=node.name||node.coreWord||String(node.id);layerData[key]?.children.push([child,node.desc||""]);}
-  });
-  const rootName=roots[0]?.name||roots[0]?.coreWord||records[0].name||"知识框架";
-  logicStack.splice(0,logicStack.length,rootName);layerStack.splice(0,layerStack.length,rootName);
+  const root=roots[0]||ordered[0];logicStack=root?[root.id]:[];
   core.clear();spheres.splice(0,spheres.length);
   const liveLineMat=new THREE.LineBasicMaterial({color:0x9aa8b1,transparent:true,opacity:.15});
   nodes.forEach((n,i)=>{
    const size=n[4]||.13;
-   const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(size*.72,1),new THREE.MeshStandardMaterial({
-    color:i===0?0xd5dde2:0x9aa8b1,roughness:.44,metalness:.18,
-    emissive:i===0?0x626d75:0x303a42,emissiveIntensity:i===0?.17:.1
-   }));
+   const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(size*.72,1),new THREE.MeshStandardMaterial({color:0x9aa8b1,roughness:.44,metalness:.18,emissive:0x303a42,emissiveIntensity:.1}));
    mesh.position.copy(positions[i]);mesh.userData.index=i;core.add(mesh);spheres.push(mesh);
    const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(size,1),new THREE.MeshBasicMaterial({color:0xe0e9ef,transparent:true,opacity:.026,side:THREE.BackSide}));mesh.add(halo);
   });
   edges.forEach(([a,b])=>core.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([positions[a],positions[b]]),liveLineMat)));
-  selected=0;focusActive=false;focusGoal=null;focusHistory=[];focusCursor=-1;
-  spheres.forEach((s,i)=>{s.userData.targetOpacity=i===0?1:.7;s.userData.targetScale=1;s.userData.targetGlow=i===0?.16:.02;s.material.transparent=true;});
-  controls.autoRotate=true;controls.target.copy(positions[0]);camera.position.copy(positions[0]).add(new THREE.Vector3(0,2,19));controls.update();
+  selected=Math.max(0,ordered.findIndex(n=>String(n.id)===String(root?.id)));focusActive=false;focusGoal=null;focusHistory=[];focusCursor=-1;
+  spheres.forEach((s,i)=>{s.userData.targetOpacity=i===selected?1:.7;s.userData.targetScale=1;s.userData.targetGlow=i===selected?.16:.02;s.material.transparent=true;});
+  controls.autoRotate=true;controls.target.copy(positions[selected]);camera.position.copy(positions[selected]).add(new THREE.Vector3(0,2,19));controls.update();
   renderContinuum();renderLogic();drawMini();
-  const state=document.getElementById("universeState");if(state)state.textContent="本地知识宇宙 · "+records.length+" 个节点";
- }catch(error){console.warn("Guanfu Mind local graph preview could not load:",error);const state=document.getElementById("universeState");if(state)state.textContent="示例空间 · 本地数据读取失败";}
+  const state=document.getElementById("universeState");if(state)state.textContent="本地正式框架 · "+ordered.length+" 个节点";
+ }catch(error){console.warn("Guanfu Mind local graph preview could not load:",error);const state=document.getElementById("universeState");if(state)state.textContent="本地框架读取失败 · "+error.message;}
 }
 connectLocalKnowledgeUniverse();
 
