@@ -31,8 +31,8 @@ const selectNodeBody = html.match(/function selectNode\(i,append=true\)\{([\s\S]
 assert.ok(selectNodeBody, "Expected to locate selectNode implementation.");
 assert.ok(!selectNodeBody[1].includes("classList.add('quadrants-retracting')"), "Selecting a core node must preserve the four-direction guide; retraction belongs to the explicit knowledge-archive action.");
 assert.ok(selectNodeBody[1].includes("restoreFocusFromMinimap()"), "Selecting a new exploration core must restore its four-direction guide and clear the minimap state.");
-assert.ok(html.includes("document.getElementById('continuumOpenDetail').onclick=async()=>{\n retractFocusToMinimap();"), "Opening the knowledge archive from the core must retract both the guide and core point into the minimap.");
-assert.ok(html.includes("document.getElementById('openNodeDetail').onclick=()=>{retractFocusToMinimap();"), "Opening the selected node archive must retract both the guide and core point into the minimap.");
+assert.ok(html.includes("document.getElementById('continuumOpenDetail').onclick=openKnowledgeArchive;"), "The core archive button must use the shared archive-opening flow.");
+assert.ok(html.includes("document.getElementById('openNodeDetail').onclick=openKnowledgeArchive;"), "The selected-node archive button must use the same archive-opening flow.");
 assert.ok(html.includes('class="minimap-quadrant-compass"'), "The four directions must remain represented in the minimap while retracted.");
 assert.ok(html.includes('.right-panel .mini-map.quadrants-stowed .minimap-quadrant-compass{opacity:1;'), "The four-direction mini compass must appear when the guide is retracted.");
 assert.ok(html.includes("minimapQuadrantReturn?.addEventListener('click',event=>{event.stopPropagation();restoreFocusFromMinimap();"), "The minimap control must restore the core and four directions on demand.");
@@ -42,8 +42,14 @@ assert.ok(html.includes("function retractFocusToMinimap(){"), "Both archive entr
 assert.ok(html.includes("#continuumFocus.quadrants-retracting .continuum-core{"), "The central core point must retract with the four-direction guide.");
 assert.ok(html.includes("var(--core-minimap-dx,0px)") && html.includes("var(--core-minimap-dy,0px)"), "The core point must travel toward the minimap center rather than merely disappear.");
 assert.ok(html.includes("corePoint.style.setProperty('--core-minimap-dx'") && html.includes("corePoint.style.setProperty('--core-minimap-dy'"), "The core-to-minimap movement must use measured on-screen positions.");
-assert.ok((html.split("retractFocusToMinimap();").length - 1) === 2, "Both full-archive entry points must use the same retraction action.");
-console.log("Checked " + scripts.length + " inline scripts and V3-A exploration contracts.");
+assert.ok(html.includes("async function openKnowledgeArchive(){"), "Both archive entry points must share a single archive-opening flow.");
+
+assert.ok(html.includes("await retractFocusToMinimap();\\n archive.classList.add('open');"), "The archive must appear after the core and four directions finish retracting, not be hidden behind the transition.");
+assert.ok(html.includes("renderContinuum();\\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
+assert.ok(html.includes("#nodeDetail{z-index:40}"), "The full knowledge archive must render above the 3D exploration layer.");
+assert.ok(html.includes("host.append(safeText('p','正在读取关联来源…'));"), "The archive must show a visible loading state while original sources are resolved.");
+assert.ok(html.includes("corePoint.addEventListener('transitionend',onTransitionEnd);"), "The archive-opening flow must wait for the core-to-minimap transition.");
+\nconsole.log("Checked " + scripts.length + " inline scripts and V3-A exploration contracts.");
 
 assert.ok(html.includes("document.getElementById('search').addEventListener('click',()=>open('globalSearch'))"), "Global search should open only after an explicit click, not merely when the page or input receives focus.");
 assert.ok(!html.includes("document.getElementById('search').addEventListener('focus',()=>open('globalSearch'))"), "Global search must not auto-open on focus during page entry.");
