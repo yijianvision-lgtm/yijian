@@ -742,6 +742,12 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
 .filter-candidate{display:flex;flex-direction:column;align-items:flex-start}
 .filter-candidate small{display:block}
 
+
+.source-file{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;color:inherit;cursor:pointer}
+.source-file.active{border-color:rgba(220,231,238,.24);background:rgba(255,255,255,.045)}
+.source-file[hidden]{display:none!important}
+.source-row{cursor:pointer}
+
 </style>
 </head>
 <body>
@@ -1238,6 +1244,42 @@ $("finalizeFilter").addEventListener("click",async()=>{if(!activeFilterCaseId)re
 document.querySelectorAll('[data-view="filter"]').forEach(button=>button.addEventListener("click",()=>{document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("continuumFocus").classList.remove("open");$("filter-workbench").classList.add("open");document.querySelectorAll(".nav,.rail-item").forEach(x=>x.classList.toggle("active",x===button));refreshFilterWorkbench();}));
 document.querySelectorAll('[data-view="universe"]').forEach(button=>button.addEventListener("click",()=>{$("filter-workbench").classList.remove("open");}));
 const sourceInput=$("sourceFileInput");
+let activeSourceId=null;
+function sourceCategory(ref){
+ const ext=String(ref.extension||"").toLowerCase();
+ if(["emmx","xmind"].includes(ext))return "mindmap";
+ if(["png","jpg","jpeg","webp"].includes(ext))return "image";
+ if(["pdf","doc","docx"].includes(ext))return "document";
+ return "all";
+}
+async function refreshSourceLibrary(){
+ const refs=await NEBULA_LOCAL.listReferences(),list=$("sourceFileList");
+ list.replaceChildren();
+ if(!refs.length){list.append(safeText("div","本地资料库暂时为空。选择文件后，原件与提取内容会分别保存在本机。","filter-empty"));return;}
+ refs.forEach(ref=>{
+  const row=safeText("button","", "source-file"+(String(ref.id)===String(activeSourceId)?" active":""));
+  row.dataset.sourceId=ref.id;row.dataset.sourceKind=sourceCategory(ref);
+  const main=safeText("div","");
+  main.append(safeText("b",ref.name||"未命名资料"),safeText("small",(ref.extension||"未知格式").toUpperCase()+" · "+Math.max(1,Math.round((ref.size||0)/1024))+" KB · "+new Date(ref.savedAt||Date.now()).toLocaleDateString()));
+  row.append(main,safeText("span",ref.warnings?.length?"需检查":"本地原件","status"));
+  row.addEventListener("click",async()=>{
+   activeSourceId=ref.id;list.querySelectorAll(".source-file").forEach(x=>x.classList.toggle("active",x===row));
+   try{
+    const record=await NEBULA_LOCAL.getReference(ref.id);
+    const content=record?.text||record?.pages?.map(p=>"第 "+p.page+" 页\\n"+p.text).join("\\n\\n")||record?.tree?.map(n=>[n.title,n.note].filter(Boolean).join("\\n")).join("\\n\\n")||"当前格式未提取出可预览文本。";
+    $("sourcePreview").textContent=content.slice(0,12000);
+    $("sourceImportState").textContent="已选中："+ref.name+" · 原件保存在本地 IndexedDB。";
+    ["sourceInspect","sourcePreviewBtn","sourceReviewBtn"].forEach(id=>$(id).disabled=false);
+   }catch(error){$("sourceImportState").textContent="读取资料失败："+error.message;}
+  });
+  list.append(row);
+ });
+}
+document.querySelectorAll(".source-row[data-source-kind]").forEach(row=>row.addEventListener("click",()=>{
+ document.querySelectorAll(".source-row[data-source-kind]").forEach(x=>x.classList.toggle("active",x===row));
+ const kind=row.dataset.sourceKind;
+ $("sourceFileList").querySelectorAll(".source-file").forEach(file=>file.hidden=kind!=="all"&&kind!==file.dataset.sourceKind);
+}));
 function openFilterFromSource(){document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("filter-workbench").classList.add("open");refreshFilterWorkbench();}
 document.addEventListener("click",async event=>{
  const button=event.target.closest("button");if(!button)return;
@@ -1245,7 +1287,7 @@ document.addEventListener("click",async event=>{
  if(!["sourceInspect","sourcePreviewBtn","sourceReviewBtn"].includes(button.id))return;
  event.stopImmediatePropagation();
  try{
-  const refs=await NEBULA_LOCAL.listReferences(),latest=refs[0];
+  const refs=await NEBULA_LOCAL.listReferences(),latest=refs.find(x=>String(x.id)===String(activeSourceId))||refs[0];
   if(!latest){setFilterMessage("还没有本地资料。请先选择一份资料。");return;}
   const record=await NEBULA_LOCAL.getReference(latest.id);
   if(button.id==="sourceInspect"){
@@ -1278,12 +1320,15 @@ document.addEventListener("change",async event=>{
   }catch(error){failed.push(file.name+"："+error.message);}
  }
  status.textContent="本机处理完成：成功 "+saved+" 个，异常 "+failed.length+" 个。原始文件保留在本地；提取候选进入知识过滤队列。"+(failed.length?"\n"+failed.join("\n"):"");
- files.forEach(file=>{const row=safeText("div","","source-file");row.append(safeText("b",file.name),safeText("small",(file.name.split(".").pop()||"").toUpperCase()+" · 本地 IndexedDB"));$("sourceFileList").prepend(row);});
- ["sourceInspect","sourcePreviewBtn","sourceReviewBtn"].forEach(id=>$(id).disabled=false);
- sourceInput.value="";await refreshFilterWorkbench();
+ sourceInput.value="";
+ await refreshSourceLibrary();
+ const refs=await NEBULA_LOCAL.listReferences();activeSourceId=refs[0]?.id||null;
+ if(activeSourceId){const selected=refs[0];$("sourceImportState").textContent="已选中："+selected.name+" · 原件保存在本地 IndexedDB。";["sourceInspect","sourcePreviewBtn","sourceReviewBtn"].forEach(id=>$(id).disabled=false);}
+ await refreshFilterWorkbench();
 },true);
 document.querySelectorAll("#filter-workbench [data-close]").forEach(button=>button.addEventListener("click",()=>$("filter-workbench").classList.remove("open")));
 window.addEventListener("keydown",event=>{if(event.key==="Escape")$("filter-workbench").classList.remove("open");});
+refreshSourceLibrary().catch(error=>{$("sourceImportState").textContent="资料库读取失败："+error.message;});
 refreshFilterWorkbench();
 </script>
 
