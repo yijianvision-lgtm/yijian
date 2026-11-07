@@ -67,7 +67,7 @@ assert.match(local, /dimension:"horizontal"/);
 
 assert.match(local, /sourceType==="ai_conversation"\?this\.getConversation/);
 assert.match(local, /createExtractionFromParsedSource\(\{sourceId,referenceId:item\.id/);
-assert.ok(preview.includes("let nodes=[[['系统思维'"), "The spatial graph must be replaceable.");
+assert.ok(preview.includes("let nodes=[['系统思维'"), "The spatial graph must be replaceable.");
 assert.ok(preview.includes("localGraphNodes=ordered"), "Formal nodes must populate the 3D graph.");
 assert.ok(preview.includes("idToIndex=new Map(ordered.map"), "Formal node IDs need stable spatial indices.");
 assert.ok(preview.includes("saveNodePosition({frameworkId:framework.id,nodeId:node.id"), "Deterministic positions must persist.");
