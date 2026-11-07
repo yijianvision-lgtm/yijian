@@ -592,10 +592,12 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
       await deleteRecord("nodeSourceLinks",row.id);
     }
     const relations=await request("knowledgeRelations","readonly",s=>s.getAll());
+    const collapsedRelationIds=new Set();
     for(const relation of relations) {
       const nextSource=remap(relation.sourceNodeId),nextTarget=remap(relation.targetNodeId);
       if(nextSource!==relation.sourceNodeId||nextTarget!==relation.targetNodeId) {
         if(String(nextSource)===String(nextTarget)) {
+          collapsedRelationIds.add(String(relation.id));
           await deleteRecord("knowledgeRelations",relation.id);
           const orphanEvidence=(await request("relationEvidence","readonly",s=>s.getAll())).filter(x=>String(x.relationId)===String(relation.id));
           for(const evidenceRow of orphanEvidence) await deleteRecord("relationEvidence",evidenceRow.id);
@@ -614,8 +616,15 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
     const steps=await request("explorationSteps","readonly",s=>s.getAll());
     for(const step of steps) {
       const nextFrom=remap(step.fromNodeId),nextTo=remap(step.toNodeId);
-      if(nextFrom!==step.fromNodeId||nextTo!==step.toNodeId) {
-        await putRecord("explorationSteps",{...step,originalFromNodeId:step.originalFromNodeId||step.fromNodeId,originalToNodeId:step.originalToNodeId||step.toNodeId,fromNodeId:nextFrom,toNodeId:nextTo,updatedAt:Date.now()});
+      if(nextFrom!==step.fromNodeId||nextTo!==step.toNodeId||collapsedRelationIds.has(String(step.relationId||""))) {
+        await putRecord("explorationSteps",{...step,
+          originalFromNodeId:step.originalFromNodeId||step.fromNodeId,
+          originalToNodeId:step.originalToNodeId||step.toNodeId,
+          originalRelationId:collapsedRelationIds.has(String(step.relationId||""))?(step.originalRelationId||step.relationId):step.originalRelationId||null,
+          relationId:collapsedRelationIds.has(String(step.relationId||""))?null:step.relationId||null,
+          relationInvalidatedByMerge:collapsedRelationIds.has(String(step.relationId||""))?"merged_endpoints_collapsed":step.relationInvalidatedByMerge||null,
+          fromNodeId:nextFrom,toNodeId:nextTo,updatedAt:Date.now()
+        });
       }
     }
     const learningRows=await request("learningRecords","readonly",s=>s.getAll());
