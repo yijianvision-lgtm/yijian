@@ -73,7 +73,7 @@
 - 非旧字段白名单中的节点属性变更会产生新版本；
 - schema v6 完整备份可预览。
 
-本轮 GitHub Actions 的 NEBULA backend checks 已通过；NEBULA local backend validation 已通过。Pages/Jekyll 部署须以各自最新运行状态为准。
+截至本记录创建时，`c1fa6b05` 的 NEBULA backend checks 已通过；后续 `d0b4b6d9` 和 `06fd3b55` 的测试暴露并修正了 placement 计数断言。最新的合并关系坍缩回归测试正在由 `540c30d0` 触发，最终状态以该 SHA 对应的 Actions 为准。Pages/Jekyll 部署须以各自最新运行状态为准。
 
 ## 仍未完成（不得宣称完成）
 
@@ -99,3 +99,11 @@
 - `6df42cc4`：修正测试断言
 
 **结论：** 本轮完成了多路径、框架上下文、语义关系和投影分离的第一层数据架构基础；尚未完成 UI 全面接线、迁移演练和正式数据安全验收。
+
+
+## 后续补强（同一实施轮次）
+
+- 新建框架时会将旧 parentId 关系显式投影为 `needsReview=true` 的独立 placement，用户不需要先手动调用迁移工具；这仍是可审查投影，不是静默确认。
+- 框架 placement 更新时增加祖先链循环检测；禁止直接将同一知识对象放在自己的父级位置。
+- 探索步骤的证据 ID 必须能解析到来源、关系证据、节点来源链接或提取候选之一。
+- 合并若使某关系的两个端点变成同一对象，会删除无意义的自关系和孤立 relationEvidence；路径步骤保留 originalRelationId，并标记 relationInvalidatedByMerge，避免留下悬空引用。
