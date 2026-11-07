@@ -56,6 +56,16 @@ assert.ok(html.includes("document.querySelectorAll('.overlay.open').forEach(pane
 assert.ok(html.includes("host.append(safeText('p','正在读取关联来源…'));"), "The archive must show a visible loading state while original sources are resolved.");
 assert.ok(html.includes("corePoint.addEventListener('transitionend',onTransitionEnd);"), "The archive-opening flow must wait for the core-to-minimap transition.");
 
+
+const animateBody = html.match(/function animate\\(\\)\\{([\\s\\S]*?)\\}animate\\(\\);/);
+assert.ok(animateBody, "Expected to locate the main 3D animation loop.");
+assert.ok(!animateBody[1].includes("drawMini()"), "The 2D minimap must not be redrawn on every WebGL animation frame.");
+assert.ok(html.includes("innerWidth<760?1.2:1.5"), "The WebGL pixel ratio must be capped to reduce high-DPI rendering cost.");
+assert.ok(animateBody[1].includes("camera.position.lerp(desired,.065)") && animateBody[1].includes("controls.target.lerp(targetWorld,.065)"), "Camera follow must respond smoothly without the previous sluggish easing.");
+assert.ok(html.includes(".overlay.open{animation:mindViewEnter .42s") && html.includes("#nodeDetail.open{animation:mindArchiveEnter .5s"), "Main views and the knowledge archive must enter with a spatial transition.");
+assert.ok(html.includes("#continuumFocus.open{animation:nebulaFocusIn .72s"), "The four-direction focus view must use a shorter, consistent entrance transition.");
+assert.ok(html.includes("@media(prefers-reduced-motion:reduce)") && html.includes(".overlay.open,#nodeDetail.open,#continuumFocus.open,.layer-page.open{animation:none!important}"), "All added view transitions must respect reduced-motion preferences.");
+
 console.log("Checked " + scripts.length + " inline scripts and V3-A exploration contracts.");
 
 assert.ok(html.includes("document.getElementById('search').addEventListener('click',()=>open('globalSearch'))"), "Global search should open only after an explicit click, not merely when the page or input receives focus.");
