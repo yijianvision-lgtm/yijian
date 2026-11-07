@@ -262,3 +262,21 @@ Mind、Framework、Source、Review 等视图都从同一状态读取/更新。�
 备份格式升至 schemaVersion 5；旧版 v3/v4 备份仍可验证和恢复。旧数据库数据保持原样，新对象库只在升级时创建。
 
 **本批尚未实现：**自动解析任务编排、候选抽取器、去重/归位/关系算法、审核 UI、用户确认后正式写入框架的事务服务、跨对象库的原子撤销。上述能力不能标记为已完成。
+
+
+## 12. P1 第二批：来源接入与提取流水线
+
+**状态：实现已提交；以 GitHub Actions 运行结果为准。真实 PDF/Word/EMMX/XMind 样本仍需浏览器验收。**
+
+- 原始文件继续保存在 \`lectureSources\`，不修改原始 Blob。
+- 原有 \`saveReference\` 完成原件保存和来源登记后，自动进入提取流水线。
+- \`createExtractionFromParsedSource\` 将解析结果转为 ExtractionBatch、ExtractionItem 和 FilterCase。
+- PDF 按页提取，候选 locator 保留页码与页内片段序号。
+- EMMX/XMind 优先按主题树提取，保留主题标题、父主题路径、主题序号及来源 XML 部件。
+- DOCX 优先按 HTML 标题/段落切分；无法读取结构化 HTML 时按文本段落切分。
+- 长文本按段落/句子切块；同一来源内完全相同的规范化片段去重，但不删除或合并原始资料。
+- 批次记录 parserVersion、状态、统计、警告、候选 ID 与过滤案件 ID。
+- 有候选时自动建立待辨异 FilterCase；无可提取文字时保留原件与警告，不伪造候选。
+- 提取失败不会删除原始资料，批次记录失败状态与错误信息。
+
+**当前边界：** 这批是确定性文本/主题提取与任务编排，不是 AI 语义过滤；DOC 二进制旧格式仍需用户另存为 DOCX/PDF；扫描 PDF OCR 尚未接入；真实文件格式的解析准确度仍待样本验收。
