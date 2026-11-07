@@ -41,6 +41,29 @@ const migratedGraph = await api.loadGraph();
 assert.ok(migratedGraph.nodes.some(node => node.id === "legacy-v4"), "v4 graph data must survive the v5 upgrade.");
 assert.equal((await api.getSource("legacy-v4-source")).title, "Preserved v4 source", "v4 source records must survive the v5 upgrade.");
 
+const deepseekMappingFixture = JSON.stringify({
+  mapping: {
+    userNode: { message: { author: { role: "user" }, content: { parts: ["请解释系统思维。"] } } },
+    assistantNode: { message: { author: { role: "assistant" }, content: { parts: ["系统思维研究整体关系。"] } } }
+  }
+});
+const normalizedMapping = api.normalizeConversationExport(deepseekMappingFixture, "json");
+assert.equal(normalizedMapping.metadata.parsedMessageCount, 2);
+assert.ok(normalizedMapping.transcript.includes("user: 请解释系统思维。"));
+assert.ok(normalizedMapping.transcript.includes("assistant: 系统思维研究整体关系。"));
+const normalizedArray = api.normalizeConversationExport(JSON.stringify({ messages: [
+  { role: "user", content: [{ type: "text", text: "第一条消息" }] },
+  { role: "assistant", content: { blocks: [{ text: "第二条消息" }] } }
+] }), "json");
+assert.equal(normalizedArray.metadata.parsedMessageCount, 2);
+assert.ok(normalizedArray.transcript.includes("第一条消息"));
+assert.ok(normalizedArray.transcript.includes("第二条消息"));
+const malformedExport = api.normalizeConversationExport("{invalid", "json");
+assert.equal(malformedExport.transcript, "{invalid");
+assert.ok(malformedExport.metadata.jsonParseWarning);
+const plainExport = api.normalizeConversationExport("user: hi\\nassistant: hello", "txt");
+assert.equal(plainExport.transcript, "user: hi\\nassistant: hello");
+
 await api.saveGraph([{ id: "base", name: "Base knowledge", desc: "Initial definition" }], []);
 const conversation = await api.saveConversation({
   title: "Backup fixture",
