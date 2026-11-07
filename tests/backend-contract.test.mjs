@@ -7,10 +7,10 @@ const worker = await readFile(new URL("../deepseek-worker.js", import.meta.url),
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const preview = await readFile(new URL("../ui-preview-v1.html", import.meta.url), "utf8");
 
-for (const store of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence"]) {
+for (const store of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence","frameworkPlacements","explorationPaths","explorationSteps"]) {
   assert.match(local, new RegExp('"'+store+'"'), "Missing IndexedDB store: "+store);
 }
-for (const api of ["exportFullBackup","previewFullBackup","restoreFullBackup","saveSource","linkNodeSource","createProposal","applyProposal","saveNodeVersion","saveLearningRecord","saveResearchSession","saveKnowledgeRelation","analyzeConversation","chatLearningCoach","coachKnowledge","checkMnemonic","proposeCoachReview","proposeMnemonicReview","detectKnowledgeGaps","buildLearningQueue","searchResearch","fetchDeepSeekShare","createExtractionBatch","createExtractionItem","createExtractionFromParsedSource","analyzeFilterCaseDuplicates","recordFilterDuplicateDecision","suggestFilterCaseLocations","createFilterSuggestionProposal","applyFilterCaseProposal","createKnowledgeRelationProposal","createFilterRelationProposal","applyKnowledgeRelationProposal","recordFilterItemDisposition","finalizeFilterCase","createFrameworkFromCurrentGraph","syncFrameworkFromGraph","getFrameworkTree","getSpatialProjection","getMindContext","resolveExtractionEvidence","resolveNodeEvidence","resolveEvidenceLocator","analyzeFilterCaseWithAI","getFilterWorkbenchSnapshot","buildKnowledgeBrief","exportFrameworkMarkdown","createFilterCase","appendFilterDecision","createFramework","saveFrameworkVersion","saveNodePosition","createRelationEvidence"]) {
+for (const api of ["exportFullBackup","previewFullBackup","restoreFullBackup","saveSource","linkNodeSource","createProposal","applyProposal","saveNodeVersion","saveLearningRecord","saveResearchSession","saveKnowledgeRelation","analyzeConversation","chatLearningCoach","coachKnowledge","checkMnemonic","proposeCoachReview","proposeMnemonicReview","detectKnowledgeGaps","buildLearningQueue","searchResearch","fetchDeepSeekShare","createExtractionBatch","createExtractionItem","createExtractionFromParsedSource","analyzeFilterCaseDuplicates","recordFilterDuplicateDecision","suggestFilterCaseLocations","createFilterSuggestionProposal","applyFilterCaseProposal","createKnowledgeRelationProposal","createFilterRelationProposal","applyKnowledgeRelationProposal","recordFilterItemDisposition","finalizeFilterCase","createFrameworkFromCurrentGraph","syncFrameworkFromGraph","getFrameworkTree","getSpatialProjection","getMindContext","resolveExtractionEvidence","resolveNodeEvidence","resolveEvidenceLocator","analyzeFilterCaseWithAI","getFilterWorkbenchSnapshot","buildKnowledgeBrief","exportFrameworkMarkdown","createFilterCase","appendFilterDecision","createFramework","saveFrameworkVersion","saveNodePosition","createRelationEvidence","createFrameworkPlacement","listFrameworkPlacements","migrateLegacyFrameworkPlacements","createExplorationPath","appendExplorationStep","listExplorationPaths","listExplorationSteps","forkExplorationPath","getExplorationPathSnapshot"]) {
   assert.ok(local.includes(api), "Missing local API: "+api);
 }
 for (const route of ["/health","/analyze","/coach","/mnemonic","/research","/share","/chat"]) {
@@ -56,7 +56,7 @@ assert.ok(preview.includes("background:transparent!important"), "Focus core shou
 
 console.log("NEBULA backend contract checks passed.");
 
-assert.match(local, /DB_VERSION = 5/);
+assert.match(local, /DB_VERSION = 6/);
 assert.match(local, /FILTER_TRANSITIONS/);
 
 assert.match(local, /buildReferenceExtractionCandidates/);
@@ -127,3 +127,10 @@ assert.ok(charter.includes("坐标本身不构成语义关系"), "Spatial coordi
 assert.ok(charter.includes("AI 不得未经确认直接覆盖用户知识"), "AI proposals must require explicit user approval.");
 assert.ok(mindArchitecture.includes("唯一主要 parentId"), "The legacy V2 architecture should remain available as a historical implementation reference.");
 assert.ok(charter.includes("旧 V2.0 文档作为历史方案"), "The current charter must explicitly supersede conflicting legacy V2 constraints.");
+
+assert.ok(local.includes('schemaVersion:6'), "Full backups must include the new path and placement stores.");
+assert.ok(local.includes('"relationType"') || local.includes('relationType,status'), "Knowledge relations must carry an explicit semantic type.");
+assert.ok(local.includes('legacyRelationType'), "Legacy free-form relation labels must be preserved without being promoted to verified semantics.");
+assert.ok(local.includes('const comparable=x=>JSON.stringify(x??null)'), "Node version comparison must include every persisted semantic field.");
+assert.ok(local.includes('parentPlacementId'), "Framework membership must be modeled independently from node parentId.");
+assert.ok(local.includes('explorationSteps'), "Exploration traversal must be persisted separately from knowledge object identity.");
