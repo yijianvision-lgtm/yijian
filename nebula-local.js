@@ -1401,14 +1401,7 @@ Object.assign(NEBULA_LOCAL,{
     const graph=await this.loadGraph(),nodes=graph?.nodes||[];
     const target=nodes.find(n=>String(n.id)===String(suggestion.targetNodeId));
     const evidenceSourceIds=item.sourceId?[item.sourceId]:[];
-    if(suggestion.kind==="related_concept"&&target) {
-      return this.createProposal({
-        proposalType:"relation",sourceNodeId:target.id,relatedNodeId:target.id,
-        proposedSnapshot:{type:"related",label:"待确认的横向关联"},
-        reasoning:suggestion.reasoning+" "+suggestion.uncertainty,
-        evidenceSourceIds,filterCaseId,extractionItemId:item.id,evidence:suggestion.evidence
-      });
-    }
+    if(suggestion.kind==="related_concept") throw new Error("横向关系需要两个已存在的正式知识节点。请先审核并建立候选节点，再创建关系提案。");
     if(suggestion.kind==="parent_candidate"&&target) {
       return this.createProposal({
         proposalType:"create",targetNodeId:null,
@@ -1441,5 +1434,38 @@ Object.assign(NEBULA_LOCAL,{
         rationale:reviewerNote||"用户确认过滤提案。",evidenceIds:proposal.evidenceSourceIds||[]});
     }
     return {...result,graph};
+  }
+});
+
+Object.assign(NEBULA_LOCAL,{
+  async createKnowledgeRelationProposal(sourceNodeId,targetNodeId,record={}) {
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    const source=nodes.find(n=>String(n.id)===String(sourceNodeId));
+    const target=nodes.find(n=>String(n.id)===String(targetNodeId));
+    if(!source||!target||String(source.id)===String(target.id)) throw new Error("横向关系必须连接两个不同的正式知识节点。");
+    const evidenceSourceIds=[...new Set((record.evidenceSourceIds||[]).map(String))];
+    for(const id of evidenceSourceIds) if(!(await this.getSource(id))) throw new Error("关系证据来源不存在："+id);
+    return this.createProposal({
+      proposalType:"relation",sourceNodeId:source.id,relatedNodeId:target.id,
+      proposedSnapshot:{type:record.type||"related",label:record.label||"待确认的横向关联"},
+      reasoning:String(record.reasoning||"用户发起的关系审核提案。"),
+      evidenceSourceIds,evidence:record.evidence||null
+    });
+  },
+  async applyKnowledgeRelationProposal(proposalId,decision,reviewerNote="") {
+    const proposal=(await this.listProposals("pending")).find(x=>String(x.id)===String(proposalId));
+    if(!proposal||proposal.proposalType!=="relation") throw new Error("找不到待审核的关系提案。");
+    const result=await this.applyProposal(proposalId,decision,reviewerNote);
+    if(decision!=="accept") return result;
+    const relations=await this.listKnowledgeRelations(proposal.sourceNodeId);
+    const relation=relations.filter(x=>String(x.targetNodeId)===String(proposal.relatedNodeId)).sort((a,b)=>b.createdAt-a.createdAt)[0];
+    if(relation) for(const sourceId of proposal.evidenceSourceIds||[]) {
+      await this.createRelationEvidence({
+        relationId:relation.id,sourceId,excerpt:proposal.evidence?.excerpt||"",
+        locator:proposal.evidence?.locator||null,reviewStatus:"confirmed",
+        rationale:reviewerNote||proposal.reasoning
+      });
+    }
+    return {...result,relation:relation||null};
   }
 });
