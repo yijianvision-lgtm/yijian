@@ -1525,6 +1525,27 @@ Object.assign(NEBULA_LOCAL,{
 });
 
 
+
+function resolveMindLocatorText(record,locator={}) {
+  if(!record)return "";
+  let text="";
+  if(locator.kind==="pdf_page") text=record.pages?.find(p=>Number(p.page)===Number(locator.page))?.text||"";
+  else if(locator.kind==="topic") {
+    const topic=record.tree?.[locator.topicIndex];
+    text=topic?[topic.title,topic.note].filter(Boolean).join("\n"):"";
+  } else if(locator.kind==="document_block"&&record.html&&typeof DOMParser!=="undefined") {
+    const doc=new DOMParser().parseFromString(record.html,"text/html");
+    const blocks=[...doc.body.querySelectorAll("h1,h2,h3,h4,p,li")];
+    text=blocks[Number(locator.blockIndex)]?.textContent||"";
+  } else if(locator.kind==="text_offset") text=record.text||record.transcript||"";
+  else text=record.text||record.transcript||"";
+  if(locator.chunk&&text) {
+    const chunks=splitExtractionText(text);
+    text=chunks[Number(locator.chunk)-1]||text;
+  }
+  return text;
+}
+
 // P2/P3: framework projection, persistent spatial context and source-evidence resolution.
 function mindNodeAncestors(nodeId,nodes) {
   const path=[],seen=new Set();let current=nodes.find(n=>String(n.id)===String(nodeId));
@@ -1622,15 +1643,8 @@ Object.assign(NEBULA_LOCAL,{
       item.referenceId?this.getReference(item.referenceId):null,
       item.batchId?this.getExtractionBatch(item.batchId):null
     ]);
-    let locatedText=item.excerpt||item.content||"";
     const locator=item.locator||{};
-    if(reference&&locator.kind==="pdf_page"&&Array.isArray(reference.pages)) {
-      const page=reference.pages.find(p=>Number(p.page)===Number(locator.page));
-      if(page?.text) locatedText=page.text;
-    } else if(reference&&locator.kind==="topic"&&Array.isArray(reference.tree)) {
-      const topic=reference.tree[locator.topicIndex];
-      if(topic) locatedText=[topic.title,topic.note].filter(Boolean).join("\n");
-    }
+    const locatedText=resolveMindLocatorText(reference,locator)||item.excerpt||item.content||"";
     const cases=await this.listFilterCases();
     const decisions=(await Promise.all(cases.filter(x=>x.batchId===item.batchId).map(x=>this.listFilterDecisions(x.id)))).flat();
     return {item,source,reference:reference?{id:reference.id,name:reference.name,extension:reference.extension,mime:reference.mime}:null,
@@ -1641,15 +1655,8 @@ Object.assign(NEBULA_LOCAL,{
     for(const link of links) {
       const content=await this.getSourceContent(link.sourceId);
       const source=content?.source,record=content?.record;
-      let locator=link.evidenceLocator||null,excerpt=link.excerpt||"";
-      if(record&&locator?.kind==="pdf_page"&&Array.isArray(record.pages)) {
-        const page=record.pages.find(p=>Number(p.page)===Number(locator.page));
-        if(page?.text&&!excerpt)excerpt=page.text;
-      }
-      if(record&&locator?.kind==="topic"&&Array.isArray(record.tree)) {
-        const topic=record.tree[locator.topicIndex];
-        if(topic&&!excerpt)excerpt=[topic.title,topic.note].filter(Boolean).join("\n");
-      }
+      const locator=link.evidenceLocator||null;
+      const excerpt=link.excerpt||resolveMindLocatorText(record,locator)||"";
       resolved.push({link,source,record:record?{id:record.id,name:record.name||record.title,extension:record.extension,mime:record.mime}:null,locator,excerpt,available:!!record});
     }
     const relations=await this.listKnowledgeRelations(nodeId);
@@ -1661,15 +1668,8 @@ Object.assign(NEBULA_LOCAL,{
     const result=await this.getSourceContent(sourceId);
     if(!result) throw new Error("找不到来源记录。");
     const record=result.record;
-    let excerpt="",available=!!record;
-    if(record&&locator.kind==="pdf_page") excerpt=record.pages?.find(p=>Number(p.page)===Number(locator.page))?.text||"";
-    else if(record&&locator.kind==="topic") {
-      const topic=record.tree?.[locator.topicIndex];excerpt=topic?[topic.title,topic.note].filter(Boolean).join("\n"):"";
-    } else if(record&&locator.kind==="document_block"&&record.html&&typeof DOMParser!=="undefined") {
-      const doc=new DOMParser().parseFromString(record.html,"text/html");
-      const blocks=[...doc.body.querySelectorAll("h1,h2,h3,h4,p,li")];
-      excerpt=blocks[Number(locator.blockIndex)]?.textContent||"";
-    } else if(record&&locator.kind==="text_offset") excerpt=record.text||record.transcript||"";
+    const available=!!record;
+    const excerpt=resolveMindLocatorText(record,locator);
     return {source:result.source,recordId:record?.id||null,locator,excerpt,available,found:!!excerpt};
   }
 });
