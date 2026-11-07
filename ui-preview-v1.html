@@ -1051,7 +1051,7 @@ async function connectLocalKnowledgeUniverse(){
   let frameworks=await NEBULA_LOCAL.listFrameworks();
   let framework=frameworks.find(f=>f.status!=="archived")||null;
   if(!framework)framework=await NEBULA_LOCAL.createFrameworkFromCurrentGraph("我的知识框架","由已确认的本地正式知识节点建立；候选与演示节点不进入框架。");
-  else if(Number(framework.metadata?.graphSavedAt||0)<Number(graph.savedAt||0)){
+  else if(!(framework.rootNodeIds||[]).length||Number(framework.metadata?.graphSavedAt||0)<Number(graph.savedAt||0)){
    await NEBULA_LOCAL.syncFrameworkFromGraph(framework.id,{reason:"正式知识图谱更新后同步框架"});
    framework=await NEBULA_LOCAL.getFramework(framework.id);
   }
