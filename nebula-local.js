@@ -599,6 +599,33 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
         else await putRecord("knowledgeRelations",{...relation,sourceNodeId:nextSource,targetNodeId:nextTarget,updatedAt:Date.now()});
       }
     }
+    // Remap contextual references while preserving their original identity for audit.
+    const placements=await request("frameworkPlacements","readonly",s=>s.getAll());
+    for(const placement of placements.filter(x=>sourceSet.has(String(x.nodeId)))) {
+      await putRecord("frameworkPlacements",{...placement,originalNodeId:placement.originalNodeId||placement.nodeId,nodeId:before.id,updatedAt:Date.now()});
+    }
+    const paths=await request("explorationPaths","readonly",s=>s.getAll());
+    for(const path of paths.filter(x=>sourceSet.has(String(x.rootNodeId)))) {
+      await putRecord("explorationPaths",{...path,originalRootNodeId:path.originalRootNodeId||path.rootNodeId,rootNodeId:before.id,updatedAt:Date.now()});
+    }
+    const steps=await request("explorationSteps","readonly",s=>s.getAll());
+    for(const step of steps) {
+      const nextFrom=remap(step.fromNodeId),nextTo=remap(step.toNodeId);
+      if(nextFrom!==step.fromNodeId||nextTo!==step.toNodeId) {
+        await putRecord("explorationSteps",{...step,originalFromNodeId:step.originalFromNodeId||step.fromNodeId,originalToNodeId:step.originalToNodeId||step.toNodeId,fromNodeId:nextFrom,toNodeId:nextTo,updatedAt:Date.now()});
+      }
+    }
+    const learningRows=await request("learningRecords","readonly",s=>s.getAll());
+    for(const row of learningRows.filter(x=>sourceSet.has(String(x.nodeId)))) {
+      await putRecord("learningRecords",{...row,originalNodeId:row.originalNodeId||row.nodeId,nodeId:before.id,updatedAt:Date.now()});
+    }
+    const positions=await request("nodePositions","readonly",s=>s.getAll());
+    for(const row of positions.filter(x=>sourceSet.has(String(x.nodeId)))) {
+      const targetPositionId=String(row.frameworkId)+"::"+String(before.id);
+      const existing=await readRecord("nodePositions",targetPositionId);
+      if(!existing) await putRecord("nodePositions",{...row,id:targetPositionId,nodeId:before.id,originalNodeId:row.nodeId,updatedAt:Date.now()});
+      await deleteRecord("nodePositions",row.id);
+    }
     const index=nodes.findIndex(n=>String(n.id)===String(before.id));nodes[index]=updatedTarget;
     for(let i=nodes.length-1;i>=0;i--)if(sourceSet.has(String(nodes[i].id)))nodes.splice(i,1);
     resultingNodeId=before.id;
@@ -611,7 +638,8 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
     if(!Array.isArray(proposed)||proposed.length<2) throw new Error("拆分建议必须提供至少两个 proposedNodes，未执行任何更改。");
     const prior=(await getAllEntries("knowledgeVersions")).map(x=>x.value).filter(v=>String(v.nodeId)===String(before.id)).sort((a,b)=>a.versionNumber-b.versionNumber).at(-1);
     await putRecord("knowledgeVersions",{id:makeRecordId("version"),nodeId:before.id,versionNumber:(prior?.versionNumber||0)+1,contentSnapshot:cloneJSON(before),changeReason:"拆分前自动留档",evidenceSourceIds:[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:prior?.id||null});
-    const splitNodes=proposed.map((item,i)=>({...item,id:i===0?before.id:(item.id&&!nodes.some(n=>String(n.id)===String(item.id))?item.id:makeRecordId("node")),parentId:item.parentId??before.parentId??null,level:item.level??before.level??1,createdAt:item.createdAt||Date.now(),updatedAt:Date.now()}));
+    const splitGroupId=makeRecordId("split");
+    const splitNodes=proposed.map((item,i)=>({...item,id:i===0?before.id:(item.id&&!nodes.some(n=>String(n.id)===String(item.id))?item.id:makeRecordId("node")),parentId:item.parentId??before.parentId??null,level:item.level??before.level??1,splitGroupId,splitOriginNodeId:before.id,splitIndex:i,createdAt:item.createdAt||Date.now(),updatedAt:Date.now()}));
     const index=nodes.findIndex(n=>String(n.id)===String(before.id));nodes.splice(index,1,splitNodes[0],...splitNodes.slice(1));
     for(const item of splitNodes) {
       const priorRows=(await getAllEntries("knowledgeVersions")).map(x=>x.value).filter(v=>String(v.nodeId)===String(item.id));
