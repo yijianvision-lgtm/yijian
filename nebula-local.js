@@ -595,8 +595,11 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
     for(const relation of relations) {
       const nextSource=remap(relation.sourceNodeId),nextTarget=remap(relation.targetNodeId);
       if(nextSource!==relation.sourceNodeId||nextTarget!==relation.targetNodeId) {
-        if(String(nextSource)===String(nextTarget)) await deleteRecord("knowledgeRelations",relation.id);
-        else await putRecord("knowledgeRelations",{...relation,sourceNodeId:nextSource,targetNodeId:nextTarget,updatedAt:Date.now()});
+        if(String(nextSource)===String(nextTarget)) {
+          await deleteRecord("knowledgeRelations",relation.id);
+          const orphanEvidence=(await request("relationEvidence","readonly",s=>s.getAll())).filter(x=>String(x.relationId)===String(relation.id));
+          for(const evidenceRow of orphanEvidence) await deleteRecord("relationEvidence",evidenceRow.id);
+        } else await putRecord("knowledgeRelations",{...relation,sourceNodeId:nextSource,targetNodeId:nextTarget,updatedAt:Date.now()});
       }
     }
     // Remap contextual references while preserving their original identity for audit.
@@ -2059,6 +2062,7 @@ Object.assign(NEBULA_LOCAL, {
     if(item.parentPlacementId) {
       const parent=await readRecord("frameworkPlacements",item.parentPlacementId);
       if(!parent||String(parent.frameworkId)!==String(item.frameworkId)) throw new Error("父级框架位置不存在或不属于同一框架。");
+      if(String(parent.nodeId)===String(item.nodeId)) throw new Error("同一知识对象不能直接成为自身框架位置的父级。");
     }
     return createManagedRecord("frameworkPlacements",{...item,placementType:item.placementType||"contextual",needsReview:Boolean(item.needsReview)}, "framework_placement", []);
   },
@@ -2074,6 +2078,14 @@ Object.assign(NEBULA_LOCAL, {
     if(next.parentPlacementId) {
       const parent=await readRecord("frameworkPlacements",next.parentPlacementId);
       if(!parent||String(parent.frameworkId)!==String(current.frameworkId)||String(parent.id)===String(id)) throw new Error("父级位置无效。");
+      let cursor=parent,visited=new Set();
+      while(cursor) {
+        if(String(cursor.id)===String(id)) throw new Error("框架位置不能形成循环父子关系。");
+        if(visited.has(String(cursor.id))) throw new Error("现有框架位置已存在循环关系，请先修复。");
+        visited.add(String(cursor.id));
+        cursor=cursor.parentPlacementId?await readRecord("frameworkPlacements",cursor.parentPlacementId):null;
+      }
+      if(String(parent.nodeId)===String(current.nodeId)) throw new Error("同一知识对象不能直接成为自身框架位置的父级。");
     }
     return putRecord("frameworkPlacements",next);
   },
@@ -2146,9 +2158,15 @@ Object.assign(NEBULA_LOCAL, {
       const endpoints=[[String(relation.sourceNodeId),String(relation.targetNodeId)],[String(relation.targetNodeId),String(relation.sourceNodeId)]];
       if(!endpoints.some(([a,b])=>a===String(fromNodeId)&&b===String(item.toNodeId))) throw new Error("知识关系两端与探索步骤不匹配。");
     }
+    const evidenceIds=Array.isArray(item.evidenceIds)?[...new Set(item.evidenceIds.map(String))]:[];
+    for(const evidenceId of evidenceIds) {
+      const [source,evidence,link,extraction]=await Promise.all([
+        this.getSource(evidenceId),readRecord("relationEvidence",evidenceId),readRecord("nodeSourceLinks",evidenceId),this.getExtractionItem(evidenceId)
+      ]);
+      if(!source&&!evidence&&!link&&!extraction) throw new Error("探索步骤引用了不存在的证据记录："+evidenceId);
+    }
     const step=await createManagedRecord("explorationSteps",{
-      ...item,fromNodeId,relationId:relation?.id||null,
-      evidenceIds:Array.isArray(item.evidenceIds)?[...new Set(item.evidenceIds.map(String))]:[],
+      ...item,fromNodeId,relationId:relation?.id||null,evidenceIds,
       context:item.context&&typeof item.context==="object"?item.context:{},
       createdAt:item.createdAt||Date.now()
     },"exploration_step",[]);
