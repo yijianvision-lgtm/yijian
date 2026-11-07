@@ -699,6 +699,43 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
  .filter-dimension-tabs{gap:2px}.filter-dimension-tabs button{padding:6px 7px}
 }
 
+
+/* V21 · Framework-first spatial composition — restrained, legible, evidence-aware */
+.logic-toolbar{border:0!important;border-bottom:1px solid rgba(220,231,238,.09)!important;border-radius:0!important;background:transparent!important;padding:12px 2px 16px!important}
+.logic-current{max-width:760px!important;margin:18px auto 0!important;padding:14px 16px!important;border:0!important;border-bottom:1px solid rgba(220,231,238,.16)!important;border-radius:0!important;background:linear-gradient(90deg,rgba(225,235,241,.055),transparent 86%)!important;position:relative}
+.logic-current:after{content:"";position:absolute;left:50%;bottom:-4px;width:7px;height:7px;border-radius:50%;background:rgba(218,231,239,.7);box-shadow:0 0 12px rgba(224,238,246,.18);transform:translateX(-50%)}
+.logic-children{max-width:760px!important;margin:0 auto!important;padding:14px 0 8px!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:0!important;position:relative}
+.logic-children:before{content:"";position:absolute;left:22px;top:0;bottom:18px;width:1px;background:linear-gradient(180deg,rgba(202,218,228,.2),rgba(202,218,228,.035))}
+.logic-child{min-height:0!important;width:calc(100% - 42px)!important;margin:0 0 0 42px!important;padding:13px 16px 13px 18px!important;border:0!important;border-bottom:1px solid rgba(220,231,238,.07)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) auto;align-items:center;gap:14px}
+.logic-child:before{content:"";position:absolute;left:-25px;top:50%;width:18px;height:1px;background:rgba(202,218,228,.18)}
+.logic-child:after{content:"";position:absolute;left:-29px;top:calc(50% - 2px);width:4px;height:4px;border-radius:50%;background:rgba(211,225,234,.42)}
+.logic-child:hover,.logic-child.is-live-node{border-color:rgba(220,231,238,.13)!important;background:linear-gradient(90deg,rgba(218,230,237,.055),transparent 85%)!important;box-shadow:inset 2px 0 rgba(207,221,230,.34)!important}
+.logic-child strong{font-size:10px!important;font-weight:480!important}.logic-child small{margin:0!important;font-size:8px!important;color:#89959d!important}.logic-child em{margin:0!important;font-size:7px!important;color:#74818a!important;white-space:nowrap}
+.logic-related{max-width:760px!important;margin:18px auto 0!important;padding:14px 0!important;border-top:1px solid rgba(220,231,238,.09)!important}
+.logic-related .relation-chips{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:10px}
+.logic-related .status{background:rgba(255,255,255,.025);border-color:rgba(220,231,238,.09)}
+#continuumFocus{background:radial-gradient(ellipse at 50% 48%,rgba(19,25,31,.32),rgba(4,6,9,.77) 72%,rgba(3,5,8,.93))!important}
+#continuumFocus .continuum-core{position:relative!important;isolation:isolate;overflow:visible!important}
+#continuumFocus .continuum-core:after{content:"";position:absolute;z-index:-1;left:50%;top:50%;width:250px;height:142px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(ellipse,rgba(190,211,225,.075),rgba(190,211,225,.025) 42%,transparent 74%);filter:blur(5px);pointer-events:none}
+#continuumFocus .continuum-core:before{width:3px!important;height:3px!important;background:#edf4f7!important;box-shadow:0 0 5px rgba(238,247,251,.72),0 0 15px rgba(222,239,248,.22)!important}
+#continuumFocus .continuum-quadrant{opacity:.25!important;filter:blur(.12px)!important;transition:opacity 1.4s ease,color 1.4s ease,filter 1.4s ease!important;animation:guanfuGhost 17s ease-in-out infinite!important}
+#continuumFocus .q-forward{animation-delay:-2s!important}#continuumFocus .q-left{animation-delay:-6s!important}#continuumFocus .q-right{animation-delay:-10s!important}#continuumFocus .q-backward{animation-delay:-14s!important}
+#continuumFocus .continuum-quadrant b{color:rgba(229,239,245,.68)!important;font-weight:430!important}
+#continuumFocus .continuum-quadrant small{color:rgba(194,210,220,.47)!important}
+#continuumFocus .continuum-quadrant .cq-kicker,#continuumFocus .continuum-quadrant i{color:rgba(190,207,218,.42)!important}
+#continuumFocus .continuum-quadrant:hover{opacity:.78!important;filter:none!important}
+#continuumFocus .continuum-routes .route{stroke:rgba(214,229,238,.36)!important;stroke-width:.78!important;stroke-dasharray:3 9!important}
+#continuumFocus.arriving .continuum-routes .route{animation:guanfuRouteIn 1.9s ease both!important}
+#continuumFocus.arriving .route-forward{animation-delay:2.7s!important}#continuumFocus.arriving .route-left{animation-delay:3.1s!important}#continuumFocus.arriving .route-right{animation-delay:3.5s!important}#continuumFocus.arriving .route-backward{animation-delay:3.9s!important}
+@keyframes guanfuRouteIn{from{opacity:0;stroke-dashoffset:44}to{opacity:.52;stroke-dashoffset:0}}
+#continuumFocus .continuum-bottom{border-color:rgba(220,231,238,.07)!important;opacity:.52!important}#continuumFocus .continuum-path{color:rgba(196,210,219,.62)!important}
+#continuumFocus .continuum-trail button{background:rgba(255,255,255,.025)!important}
+.right-panel .rail-card:nth-child(2){background:rgba(7,10,13,.34)!important;border-color:rgba(220,231,238,.075)!important}
+.mini-map{background:radial-gradient(ellipse,rgba(29,37,44,.7),rgba(7,10,13,.16) 76%)!important}.map-caption{color:rgba(178,192,201,.52)!important}
+.filter-column{padding-top:12px}.filter-inspector{background:linear-gradient(90deg,rgba(218,230,237,.035),transparent 88%)!important}.filter-inspector .inspector-uncertainty{color:#b5aa91!important}
+@media(max-width:760px){.logic-children{padding-left:0!important}.logic-child{width:calc(100% - 28px)!important;margin-left:28px!important;grid-template-columns:1fr;gap:5px;padding:12px!important}.logic-children:before{left:14px}.logic-child:before{left:-15px;width:10px}.logic-child:after{left:-19px}.logic-child em{white-space:normal}#continuumFocus .continuum-core:after{width:180px;height:112px}}
+@media(prefers-reduced-motion:reduce){#continuumFocus .continuum-quadrant{animation:none!important}#continuumFocus.arriving .continuum-routes .route{animation:none!important;opacity:.5!important}}
+
 </style>
 </head>
 <body>
@@ -732,7 +769,7 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
 </aside>
 <div class="bottom-hint"><span>拖拽</span> 旋转空间　 <span>滚轮</span> 缩放　 <span>点击节点</span> 查看知识</div>
 <section class="timeline"><div class="time-top"><span>KNOWLEDGE TIMELINE</span><span>知识形成与演化</span></div><div class="time-track"><div class="time-point active">起源</div><div class="time-point">延展</div><div class="time-point">连接</div><div class="time-point">演化</div><div class="time-point">现在</div></div></section>
-<section class="overlay" id="hierarchy"><div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE STRUCTURE</div><div class="overlay-title">框架</div><div class="overlay-sub">横向树状导航 · 初始显示当前主题的直接子级，逐层深入或返回上级</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="logic-toolbar"><div><div class="logic-path" id="logicPath">我的知识宇宙 / 系统思维</div><div class="logic-caption" id="logicCaption">当前层级的直接子节点 · 父子层级独立于横向知识关系</div></div><div class="logic-actions"><button class="action-btn" id="logicUp">← 上一级</button><button class="action-btn" id="logicRoot">返回根主题</button></div></div><div class="logic-current"><span class="status">当前主题</span><strong id="logicCurrent">系统思维</strong><span id="logicDepth" class="logic-depth">LEVEL 01</span></div><div class="logic-children" id="logicChildren"></div><div class="logic-related"><div class="section-label">横向关联 · RELATED KNOWLEDGE</div><div id="logicRelations" class="relation-chips"><span class="status">反馈控制</span><span class="status">复杂适应系统</span><span class="status">因果推断</span></div><p class="source-state">这些是跨主题关联，不属于当前主题的子级；选择后可跳转查看，但不会改变父子树。</p></div></section>
+<section class="overlay" id="hierarchy"><div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE STRUCTURE</div><div class="overlay-title">框架</div><div class="overlay-sub">纵向谱系导航 · 先看当前主干，再逐层进入分支与根系</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="logic-toolbar"><div><div class="logic-path" id="logicPath">我的知识宇宙 / 系统思维</div><div class="logic-caption" id="logicCaption">当前层级的直接子节点 · 父子层级独立于横向知识关系</div></div><div class="logic-actions"><button class="action-btn" id="logicUp">← 上一级</button><button class="action-btn" id="logicRoot">返回根主题</button></div></div><div class="logic-current"><span class="status">当前主题</span><strong id="logicCurrent">系统思维</strong><span id="logicDepth" class="logic-depth">LEVEL 01</span></div><div class="logic-children" id="logicChildren"></div><div class="logic-related"><div class="section-label">横向关联 · RELATED KNOWLEDGE</div><div id="logicRelations" class="relation-chips"><span class="status">反馈控制</span><span class="status">复杂适应系统</span><span class="status">因果推断</span></div><p class="source-state">这些是跨主题关联，不属于当前主题的子级；选择后可跳转查看，但不会改变父子树。</p></div></section>
 <section class="overlay" id="sources"><div class="overlay-head"><div><div class="eyebrow">ORIGINAL MATERIALS</div><div class="overlay-title">资料</div><div class="overlay-sub">只展示原始讲义、原始思维导图、论文与文献；与 AI 已整理知识分开保存</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="source-workbench">
  <div class="source-toolbar"><div><span class="source-tag">LOCAL SOURCE LIBRARY</span><div class="source-toolbar-title">资料进入知识系统</div><div class="source-toolbar-sub">原文件保留 · 提取内容独立保存 · AI 建议必须经审核</div></div><button class="action-btn primary" id="chooseSource">＋ 选择本地资料</button><input id="sourceFileInput" type="file" multiple accept=".pdf,.doc,.docx,.emmx,.xmind,.png,.jpg,.jpeg,.webp,.txt,.md" hidden></div>
  <div class="source-notice"><b>本地资料保护</b> 选中的原件由浏览器在本机读取并保存到 IndexedDB，不会自动上传。解析后生成独立候选与来源定位；正式知识仍需经过审核确认。</div>
@@ -740,7 +777,7 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
  <div class="source-grid"><div class="source-list"><div class="eyebrow">SOURCE LIBRARY</div><div class="source-row active" data-source-kind="all">全部资料 <span>· 4</span></div><div class="source-row" data-source-kind="document">原始讲义 · PDF / Word</div><div class="source-row" data-source-kind="mindmap">思维导图 · EMMX / XMind</div><div class="source-row" data-source-kind="paper">论文与文献</div><div class="source-row" data-source-kind="image">图片与附件</div><div class="source-row" data-source-kind="conversation" style="margin-top:18px;color:#82928e">AI 对话来源（独立）</div><div class="source-list-note">分类只改变资料视图，不改变原始文件。相同内容可关联多个知识节点。</div></div>
  <div class="source-reader"><div class="source-reader-head"><div><span class="source-tag">ORIGINAL SOURCE · 未经 AI 整理</span><h3>原始资料阅读区</h3></div><span class="status">原件只读保留</span></div><p>选择一份资料后，在此查看原文、章节、层级、图片与页码。知识节点引用来源时，应能定位到原始页码或段落，而不是只显示 AI 摘要。</p><div class="source-file-list" id="sourceFileList"><div class="source-file"><div><b>复杂系统讲义.pdf</b><small>PDF · 42 页 · 已建立来源索引（演示数据）</small></div><span class="status">原始资料</span></div><div class="source-file"><div><b>系统思维导图.emmx</b><small>EMMX · 含层级与图片（演示数据）</small></div><span class="status">原始资料</span></div><div class="source-file"><div><b>DeepSeek 对话：系统动力学</b><small>对话来源 · 独立保存（演示数据）</small></div><span class="status">AI 对话</span></div></div><div class="source-preview" id="sourcePreview"><div class="eyebrow">CONTENT PREVIEW</div><b>导入后预览区</b><p>原始文件、提取文本、图片附件、结构层级和解析警告将在这里分层展示。原始内容与 AI 整理结果不会混写。</p></div></div></div>
  <div class="source-import-state" id="sourceImportState" aria-live="polite">尚未选择新文件。支持 PDF、DOC/DOCX、EMMX、XMind、图片、TXT 与 MD。</div>
- <div class="action-row"><button class="action-btn" id="sourceInspect" disabled>模拟检查文件结构</button><button class="action-btn" id="sourcePreviewBtn" disabled>查看提取预览</button><button class="action-btn primary" id="sourceReviewBtn" disabled>生成审核建议</button><button class="action-btn" data-go="review">前往审核中心</button></div>
+ <div class="action-row"><button class="action-btn" id="sourceInspect" disabled>检查文件结构</button><button class="action-btn" id="sourcePreviewBtn" disabled>查看提取预览</button><button class="action-btn primary" id="sourceReviewBtn" disabled>生成审核建议</button><button class="action-btn" data-go="review">前往审核中心</button></div>
  </div></section>
 <section class="overlay" id="overview"><div class="overlay-head"><div><div class="eyebrow">UNIVERSE OVERVIEW</div><div class="overlay-title">知识宇宙 · 全局层级</div><div class="overlay-sub">缩小视图查看整体结构，选择任意层级进入具体知识区域</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="tree"><div class="tree-root">NEBULA · 我的知识宇宙</div><div class="tree-stem"></div><div class="tree-branches"><div class="tree-col"><button class="tree-node">认知与思维<small>一级领域 · 18 个节点</small></button><button class="tree-node">学习方法<small>二级层级 · 12 个节点</small></button></div><div class="tree-col"><button class="tree-node">科学与技术<small>一级领域 · 26 个节点</small></button><button class="tree-node">复杂系统<small>二级层级 · 9 个节点</small></button></div><div class="tree-col"><button class="tree-node">社会与经济<small>一级领域 · 14 个节点</small></button><button class="tree-node">组织行为<small>二级层级 · 7 个节点</small></button></div></div></div></section>
 
@@ -1144,9 +1181,15 @@ async function renderFilterCase(){
 }
 
 $("createLocationProposal").addEventListener("click",async()=>{
- if(!activeFilterCaseId||activeSuggestionIndex<0){setFilterMessage("先选择一条谱系定位建议。");return;}
- try{const proposal=await NEBULA_LOCAL.createFilterSuggestionProposal(activeFilterCaseId,activeSuggestionIndex);setFilterMessage("已生成待审核谱系提案："+proposal.id+"。正式框架尚未改变。");await refreshFilterWorkbench();}
- catch(e){setFilterMessage(e.message);}
+ if(!activeFilterCaseId||activeSuggestionIndex<0){setFilterMessage("先选择一条定位或关联建议。");return;}
+ const suggestion=activeCase()?.locationSuggestions?.[activeSuggestionIndex];
+ try{
+  const proposal=suggestion?.dimension==="horizontal"
+   ?await NEBULA_LOCAL.createFilterRelationProposal(activeFilterCaseId,activeSuggestionIndex)
+   :await NEBULA_LOCAL.createFilterSuggestionProposal(activeFilterCaseId,activeSuggestionIndex);
+  setFilterMessage((proposal.proposalType==="relation"?"已生成待审核横向关系提案：":"已生成待审核谱系提案：")+proposal.id+"。正式知识尚未改变，等待你确认。");
+  await refreshFilterWorkbench();
+ }catch(e){setFilterMessage(e.message);}
 });
 document.querySelectorAll("[data-filter-dimension]").forEach(button=>button.addEventListener("click",()=>{
  activeDimensionFilter=button.dataset.filterDimension;
