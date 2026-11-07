@@ -1,5 +1,7 @@
 # NEBULA — 个人认知操作系统产品宪章
 
+> **历史文档说明（2026-11-07）：** 本文件保留为早期产品讨论与历史设计记录。若其中“认知驾驶舱”、模块并列或旧四向定义与现行产品定位存在冲突，以 [《观复 Mind｜最高设计总纲》](GUANFU-MIND-DESIGN-CHARTER.md) 为最高依据，并按 [《产品结构与后台实施蓝图》](GUANFU-MIND-IMPLEMENTATION-BLUEPRINT.md) 执行。请勿将本文件单独作为新设计任务的最高指令。
+
 > 产品定位：Local-first Personal Cognitive Operating System  
 > 核心目标：帮助一个人持续理解、验证、组织、应用知识，并看见认知随时间的变化。  
 > 3D 知识宇宙是主要探索界面，不是产品的全部。
