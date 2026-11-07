@@ -3,8 +3,8 @@
  * No login, cloud database, account service or remote file storage.
  */
 const DB_NAME = "nebula_local_v2";
-const DB_VERSION = 5;
-const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence"];
+const DB_VERSION = 6;
+const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence", "frameworkPlacements", "explorationPaths", "explorationSteps"];
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -12,7 +12,7 @@ function openDB() {
     req.onupgradeneeded = () => {
       const db = req.result;
       for (const name of STORES) if (!db.objectStoreNames.contains(name)) {
-        if (["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence"].includes(name)) db.createObjectStore(name, { keyPath: "id" });
+        if (["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence","frameworkPlacements","explorationPaths","explorationSteps"].includes(name)) db.createObjectStore(name, { keyPath: "id" });
         else db.createObjectStore(name);
       }
     };
@@ -420,7 +420,7 @@ async function backupPayload() {
   }
   const local={};
   try { for(const key of BACKUP_LOCAL_STORAGE_KEYS) { const value=localStorage.getItem(key); if(value!==null)local[key]=value; } } catch {}
-  return {format:"NEBULA_FULL_BACKUP",schemaVersion:5,exportedAt:nowISO(),stores,localStorage:local,
+  return {format:"NEBULA_FULL_BACKUP",schemaVersion:6,exportedAt:nowISO(),stores,localStorage:local,
     manifest:Object.fromEntries(Object.entries(stores).map(([k,v])=>[k,{records:v.length}])),
     notes:["原始讲义与 AI 对话分别备份，包含原始文件 Blob。","仅备份非敏感的 NEBULA 本地设置；访问令牌和 API 密钥不会导出。","本地文件夹授权句柄不会导出，恢复后需重新授权。"]};
 }
@@ -433,7 +433,7 @@ async function makeFullBackup() {
 }
 async function validateFullBackup(input) {
   const parsed=typeof input==="string"?JSON.parse(input):input;
-  if(!parsed||parsed.format!=="NEBULA_FULL_BACKUP"||!parsed.stores||typeof parsed.stores!=="object"||![3,4,5].includes(Number(parsed.schemaVersion))) throw new Error("这不是有效或受支持的 NEBULA 完整备份文件。");
+  if(!parsed||parsed.format!=="NEBULA_FULL_BACKUP"||!parsed.stores||typeof parsed.stores!=="object"||![3,4,5,6].includes(Number(parsed.schemaVersion))) throw new Error("这不是有效或受支持的 NEBULA 完整备份文件。");
   const supported=new Set(STORES);
   for(const [name,rows] of Object.entries(parsed.stores)) {
     if(!supported.has(name)||!Array.isArray(rows)) throw new Error("备份包含不支持的数据表："+name);
@@ -675,7 +675,8 @@ Object.assign(NEBULA_LOCAL,{
     if(!node?.id)throw new Error("节点 ID 缺失，无法建立版本。");
     const rows=(await request("knowledgeVersions","readonly",s=>s.getAll())).filter(x=>String(x.nodeId)===String(node.id)).sort((a,b)=>a.versionNumber-b.versionNumber);
     const latest=rows.at(-1),snapshot=cloneJSON(node);
-    const comparable=x=>JSON.stringify({name:x.name,coreWord:x.coreWord,desc:x.desc,before:x.before,after:x.after,left:x.left,right:x.right,parentId:x.parentId,status:x.status,confidence:x.confidence});
+    // Snapshot every persisted semantic field; a narrow allow-list silently lost edits.
+    const comparable=x=>JSON.stringify(x??null);
     if(latest&&comparable(latest.contentSnapshot)===comparable(snapshot))return latest;
     const version={id:makeRecordId("version"),nodeId:node.id,versionNumber:(latest?.versionNumber||0)+1,contentSnapshot:snapshot,changeReason:reason,evidenceSourceIds:[],createdAt:Date.now(),createdBy,supersedesVersionId:latest?.id||null};
     await putRecord("knowledgeVersions",version);node.currentVersionId=version.id;return version;
@@ -830,7 +831,13 @@ Object.assign(NEBULA_LOCAL,{
     if(!record?.sourceNodeId||!record?.targetNodeId||String(record.sourceNodeId)===String(record.targetNodeId))throw new Error("关系两端节点必须有效且不能相同。");
     const graph=await this.loadGraph(),ids=new Set((graph?.nodes||[]).map(n=>String(n.id)));
     if(!ids.has(String(record.sourceNodeId))||!ids.has(String(record.targetNodeId)))throw new Error("关系引用了不存在的知识节点。");
-    return putRecord("knowledgeRelations",{...record,id:record.id||makeRecordId("relation"),createdAt:record.createdAt||Date.now()});
+    const relationTypes=new Set(["precedes","follows","influences","causes","derived_from","part_of","contains","made_of","created_by","contemporary_with","contextualizes","contrasts_with","complements","analogous_to","related_to","unclassified"]);
+    const relationType=String(record.relationType||record.type||"unclassified");
+    if(!relationTypes.has(relationType))throw new Error("关系类型无效，请使用已定义的关系类型。");
+    const status=record.status||"proposed";
+    if(!["proposed","confirmed","disputed","rejected","unknown"].includes(status))throw new Error("关系确认状态无效。");
+    if(status==="confirmed"&&!record.confirmedBy)throw new Error("确认关系必须记录确认者。");
+    return putRecord("knowledgeRelations",{...record,relationType,status,id:record.id||makeRecordId("relation"),createdAt:record.createdAt||Date.now(),updatedAt:Date.now()});
   },
   async listKnowledgeRelations(nodeId) {
     const rows=await request("knowledgeRelations","readonly",s=>s.getAll());
@@ -1927,5 +1934,143 @@ Object.assign(NEBULA_LOCAL,{
     }
     lines.push("","---","导出时间："+new Date().toISOString());
     return lines.join("\n");
+  }
+});
+
+
+/* GUANFU MIND V1.1 additive domain records.
+ * Knowledge node identity remains in graph.nodes. Framework placement and
+ * exploration traversal are separate records and never rewrite node.parentId.
+ */
+const GUANFU_RELATION_TYPES = new Set([
+  "precedes","follows","influences","causes","derived_from","part_of","contains",
+  "made_of","created_by","contemporary_with","contextualizes","contrasts_with",
+  "complements","analogous_to","related_to","unclassified"
+]);
+const GUANFU_DIRECTIONS = new Set(["瞻前","顾后","向内","向外"]);
+Object.assign(NEBULA_LOCAL, {
+  async createFrameworkPlacement(record) {
+    const item=cleanRecord(record);
+    item.frameworkId=requireId(item.frameworkId,"框架");
+    item.nodeId=requireId(item.nodeId,"知识对象");
+    if(!(await this.getFramework(item.frameworkId))) throw new Error("框架位置引用的框架不存在。");
+    const graph=await this.loadGraph(), nodes=graph?.nodes||[];
+    if(!nodes.some(n=>String(n.id)===String(item.nodeId))) throw new Error("框架位置引用的知识对象不存在。");
+    if(item.parentPlacementId) {
+      const parent=await readRecord("frameworkPlacements",item.parentPlacementId);
+      if(!parent||String(parent.frameworkId)!==String(item.frameworkId)) throw new Error("父级框架位置不存在或不属于同一框架。");
+    }
+    return createManagedRecord("frameworkPlacements",{...item,placementType:item.placementType||"contextual",needsReview:Boolean(item.needsReview)}, "framework_placement", []);
+  },
+  async listFrameworkPlacements(frameworkId,nodeId) {
+    const rows=await request("frameworkPlacements","readonly",s=>s.getAll());
+    return rows.filter(x=>(!frameworkId||String(x.frameworkId)===String(frameworkId))&&(!nodeId||String(x.nodeId)===String(nodeId)));
+  },
+  async updateFrameworkPlacement(id,patch={}) {
+    const allowed=["parentPlacementId","role","sortOrder","context","placementType","needsReview","status"];
+    const current=await readRecord("frameworkPlacements",id);
+    if(!current) throw new Error("找不到框架位置记录。");
+    const next={...current,...Object.fromEntries(allowed.filter(k=>k in patch).map(k=>[k,patch[k]])),updatedAt:Date.now()};
+    if(next.parentPlacementId) {
+      const parent=await readRecord("frameworkPlacements",next.parentPlacementId);
+      if(!parent||String(parent.frameworkId)!==String(current.frameworkId)||String(parent.id)===String(id)) throw new Error("父级位置无效。");
+    }
+    return putRecord("frameworkPlacements",next);
+  },
+  async deleteFrameworkPlacement(id) {
+    const children=(await request("frameworkPlacements","readonly",s=>s.getAll())).filter(x=>String(x.parentPlacementId)===String(id));
+    if(children.length) throw new Error("该位置仍有子位置，请先调整子位置。");
+    return deleteRecord("frameworkPlacements",id);
+  },
+  async migrateLegacyFrameworkPlacements(frameworkId) {
+    const framework=await this.getFramework(frameworkId);
+    if(!framework) throw new Error("找不到知识框架。");
+    const existing=await this.listFrameworkPlacements(frameworkId);
+    if(existing.length) return {created:0,skipped:true,reason:"该框架已有独立位置记录，未重复迁移。"};
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    const included=mindDescendantIds(framework.rootNodeIds||[],nodes);
+    const selected=nodes.filter(n=>included.has(String(n.id)));
+    const idByNode=new Map(),created=[];
+    // Preserve legacy parent relations as reviewable framework placements only.
+    for(const node of selected) {
+      const parentPlacementId=idByNode.get(String(node.parentId))||null;
+      const placement=await this.createFrameworkPlacement({
+        frameworkId,nodeId:node.id,parentPlacementId,
+        role:node.parentId?"legacy-child":"legacy-root",
+        sortOrder:node.sortOrder??node.order??0,
+        context:{migration:"parentId_projection",legacyParentId:node.parentId||null},
+        placementType:"legacy_projection",needsReview:true,status:"proposed"
+      });
+      idByNode.set(String(node.id),placement.id);created.push(placement);
+    }
+    return {created:created.length,skipped:false,requiresReview:true,placements:created};
+  },
+  async createExplorationPath(record) {
+    const item=cleanRecord(record);
+    item.rootNodeId=requireId(item.rootNodeId,"探索起点");
+    const graph=await this.loadGraph(),ids=new Set((graph?.nodes||[]).map(n=>String(n.id)));
+    if(!ids.has(String(item.rootNodeId))) throw new Error("探索起点知识对象不存在。");
+    if(item.frameworkId && !(await this.getFramework(item.frameworkId))) throw new Error("探索路径所属框架不存在。");
+    if(item.parentPathId && !(await readRecord("explorationPaths",item.parentPathId))) throw new Error("父探索路径不存在。");
+    return createManagedRecord("explorationPaths",{...item,status:item.status||"active",currentStepId:null,createdAt:item.createdAt||Date.now()}, "exploration_path", []);
+  },
+  async appendExplorationStep(record) {
+    const item=cleanRecord(record);
+    item.pathId=requireId(item.pathId,"探索路径");
+    item.toNodeId=requireId(item.toNodeId,"目标知识对象");
+    item.direction=String(item.direction||"");
+    if(!GUANFU_DIRECTIONS.has(item.direction)) throw new Error("探索方向必须是瞻前、顾后、向内或向外。");
+    const path=await readRecord("explorationPaths",item.pathId);
+    if(!path) throw new Error("探索路径不存在。");
+    const graph=await this.loadGraph(),ids=new Set((graph?.nodes||[]).map(n=>String(n.id)));
+    if(!ids.has(String(item.toNodeId))) throw new Error("目标知识对象不存在。");
+    const parentStep=item.parentStepId?await readRecord("explorationSteps",item.parentStepId):null;
+    if(item.parentStepId&&(!parentStep||String(parentStep.pathId)!==String(item.pathId))) throw new Error("分支起点必须属于当前探索路径。");
+    const fromNodeId=item.fromNodeId||parentStep?.toNodeId||path.rootNodeId;
+    if(!ids.has(String(fromNodeId))) throw new Error("探索来源知识对象不存在。");
+    let relation=null;
+    if(item.relationId) {
+      relation=await readRecord("knowledgeRelations",item.relationId);
+      if(!relation) throw new Error("探索步骤引用的知识关系不存在。");
+      const endpoints=[[String(relation.sourceNodeId),String(relation.targetNodeId)],[String(relation.targetNodeId),String(relation.sourceNodeId)]];
+      if(!endpoints.some(([a,b])=>a===String(fromNodeId)&&b===String(item.toNodeId))) throw new Error("知识关系两端与探索步骤不匹配。");
+    }
+    const step=await createManagedRecord("explorationSteps",{
+      ...item,fromNodeId,relationId:relation?.id||null,
+      evidenceIds:Array.isArray(item.evidenceIds)?[...new Set(item.evidenceIds.map(String))]:[],
+      context:item.context&&typeof item.context==="object"?item.context:{},
+      createdAt:item.createdAt||Date.now()
+    },"exploration_step",[]);
+    await putRecord("explorationPaths",{...path,currentStepId:step.id,updatedAt:Date.now()});
+    return step;
+  },
+  async listExplorationPaths(options={}) {
+    const rows=await request("explorationPaths","readonly",s=>s.getAll());
+    return rows.filter(x=>(!options.frameworkId||String(x.frameworkId)===String(options.frameworkId))&&(!options.rootNodeId||String(x.rootNodeId)===String(options.rootNodeId))).sort((a,b)=>a.createdAt-b.createdAt);
+  },
+  async listExplorationSteps(pathId) {
+    const rows=await request("explorationSteps","readonly",s=>s.getAll());
+    return rows.filter(x=>String(x.pathId)===String(pathId)).sort((a,b)=>a.createdAt-b.createdAt);
+  },
+  async forkExplorationPath(pathId,stepId,patch={}) {
+    const parent=await readRecord("explorationPaths",pathId);
+    if(!parent) throw new Error("原探索路径不存在。");
+    const steps=await this.listExplorationSteps(pathId);
+    const step=steps.find(x=>String(x.id)===String(stepId));
+    if(!step) throw new Error("分叉位置不属于原探索路径。");
+    return this.createExplorationPath({
+      title:patch.title||parent.title||"分支探索",
+      frameworkId:parent.frameworkId||null,
+      rootNodeId:step.toNodeId,
+      parentPathId:parent.id,
+      forkedFromStepId:step.id,
+      context:{...(parent.context||{}),...(patch.context||{}),forkedFrom:{pathId:parent.id,stepId:step.id}}
+    });
+  },
+  async getExplorationPathSnapshot(pathId) {
+    const path=await readRecord("explorationPaths",pathId);
+    if(!path) throw new Error("探索路径不存在。");
+    const steps=await this.listExplorationSteps(pathId);
+    return {path,steps,branchPoints:steps.map(s=>({stepId:s.id,nodeId:s.toNodeId,canFork:true}))};
   }
 });
