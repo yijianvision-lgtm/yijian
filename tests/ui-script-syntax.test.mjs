@@ -22,5 +22,13 @@ assert.ok(html.includes("focusExplorationTrail[focusCursor]={pathId:activeExplor
 assert.ok(html.includes("snapshot.steps[snapshot.steps.length-1]"), "Path-tail lookup must not depend on Array.prototype.at.");
 assert.ok(html.includes("quadrants-retracting"), "Entering a directional knowledge branch must retract the four-direction controls.");
 assert.ok(html.includes("classList.remove('quadrants-retracting')"), "Closing the choice panel or entering a new core must restore directional controls.");
+assert.ok(html.includes('id="minimapQuadrantReturn"'), "The minimap must provide a way to reopen four-direction exploration.");
+assert.ok(html.includes("body.focus-active .right-panel .mini-map .minimap-quadrant-return{opacity:1;pointer-events:auto}"), "The minimap return control must be available while focused.");
+assert.ok(html.includes("transform:scale(.12)!important;"), "Retracted quadrants must shrink while fading.");
+const selectNodeBody = html.match(/function selectNode\(i,append=true\)\{([\s\S]*?)\}const directionPrompts/);
+assert.ok(selectNodeBody, "Expected to locate selectNode implementation.");
+assert.ok(!selectNodeBody[1].includes('remove("quadrants-retracting")'), "Selecting a new core must not immediately undo the quadrant retraction.");
+assert.ok(html.includes("minimapQuadrantReturn?.addEventListener('click',event=>{event.stopPropagation();document.getElementById('continuumFocus')?.classList.remove('quadrants-retracting')"), "The minimap control must restore the four directions on demand.");
+
 
 console.log("Checked " + scripts.length + " inline scripts and V3-A exploration contracts.");
