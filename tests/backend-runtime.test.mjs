@@ -351,7 +351,7 @@ const placementB = await api.createFrameworkPlacement({
   context: { view: "comparative-theory", note: "另一条框架路径中的语境" }, needsReview: false
 });
 assert.notEqual(placementA.id, placementB.id, "One knowledge identity may have multiple contextual placements.");
-assert.equal((await api.listFrameworkPlacements(frameworkProjection.id, placedNode.id)).length, 2);
+assert.equal((await api.listFrameworkPlacements(frameworkProjection.id, placedNode.id)).length, 3, "The framework seed placement and two additional contextual placements must coexist.");
 const placementTree = await api.getFrameworkTree(frameworkProjection.id);
 assert.equal(placementTree.modelMode, "framework-placement", "Framework navigation must use contextual placements when present.");
 assert.equal(placementTree.roots.some(x => x.id === placedNode.id), true, "Placement tree entries must expose the stable knowledge object identity.");
