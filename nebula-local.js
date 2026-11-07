@@ -1177,6 +1177,11 @@ NEBULA_LOCAL.saveReference = async function(file) {
   if(saved.duplicate) return saved;
   const sourceId="src_"+saved.id;
   try {
+    if(!(await this.getSource(sourceId))) await this.saveSource({
+      id:sourceId,sourceType:"lecture",title:saved.name,referenceId:saved.id,
+      fileName:saved.name,mime:saved.mime,size:saved.size,
+      parserWarnings:saved.warnings||[],createdAt:saved.savedAt||Date.now()
+    });
     const pipeline=await this.createExtractionFromParsedSource({
       sourceId,referenceId:saved.id,name:saved.name,text:saved.text,html:saved.html,
       tree:saved.tree,pages:saved.pages,warnings:saved.warnings
@@ -1268,5 +1273,173 @@ Object.assign(NEBULA_LOCAL,{
     );
     await this.updateFilterCase(filterCaseId,{duplicateCandidates});
     return decision;
+  }
+});
+
+
+// Four-dimensional placement and relation suggestions.
+// This engine is deterministic and evidence-aware: it proposes, never writes into the formal graph.
+function mindTextTokens(value) {
+  const text=String(value||"").normalize("NFKC").toLowerCase();
+  const tokens=new Set(text.match(/[a-z0-9]{2,}/g)||[]);
+  const compact=text.replace(/[^\p{L}\p{N}]/gu,"");
+  const chars=Array.from(compact);
+  for(let i=0;i<chars.length-1;i++) tokens.add(chars[i]+chars[i+1]);
+  return tokens;
+}
+function mindDice(a,b) {
+  if(!a.size||!b.size) return 0;
+  let overlap=0;for(const token of a)if(b.has(token))overlap++;
+  return 2*overlap/(a.size+b.size);
+}
+function mindEraHints(value) {
+  const text=String(value||"");
+  const hints=text.match(/(?:公元前\s*)?\d{1,4}\s*(?:年|世纪)|(?:新石器时代|夏商周|春秋|战国|秦汉|汉代|魏晋|南北朝|隋唐|宋代|元代|明代|清代|当代|近现代)/g)||[];
+  return [...new Set(hints.map(x=>x.replace(/\s+/g,"")))];
+}
+function mindSpatialHints(value) {
+  const vocab=["哲学","历史","艺术","绘画","政治","经济","社会","心理","科学","技术","医学","教育","文学","宗教","地理","建筑","设计","管理","认知","语言"];
+  const text=String(value||"");
+  return vocab.filter(x=>text.includes(x));
+}
+Object.assign(NEBULA_LOCAL,{
+  async suggestFilterCaseLocations(filterCaseId,options={}) {
+    const filterCase=await this.getFilterCase(filterCaseId);
+    if(!filterCase) throw new Error("找不到过滤任务。");
+    if(!["filtering","needs_review"].includes(filterCase.status)) throw new Error("请先完成提取和重复辨异，再进行四维定位。");
+    const graph=await this.loadGraph(),nodes=Array.isArray(graph?.nodes)?graph.nodes:[];
+    const suggestions=[];
+    const minScore=Math.max(.12,Math.min(.8,Number(options.minScore)||.2));
+    for(const itemId of filterCase.inputItemIds||[]) {
+      const item=await this.getExtractionItem(itemId);if(!item)continue;
+      const content=[item.title,item.content,item.excerpt].filter(Boolean).join("\n");
+      const tokens=mindTextTokens(content);
+      const source=item.sourceId?await this.getSource(item.sourceId):null;
+      const topicPath=item.locator?.topicPath||[];
+      const parentHint=topicPath.length>1?topicPath.at(-2):null;
+      const parentMatches=nodes.map(node=>({
+        node,score:parentHint?mindDice(mindTextTokens(parentHint),mindTextTokens(node.name||node.coreWord)):mindDice(tokens,mindTextTokens([node.name,node.coreWord,node.desc].join(" ")))
+      })).filter(x=>x.score>=minScore).sort((a,b)=>b.score-a.score).slice(0,4);
+      for(const match of parentMatches) suggestions.push({
+        itemId,dimension:"lineage",kind:"parent_candidate",targetNodeId:match.node.id,
+        targetTitle:match.node.name||match.node.coreWord,score:Number(match.score.toFixed(4)),
+        confidence:match.score>=.55?"medium":"low",
+        reasoning:parentHint?"原始主题树提供了父主题线索，与现有节点名称进行文本匹配。":"候选内容与该节点的标题/核心词/说明存在词项重合，建议人工核对层级。",
+        evidence:{sourceId:item.sourceId||null,referenceId:item.referenceId||null,locator:item.locator||null,excerpt:item.excerpt||item.content?.slice(0,300)||""},
+        uncertainty:"文本匹配不能证明父子关系；需核对定义范围与框架层级。"
+      });
+      const candidateEra=mindEraHints([item.title,content].join(" "));
+      const timeMatches=nodes.map(node=>{
+        const nodeEra=mindEraHints([node.date,node.knowledgeTime,node.name,node.desc].join(" "));
+        const shared=candidateEra.filter(x=>nodeEra.includes(x));
+        return {node,shared};
+      }).filter(x=>x.shared.length);
+      for(const match of timeMatches.slice(0,4)) suggestions.push({
+        itemId,dimension:"time",kind:"temporal_neighbor",targetNodeId:match.node.id,
+        targetTitle:match.node.name,score:.62,confidence:"medium",
+        reasoning:"候选文本与现有节点包含相同的明确时代/时间词："+match.shared.join("、")+"。",
+        evidence:{sourceId:item.sourceId||null,referenceId:item.referenceId||null,locator:item.locator||null,excerpt:item.excerpt||""},
+        uncertainty:"时代词相同不等于先后、因果或同一时期；需核对具体时间范围。"
+      });
+      const candidateDomains=mindSpatialHints(content);
+      for(const node of nodes) {
+        const nodeDomains=mindSpatialHints([node.domain,node.domainPath,node.name,node.desc].join(" "));
+        const shared=candidateDomains.filter(x=>nodeDomains.includes(x));
+        if(shared.length) suggestions.push({
+          itemId,dimension:"space",kind:"domain_neighbor",targetNodeId:node.id,targetTitle:node.name,
+          score:.58,confidence:"medium",reasoning:"候选与现有节点出现相同领域词："+shared.join("、")+"。",
+          evidence:{sourceId:item.sourceId||null,referenceId:item.referenceId||null,locator:item.locator||null,excerpt:item.excerpt||""},
+          uncertainty:"领域词仅是分类线索，不能代替领域归属审核。"
+        });
+      }
+      const related=nodes.map(node=>({node,score:mindDice(tokens,mindTextTokens([node.name,node.coreWord,node.desc].join(" ")))}))
+        .filter(x=>x.score>=Math.max(.32,minScore+.12)&&x.node.id!==item.targetNodeId)
+        .sort((a,b)=>b.score-a.score).slice(0,5);
+      for(const match of related) {
+        const sameParent=nodes.some(n=>n.id===match.node.id&&n.parentId===item.parentId);
+        suggestions.push({
+          itemId,dimension:"horizontal",kind:"related_concept",targetNodeId:match.node.id,
+          targetTitle:match.node.name||match.node.coreWord,score:Number(match.score.toFixed(4)),
+          confidence:match.score>=.58?"medium":"low",
+          reasoning:"候选文本与该节点存在主题词项重合；建议检查是否属于同级、跨分支或跨领域关系。",
+          relationType:"related",evidence:{sourceId:item.sourceId||null,referenceId:item.referenceId||null,locator:item.locator||null,excerpt:item.excerpt||""},
+          uncertainty:"相似词项不代表语义关系，需确认关联类型及方向。"
+        });
+      }
+      if(!parentMatches.length&&!candidateEra.length&&!candidateDomains.length&&!related.length) {
+        suggestions.push({itemId,dimension:"lineage",kind:"unplaced",confidence:"unknown",score:0,
+          reasoning:"现有框架中没有足够证据支持自动定位，建议先保留为待归位候选。",
+          evidence:{sourceId:item.sourceId||null,referenceId:item.referenceId||null,locator:item.locator||null},
+          uncertainty:"不能据此断言知识无归属；需要补充上下文或由用户创建框架位置。"});
+      }
+    }
+    const updated=await this.updateFilterCase(filterCaseId,{
+      status:filterCase.status==="filtering"?"needs_review":filterCase.status,
+      currentStage:"four_dimension_review",locationSuggestions:suggestions,
+      relationSuggestions:suggestions.filter(x=>x.dimension==="horizontal"),
+      evidenceGaps:suggestions.filter(x=>x.confidence==="unknown").map(x=>({itemId:x.itemId,reason:x.reasoning}))
+    });
+    for(const suggestion of suggestions) await this.appendFilterDecision({
+      filterCaseId,decisionType:suggestion.dimension==="horizontal"?"relate":"locate",actor:"system",
+      before:{itemId:suggestion.itemId},after:{kind:suggestion.kind,targetNodeId:suggestion.targetNodeId||null,score:suggestion.score},
+      rationale:suggestion.reasoning,evidenceIds:[suggestion.evidence?.sourceId,suggestion.evidence?.referenceId].filter(Boolean)
+    });
+    return {filterCase:updated,suggestions,summary:{
+      lineage:suggestions.filter(x=>x.dimension==="lineage").length,
+      time:suggestions.filter(x=>x.dimension==="time").length,
+      space:suggestions.filter(x=>x.dimension==="space").length,
+      horizontal:suggestions.filter(x=>x.dimension==="horizontal").length,
+      unplaced:suggestions.filter(x=>x.kind==="unplaced").length
+    }};
+  },
+  async createFilterSuggestionProposal(filterCaseId,suggestionIndex) {
+    const filterCase=await this.getFilterCase(filterCaseId);
+    const suggestion=filterCase?.locationSuggestions?.[Number(suggestionIndex)];
+    if(!suggestion) throw new Error("找不到这条定位建议。");
+    const item=await this.getExtractionItem(suggestion.itemId);
+    if(!item) throw new Error("提取候选已不存在。");
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    const target=nodes.find(n=>String(n.id)===String(suggestion.targetNodeId));
+    const evidenceSourceIds=item.sourceId?[item.sourceId]:[];
+    if(suggestion.kind==="related_concept"&&target) {
+      return this.createProposal({
+        proposalType:"relation",sourceNodeId:target.id,relatedNodeId:target.id,
+        proposedSnapshot:{type:"related",label:"待确认的横向关联"},
+        reasoning:suggestion.reasoning+" "+suggestion.uncertainty,
+        evidenceSourceIds,filterCaseId,extractionItemId:item.id,evidence:suggestion.evidence
+      });
+    }
+    if(suggestion.kind==="parent_candidate"&&target) {
+      return this.createProposal({
+        proposalType:"create",targetNodeId:null,
+        proposedSnapshot:{id:"node_"+makeRecordId("candidate"),name:item.title||"待命名知识点",
+          desc:item.content||item.excerpt||"",parentId:target.id,level:(Number(target.level)||1)+1,
+          date:item.knowledgeTime||"未标注",needsReview:true,originType:"extraction_candidate"},
+        reasoning:suggestion.reasoning+" "+suggestion.uncertainty,
+        evidenceSourceIds,filterCaseId,extractionItemId:item.id,evidence:suggestion.evidence
+      });
+    }
+    throw new Error("该建议暂不支持直接生成审核提案；请先补充定位信息。");
+  },
+  async applyFilterCaseProposal(proposalId,decision,reviewerNote="") {
+    const proposal=await this.listProposals("pending").then(rows=>rows.find(x=>x.id===proposalId));
+    if(!proposal) throw new Error("找不到待审核的过滤提案。");
+    const result=await this.applyProposal(proposalId,decision,reviewerNote);
+    if(decision!=="accept") return result;
+    const graph=await this.loadGraph();
+    if(proposal.proposalType==="create") {
+      const nodeId=proposal.proposedSnapshot?.id||proposal.targetNodeId;
+      for(const sourceId of proposal.evidenceSourceIds||[]) {
+        if(sourceId&&nodeId) await this.linkNodeSource({nodeId,sourceId,evidenceLocator:proposal.evidence?.locator||null,
+          excerpt:proposal.evidence?.excerpt||"",relation:"origin"});
+      }
+    }
+    if(proposal.filterCaseId) {
+      const fc=await this.getFilterCase(proposal.filterCaseId);
+      if(fc) await this.appendFilterDecision({filterCaseId:fc.id,decisionType:"accept",actor:"user",
+        before:{proposalId},after:{decision:"accept",proposalType:proposal.proposalType},
+        rationale:reviewerNote||"用户确认过滤提案。",evidenceIds:proposal.evidenceSourceIds||[]});
+    }
+    return {...result,graph};
   }
 });
