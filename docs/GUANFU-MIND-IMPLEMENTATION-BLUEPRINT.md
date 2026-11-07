@@ -3,27 +3,27 @@
 
 > 本文件把最高设计总纲转化为可实施的系统结构、数据职责、模块边界、阶段顺序和验收条件。它是实施蓝图，不代表文中所有目标能力已经完成。
 
-## 1. 当前仓库审计结论
+## 1. 当前仓库审计结论（2026-11-07 最新状态）
 
-审计范围：README、index.html、nebula-local.js、deepseek-worker.js、现有 docs 与 backend tests。
+本节为当前代码审计快照；后续 V/P 阶段记录用于保留历史演进，不得将历史基线误认为当前状态。
 
-### 已存在的技术基础（按仓库代码/文档）
-- nebula-local.js 使用 IndexedDB，当前 DB_VERSION = 4，包含 graph、references、lectureSources、aiConversations、assets、meta、history、sources、nodeSourceLinks、knowledgeVersions、reviewProposals、learningRecords、researchSessions、knowledgeRelations 等对象库。
-- 已有来源保存、节点-来源多对多链接、独立知识关系、版本快照、审核提案、学习记录、研究草稿等 API。
-- 已有完整备份预览、完整性校验、恢复与合并能力；测试文件覆盖备份校验、合并/替换、来源关系和审核提案合并/拆分等场景。
-- 已有 PDF、DOCX、DOC 原件保留、EMMX、XMind 解析入口；不同格式的结构保真度仍需真实样本逐一验收。
-- deepseek-worker.js 已有 /health、/share、/analyze、/coach、/mnemonic、/research 路由。实际可用性仍取决于 Worker 部署、Secrets 和接口状态。
-- index.html 已有真实 Three.js 主界面、四向面板、时间轴、逻辑视图和本地数据接入基础。
+### 已存在的技术基础（按当前代码）
+- `nebula-local.js` 使用 IndexedDB，当前 `DB_VERSION = 5`。对象库包括 graph、references、lectureSources、aiConversations、assets、meta、history、sources、nodeSourceLinks、knowledgeVersions、reviewProposals、learningRecords、researchSessions、knowledgeRelations，以及 extractionBatches、extractionItems、filterCases、filterDecisions、frameworks、frameworkVersions、nodePositions、relationEvidence。
+- 已有本地资料保全、提取批次与候选、重复辨异、过滤决策、框架版本、节点空间位置、关系证据、来源回溯、学习记录、研究草稿与完整备份/恢复 API。
+- PDF、DOCX、EMMX、XMind、TXT、MD 及图片有本地接入或解析入口；旧 DOC 格式需转换为 DOCX/PDF。扫描 PDF 的 OCR 尚未接入，真实样本的结构保真度和图片提取质量仍待验收。
+- DeepSeek/AI 对话支持 JSON、TXT、MD 文件导入与手动粘贴；保存后进入本地来源目录、提取批次和过滤候选。JSON 解析覆盖常见消息/角色/parts 结构，但尚未使用用户真实导出档案验证不同版本的完整结构。
+- `deepseek-worker.js` 有健康检查、分享、分析、教练、助记和研究接口；是否可用取决于 Worker 部署与用户主动配置。未配置时不得宣称 AI 服务可用。
+- 独立预览页 `ui-preview-v1.html` 已接入真实本地图谱、框架投影、NodePosition、资料来源、知识过滤、研究草稿、学习队列和完整备份流程。正式 `index.html` 未随本轮预览迭代修改。
 
-### 当前主要差距
-1. 概念层：README 与旧文档仍有 NEBULA、认知驾驶舱等旧表述；观复 Mind 总纲应成为唯一最高原则。
-2. 过滤流程：现有 API 分散存在，尚需统一的过滤任务/状态流，把提取、去重候选、归位、关联、证据验证、审核、框架更新串起来。
-3. 节点定位：现有 graph 节点与关系基础不等于完整四维定位。谱系层级、时间坐标、空间/领域坐标、横向关系的语义与证据状态需要明确区分。
-4. 树状框架：已有逻辑视图基础，但目标是可逐层进入的主干—分支—根系框架，并与三维空间双向联动，不是卡片列表或缩进清单。
-5. 空间定位：需要统一当前路径、父级、同级、相邻关系和小地图状态；聚焦节点时不得丢失全局锚点。
-6. 证据回溯：已有来源关联 API，但逐条证据查看、精确定位跳转、解析质量提示和缺失来源提示仍需前端整合。
-7. AI 一致性：现有 Worker 教练提示词仍使用旧四向语义（前瞻/顾后/左顾/右盼）。需统一为四维定位：谱系纵向、时间、空间世界、横向关联；四向思考可作为交互表达，不替代四维定位。
-8. 真实状态：必须区分代码存在、UI 已接入、服务已部署、端到端已验证四种状态。不能仅凭函数存在就标记功能已完成。
+### 当前仍需解决的差距
+1. 端到端验收：需要在真实浏览器中验证 PDF、DOCX、EMMX、XMind、DeepSeek JSON/TXT/MD 导入、原文定位、框架双向聚焦、相机旋转、小地图与备份恢复。
+2. 四维语义：谱系与已确认横向关系已有审核闭环；时间关系必须有明确时间证据。空间/世界维度目前仅能展示明确领域上下文，尚无完整的空间关系提案与审核闭环。
+3. 框架质量：当前正式树和三维空间已读取正式节点与已保存位置；仍需检验大量节点、深层递归、异常父子数据、手动调整坐标和框架版本差异。
+4. 研究闭环：已有本机研究草稿保存/更新；多来源对照、外部论文检索 UI、研究结论转知识提案与审核尚未完成。
+5. 学习闭环：已有主动回忆、自评 0–5 和本地复习排程；AI 自动评估、测验题生成、应用/迁移任务尚未完成。
+6. 时间线：统一汇总导入、过滤、审核、研究、学习和框架变更的认知时间线尚未接入。
+7. 解析质量：OCR、旧 DOC 原生解析、复杂 PDF 图文布局、思维导图图片/附件保真、真实文件样本回归仍待完成。
+8. 真实状态治理：持续区分代码存在、UI 已接入、CI 已验证、Pages 已部署、真实浏览器端到端已验证；不可互相替代。
 
 ## 2. 总体系统分层
 
