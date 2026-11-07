@@ -827,16 +827,7 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
  <div class="action-row"><button class="action-btn" data-go="sources">查看资料中心</button><button class="action-btn" data-go="backup">备份与恢复</button></div>
 </section>
 <section class="overlay" id="lab"><div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE LABORATORY</div><div class="overlay-title">研究</div><div class="overlay-sub">研究草稿与证据工作台；未经确认的成果不会直接写入正式知识。</div></div><button class="close" data-close>返回</button></div>
-<div class="panel-grid">
- <div class="work-card"><h3>单节点研究 · 待选择</h3><p>研究工作区尚未与正式知识节点、来源比较和证据核验界面闭环连接；不会预填虚构研究对象。</p><div class="action-row"><span class="status pending">真实研究工作流待接入</span></div></div>
- <div class="work-card"><h3>多来源比较</h3><p>讲义、论文、AI 分析与不同作者观点并列比较，提取共识、差异与矛盾。</p><div class="action-row"><button class="action-btn" id="compareBtn" disabled>多来源比较 · 尚未接入</button></div></div>
- <div class="work-card"><h3>证据核验</h3><p>每条重要结论关联支持证据、反对证据、出处、证据强度与未解决问题。</p><div class="action-row"><span class="status pending">2 条结论待核验</span></div></div>
- </div>
- <div class="section-label">研究结构 · RESEARCH CANVAS</div><div class="panel-grid">
- <div class="task-card"><h3>核心定义</h3><p>明确概念边界、必要条件与关键术语。</p></div><div class="task-card"><h3>运行机制</h3><p>建立因果链，区分相关性与因果性。</p></div><div class="task-card"><h3>反例与争议</h3><p>主动寻找不符合当前解释的案例。</p></div>
- </div>
- <div class="section-label">研究成果回填</div><p class="overlay-sub">研究结论 → 新知识节点 / 节点修订建议 / 新关系 / 证据关联 / 待验证问题。所有回填均进入 AI 审核中心，由用户确认。</p>
- <div class="action-row"><button class="action-btn primary" id="researchDraft" disabled>研究草稿 · 尚未接入</button><button class="action-btn" data-go="filter-workbench">查看待审核建议</button></div>
+<div class="work-card"><h3>本机研究草稿</h3><p>这里保存你围绕某个知识点提出的问题、研究方向、证据摘录与暂时结论。保存的是研究草稿，不会自动变成正式知识，也不会自动调用外部 AI。</p><div class="eyebrow">RESEARCH QUESTION</div><input id="researchTitle" placeholder="研究主题 / 当前要弄清的问题" style="width:100%;padding:10px;margin:8px 0;background:#080c11;border:1px solid var(--line);border-radius:6px;color:var(--text)"><textarea id="researchQuery" placeholder="研究问题、概念边界、需要比较的观点……" style="width:100%;min-height:90px;padding:10px;margin:8px 0;background:#080c11;border:1px solid var(--line);border-radius:6px;color:var(--text);font:inherit"></textarea><textarea id="researchNotes" placeholder="研究笔记、来源摘录、证据与未解决问题……" style="width:100%;min-height:130px;padding:10px;margin:8px 0;background:#080c11;border:1px solid var(--line);border-radius:6px;color:var(--text);font:inherit"></textarea><div class="action-row"><button class="action-btn primary" id="researchDraft">保存本机研究草稿</button><span class="source-state" id="researchStatus">本机保存 · 待用户审核 · 不自动写入正式框架</span></div></div><div class="section-label">已有研究记录 · LOCAL RESEARCH LOG</div><div class="logic-children" id="researchSessionList"><div class="filter-empty">正在读取本机研究记录…</div></div><div class="section-label">尚未接入的研究能力</div><div class="panel-grid"><div class="task-card"><h3>多来源自动比较</h3><p>尚未完成来源选择、段落对照与差异证据的 UI 闭环。</p></div><div class="task-card"><h3>外部论文检索</h3><p>后台 Worker 接口存在；需要用户配置并主动触发，当前页面尚未接入。</p></div><div class="task-card"><h3>研究结论回填</h3><p>研究草稿转为知识提案的审核流程仍需补齐，不能直接改写正式框架。</p></div></div>
 </section>
 <section class="overlay" id="learning"><div class="overlay-head"><div><div class="eyebrow">ACTIVE LEARNING</div><div class="overlay-title">主动学习</div><div class="overlay-sub">不以阅读次数代表掌握程度；通过回忆、解释、应用与迁移验证理解。</div></div><button class="close" data-close>返回</button></div>
 <div class="panel-grid"><div class="metric-card"><div class="metric-label">DUE TODAY · 今日待复习</div><div class="metric-value" id="learningDueCount">—</div><div class="metric-note">真实复习队列尚未接入此概览</div></div><div class="metric-card"><div class="metric-label">LEARNING RECORDS · 已有学习记录</div><div class="metric-value" id="learningRecordCount">—</div><div class="metric-note">来自本机真实学习记录</div></div><div class="metric-card"><div class="metric-label">KNOWLEDGE GAPS · 结构缺口</div><div class="metric-value" id="learningGapCount">—</div><div class="metric-note">根据正式知识节点缺失项计算</div></div></div>
@@ -1545,6 +1536,7 @@ async function runRealBackupAction(button){
 let restoreFile=null;
 document.addEventListener("click",event=>{
  const button=event.target.closest("button");if(!button)return;
+ if(button.id==="researchDraft"){event.preventDefault();event.stopImmediatePropagation();saveResearchDraft();return;}
  if(button.id==="submitRecall"){event.preventDefault();event.stopImmediatePropagation();saveRealLearningRecord();return;}
  if(button.id==="showHint"){event.preventDefault();event.stopImmediatePropagation();$("recallFeedback").textContent=selectedLearningNode?.desc||"当前正式知识节点尚未补充可用定义提示。";return;}
  if(!["exportBackup","restoreCheck","restoreConfirm"].includes(button.id))return;
@@ -1571,6 +1563,28 @@ $("savePastedConversation").addEventListener("click",async()=>{
 });
 refreshSourceLibrary().catch(error=>{$("sourceImportState").textContent="资料库读取失败："+error.message;});
 refreshFilterWorkbench();
+async function refreshResearchWorkspace(){
+ try{
+  const rows=await NEBULA_LOCAL.listResearchSessions();
+  const host=$("researchSessionList");host.replaceChildren();
+  if(!rows.length){host.append(safeText("div","还没有本机研究草稿。保存一个问题后，它会出现在这里。","filter-empty"));return;}
+  rows.forEach(item=>{
+   const row=safeText("button","","result-item");
+   row.append(safeText("b",item.title||item.query||"未命名研究"),safeText("small",(item.status||"draft")+" · "+new Date(item.updatedAt||item.createdAt||Date.now()).toLocaleString()));
+   row.addEventListener("click",()=>{$("researchTitle").value=item.title||"";$("researchQuery").value=item.query||"";$("researchNotes").value=item.notes||"";$("researchStatus").textContent="已载入本机研究草稿；修改后再次保存会创建更新记录。";});
+   host.append(row);
+  });
+ }catch(error){$("researchSessionList").replaceChildren(safeText("div","读取研究记录失败："+error.message,"filter-empty"));}
+}
+async function saveResearchDraft(){
+ const title=$("researchTitle").value.trim(),query=$("researchQuery").value.trim(),notes=$("researchNotes").value.trim();
+ if(!title&&!query){$("researchStatus").textContent="请至少填写研究主题或研究问题。";return;}
+ try{
+  const record=await NEBULA_LOCAL.saveResearchSession({title:title||query.slice(0,80),query,notes,status:"draft",nodeId:window.__guanfuSelectedNodeId||null,origin:"local-research-workspace"});
+  $("researchStatus").textContent="研究草稿已保存在本机："+record.id+"。它尚未进入正式知识框架。";
+  await refreshResearchWorkspace();await refreshMindOverview();
+ }catch(error){$("researchStatus").textContent="保存失败："+error.message;}
+}
 let selectedLearningNode=null;
 async function refreshLearningWorkspace(){
  try{
@@ -1609,6 +1623,7 @@ async function saveRealLearningRecord(){
 }
 refreshMindOverview();
 refreshLearningWorkspace();
+refreshResearchWorkspace();
 </script>
 
 </body></html>
