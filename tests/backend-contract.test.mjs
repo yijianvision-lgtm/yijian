@@ -93,3 +93,9 @@ assert.ok(!preview.includes('<div class="metric-value">612</div>'), "Static rela
 
 assert.match(preview, /getCognitiveDashboard\(\),NEBULA_LOCAL\.listKnowledgeRelations\(\),NEBULA_LOCAL\.getFilterWorkbenchSnapshot\(\),NEBULA_LOCAL\.loadGraph\(\)/, "Overview must fetch actual formal graph nodes before rendering its tree.");
 assert.match(preview, /const nodes=Array\.isArray\(graph\?\.nodes\)\?graph\.nodes:\[\]/, "Overview tree must render a safe empty state when no formal nodes exist.");
+
+assert.ok(preview.includes('activeSourceCategory==="all"?records:records.filter'), "Source category filters must change the actual visible record set.");
+assert.ok(preview.includes('activeSourceCategory=row.dataset.sourceKind||"all"'), "Selecting a source category must update the active filter.");
+assert.ok(preview.includes("const domainNeighbor=null"), "A shared domain tag must not fabricate a direct spatial relationship.");
+assert.ok(preview.includes("领域标签："), "Domain context may be shown without pretending it is a confirmed spatial link.");
+assert.ok(!preview.includes("备份范围确认（演示）"), "The active backup flow must not retain misleading demo-only handlers.");
