@@ -6,10 +6,10 @@ const local = await readFile(new URL("../nebula-local.js", import.meta.url), "ut
 const worker = await readFile(new URL("../deepseek-worker.js", import.meta.url), "utf8");
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 
-for (const store of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations"]) {
+for (const store of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence"]) {
   assert.match(local, new RegExp('"'+store+'"'), "Missing IndexedDB store: "+store);
 }
-for (const api of ["exportFullBackup","previewFullBackup","restoreFullBackup","saveSource","linkNodeSource","createProposal","applyProposal","saveNodeVersion","saveLearningRecord","saveResearchSession","saveKnowledgeRelation","analyzeConversation","coachKnowledge","checkMnemonic","proposeCoachReview","proposeMnemonicReview","detectKnowledgeGaps","buildLearningQueue","searchResearch","fetchDeepSeekShare"]) {
+for (const api of ["exportFullBackup","previewFullBackup","restoreFullBackup","saveSource","linkNodeSource","createProposal","applyProposal","saveNodeVersion","saveLearningRecord","saveResearchSession","saveKnowledgeRelation","analyzeConversation","coachKnowledge","checkMnemonic","proposeCoachReview","proposeMnemonicReview","detectKnowledgeGaps","buildLearningQueue","searchResearch","fetchDeepSeekShare","createExtractionBatch","createExtractionItem","createFilterCase","appendFilterDecision","createFramework","saveFrameworkVersion","saveNodePosition","createRelationEvidence"]) {
   assert.ok(local.includes(api), "Missing local API: "+api);
 }
 for (const route of ["/health","/analyze","/coach","/mnemonic","/research","/share"]) {
@@ -34,3 +34,6 @@ for (const match of inlineScripts) {
 }
 
 console.log("NEBULA backend contract checks passed.");
+
+assert.match(local, /DB_VERSION = 5/);
+assert.match(local, /FILTER_TRANSITIONS/);
