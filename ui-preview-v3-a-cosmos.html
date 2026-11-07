@@ -816,6 +816,60 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
 .entry-content{max-width:520px}
 @media(max-width:760px){.topbar{top:8px;width:calc(100% - 16px);padding:0 8px}.brand{min-width:90px}.brand-name{font-size:12px}.top-center{display:none}.right-panel{width:calc(100% - 16px);grid-template-columns:1fr 1fr;height:112px;bottom:8px}.right-panel>.rail-card:nth-child(3){display:none}.bottom-hint{bottom:130px}.search{width:100px}}
 
+
+/* V18 · recursive exploration first; global positioning is a separate layer */
+.continuum-focus{padding:14px 3vw 12px;overflow-y:auto}
+.continuum-topline{max-width:1500px}
+.continuum-stage{display:block;position:relative;flex:0 0 auto;width:min(1320px,100%);height:clamp(470px,62vh,690px);min-height:470px;max-height:none;margin:8px auto 4px}
+.continuum-axis{left:50%;top:5%;bottom:5%}
+.continuum-routes{position:absolute;inset:0;width:100%;height:100%;opacity:.24;pointer-events:none}
+.continuum-orbit{left:50%;top:50%;width:min(720px,70vw);height:min(440px,52vh)}
+.continuum-core{position:absolute;z-index:3;left:50%;top:50%;transform:translate(-50%,-50%);width:min(390px,34vw);min-height:205px;padding:24px 26px}
+.continuum-core-title{font-size:clamp(21px,2vw,29px)}
+.continuum-quadrant{position:absolute;width:min(250px,22vw);min-height:104px;padding:12px 14px;background:linear-gradient(145deg,rgba(20,26,32,.66),rgba(9,13,18,.68))}
+.continuum-quadrant b{font-size:14px;margin-top:6px}
+.continuum-quadrant small{font-size:9px}
+.continuum-quadrant i{font-size:8px}
+.q-forward{left:50%;top:2%;transform:translateX(-50%);align-self:auto}
+.q-forward:hover{transform:translate(-50%,-2px)}
+.q-backward{left:50%;bottom:2%;top:auto;transform:translateX(-50%);align-self:auto}
+.q-backward:hover{transform:translate(-50%,-2px)}
+.q-left{left:2%;top:50%;right:auto;bottom:auto;transform:translateY(-50%);justify-self:auto}
+.q-left:hover{transform:translateY(calc(-50% - 2px))}
+.q-right{right:2%;left:auto;top:50%;bottom:auto;transform:translateY(-50%);justify-self:auto}
+.q-right:hover{transform:translateY(calc(-50% - 2px))}
+.continuum-choice-panel{width:min(980px,100%);margin:0 auto 10px;padding:13px 15px;border:1px solid #bdcbd51b;border-radius:8px;background:rgba(12,16,21,.86);backdrop-filter:blur(18px)}
+.continuum-choice-panel[hidden]{display:none}
+.choice-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.choice-panel-head>div{display:flex;align-items:center;gap:12px}
+.choice-panel-head b{font-size:12px;font-weight:500;color:#e1e7eb}
+.continuum-choice-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.continuum-choice{display:block;text-align:left;padding:12px;border:1px solid #bdcbd51b;border-radius:6px;background:#ffffff05;color:#dce3e8}
+.continuum-choice:hover{border-color:#bdcbd555;background:#ffffff0b}
+.continuum-choice strong{display:block;font-size:11px;font-weight:500}
+.continuum-choice small{display:block;margin-top:5px;color:#87939c;font-size:9px;line-height:1.6}
+.choice-panel-note{margin:10px 0 0;color:#74818b;font-size:8px;line-height:1.6}
+.continuum-position-strip{width:min(1120px,100%);margin:0 auto 9px;padding:9px 12px;border:1px solid #bdcbd512;border-radius:7px;background:rgba(10,14,18,.48)}
+.position-strip-head{display:flex;justify-content:space-between;gap:10px;color:#74818b;font-size:8px}
+.position-dimensions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}
+.position-dimensions>div{min-width:0;padding:7px 9px;border-left:1px solid #bdcbd51c}
+.position-dimensions small{display:block;color:#78858f;font-size:8px}
+.position-dimensions b{display:block;margin-top:4px;color:#aeb9c1;font-size:9px;font-weight:450;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.continuum-bottom{max-width:1120px}
+@media(max-width:760px){
+ .continuum-focus{inset:62px 0 0;padding:10px 12px}
+ .continuum-topline{align-items:flex-start}
+ .continuum-topline>div:first-child{display:flex;flex-direction:column;gap:5px}
+ .continuum-path{margin-left:0}
+ .continuum-stage{height:610px;min-height:610px}
+ .continuum-core{width:min(300px,78vw);top:50%;min-height:180px}
+ .continuum-quadrant{width:min(44vw,205px);min-height:88px;padding:9px}
+ .q-forward{top:1%}.q-backward{bottom:1%}
+ .q-left{left:0}.q-right{right:0}
+ .continuum-choice-list{grid-template-columns:1fr}
+ .position-dimensions{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .continuum-bottom{align-items:flex-start}
+}
 </style>
 </head>
 <body>
@@ -951,12 +1005,26 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
    <circle class="route-point point-left" cx="244" cy="350" r="2.2"/><circle class="route-point point-right" cx="756" cy="350" r="2.2"/>
   </svg>
   <div class="continuum-orbit orbit-one"></div><div class="continuum-orbit orbit-two"></div>
-  <button class="continuum-quadrant q-forward" data-continuum="forward"><span class="cq-kicker">TIME · 时间回溯</span><b id="cqForwardTitle">起源与前序</b><small id="cqForwardDesc">历史、起源、背景与形成条件</small><i>瞻前 · 向时间过去探索 ↗</i></button>
-  <button class="continuum-quadrant q-backward" data-continuum="backward"><span class="cq-kicker">TIME · 时间延展</span><b id="cqBackwardTitle">延续与影响</b><small id="cqBackwardDesc">影响、继承、演化与后续变化</small><i>顾后 · 向时间未来延展 ↗</i></button>
-  <button class="continuum-quadrant q-left" data-continuum="left"><span class="cq-kicker">DEPTH · 向内深入</span><b id="cqLeftTitle">本质与构成</b><small id="cqLeftDesc">定义、原理、组成、结构与运行机制</small><i>向内 · 深入核心对象 ↗</i></button>
-  <button class="continuum-quadrant q-right" data-continuum="right"><span class="cq-kicker">WORLD · 外部世界</span><b id="cqRightTitle">外部世界与关联</b><small id="cqRightDesc">人物、社会、政治、经济、文化、艺术与技术</small><i>向外 · 观察外部世界 ↗</i></button>
+  <button class="continuum-quadrant q-forward" data-continuum="forward"><span class="cq-kicker">PAST · 向过去追溯</span><b>瞻前</b><small>历史、时代、起源、背景、原因</small><i>展开多个探索入口 ↗</i></button>
+  <button class="continuum-quadrant q-backward" data-continuum="backward"><span class="cq-kicker">FUTURE · 向未来延伸</span><b>顾后</b><small>影响、演变、继承、转化、后世</small><i>展开多个探索入口 ↗</i></button>
+  <button class="continuum-quadrant q-left" data-continuum="left"><span class="cq-kicker">ESSENCE · 向本质深入</span><b>向内</b><small>本质、定义、原理、组成、结构</small><i>展开多个探索入口 ↗</i></button>
+  <button class="continuum-quadrant q-right" data-continuum="right"><span class="cq-kicker">CONTEXT · 向外部关联</span><b>向外</b><small>同时代、人物、领域、文明、跨域</small><i>展开多个探索入口 ↗</i></button>
   <div class="continuum-core"><span class="continuum-core-label">CURRENT CORE · 当前核心知识</span><div class="continuum-core-title" id="continuumCoreTitle">系统思维</div><p id="continuumCoreDefinition">理解复杂系统中结构、反馈与演化之间的关系。</p><div class="continuum-core-meta"><span id="continuumCoreDepth">NODE 01</span><span>中心轴 · 当前认知位置</span></div><button id="continuumOpenDetail">打开完整知识档案 ↗</button></div>
  </div>
+ <section class="continuum-choice-panel" id="continuumChoicePanel" hidden aria-live="polite">
+  <div class="choice-panel-head"><div><span class="source-tag" id="choiceDirectionLabel">探索方向</span><b id="choicePanelTitle">选择一个探索入口</b></div><button class="continuum-quiet" id="closeChoicePanel">收起</button></div>
+  <div class="continuum-choice-list" id="continuumChoiceList"></div>
+  <p class="choice-panel-note">这些是待探索的问题入口，不是系统替你确认的知识事实。选择后生成独立演示节点；正式知识须经来源核验。</p>
+ </section>
+ <section class="continuum-position-strip" aria-label="四维全局定位">
+  <div class="position-strip-head"><span class="source-tag">GLOBAL POSITION · 四维全局定位</span><span>与四向探索分离</span></div>
+  <div class="position-dimensions">
+   <div><small>谱系</small><b id="positionLineage">待证据定位</b></div>
+   <div><small>时间</small><b id="positionTime">待证据定位</b></div>
+   <div><small>空间／世界</small><b id="positionWorld">待证据定位</b></div>
+   <div><small>横向关联</small><b id="positionRelations">待证据定位</b></div>
+  </div>
+ </section>
  <div class="continuum-bottom"><span>连续探索路径</span><div class="continuum-trail" id="continuumTrail"></div><span id="continuumTrailCount">1 个位置</span></div>
  <div class="continuum-footnote">四向探索负责持续生发，四维定位负责全局定位。当前虚拟层级仅用于检查递归、路径与导航，不写入正式知识；正式关系须有来源证据。</div>
 </section><div class="toast" id="toast"></div>
@@ -979,32 +1047,60 @@ const lineMat=new THREE.LineBasicMaterial({color:0x83919a,transparent:true,opaci
 function seededField(seed){let x=seed>>>0;return()=>{x=(x*1664525+1013904223)>>>0;return x/4294967296}}
 function addStarLayer(count,width,height,depth,size,opacity,color,seed){const rand=seededField(seed),pts=[];for(let i=0;i<count;i++){pts.push((rand()-.5)*width,(rand()-.5)*height,(rand()-.5)*depth)}const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));const material=new THREE.PointsMaterial({color,size,transparent:true,opacity,depthWrite:false,sizeAttenuation:true});const layer=new THREE.Points(geo,material);layer.renderOrder=-2;scene.add(layer);return layer}
 const starLayers=[addStarLayer(210,112,72,92,.018,.075,0x879db1,22),addStarLayer(132,78,50,62,.026,.105,0xa8bac9,41),addStarLayer(58,42,28,34,.038,.13,0xc6d6e1,73)];
-const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;let focusActive=false;let focusGoal=null;const focusRotationGoal=new THREE.Euler(0,0,0,'XYZ');let focusRollGoal=0;let focusHistory=[];let focusCursor=-1;const continuationDescriptions={};const continuationMeta={};let idToIndex=new Map();let isDemoUniverse=true;const focusDefinition=i=>continuationDescriptions[i]||(localGraphNodes[i]?.desc||localGraphNodes[i]?.coreWord|| (isDemoUniverse?'此处为视觉与交互示例，不是已确认的正式知识。':nodes[i]?.[0]+' 尚未补充定义。'));const directionNames={forward:'瞻前',backward:'顾后',left:'向内',right:'向外'};let directionalMap={};function updateFocusTrail(){const box=document.getElementById('continuumTrail');box.innerHTML='';focusHistory.forEach((idx,k)=>{if(k){const sep=document.createElement('span');sep.textContent='›';box.appendChild(sep)}const b=document.createElement('button');b.textContent=nodes[idx][0];b.classList.toggle('current',k===focusCursor);b.onclick=()=>{focusCursor=k;selectNode(idx,false)};box.appendChild(b)});document.getElementById('continuumTrailCount').textContent=(focusCursor+1)+' / '+focusHistory.length+' 个位置';document.getElementById('continuumBack').disabled=focusCursor<=0;document.getElementById('continuumForward').disabled=focusCursor>=focusHistory.length-1;document.getElementById('continuumPath').textContent='知识宇宙 / '+focusHistory.slice(0,focusCursor+1).map(i=>nodes[i][0]).join(' / ')}function renderContinuum(){const i=selected,links=directionalMap[i]||{},meta=continuationMeta[i],formal=!isDemoUniverse&&!!localGraphNodes[i],path=formal?localNodePath(localGraphNodes[i].id).map(n=>n.name||n.coreWord||'未命名知识'):[],descriptions={forward:'时间向前回溯 · 起源、前序、历史与形成条件',backward:'时间向后延展 · 影响、继承、演化与后续变化',left:'向内深入 · 本质、定义、组成、结构与运行机制',right:'向外展开 · 人物、社会、经济、文化、技术与外部关联'};['forward','backward','left','right'].forEach(d=>{const target=links[d],valid=Number.isInteger(target)&&!!nodes[target],key='cq'+d[0].toUpperCase()+d.slice(1);document.getElementById(key+'Title').textContent=valid?nodes[target][0]:'尚无已确认定位';document.getElementById(key+'Desc').textContent=valid?descriptions[d]+' · '+nodes[target][0]:(d==='left'&&formal&&(localGraphNodes[i].domainPath||localGraphNodes[i].domain||localGraphNodes[i].field)?'已记录领域标签：'+(Array.isArray(localGraphNodes[i].domainPath)?localGraphNodes[i].domainPath.join(' / '):String(localGraphNodes[i].domainPath||localGraphNodes[i].domain||localGraphNodes[i].field))+'；尚无明确空间关系，不据此跳转':descriptions[d]+' · 当前没有足够的正式数据，不推测、不补造')});document.getElementById('continuumCoreTitle').textContent=nodes[i][0];document.getElementById('continuumCoreDefinition').textContent=focusDefinition(i);document.getElementById('continuumCoreDepth').textContent='NODE '+String(i+1).padStart(2,'0');const indexLabel=document.getElementById('selectedIndexLabel');if(indexLabel)indexLabel.textContent=formal?(i+1)+' / '+nodes.length:'演示空间';const kindChip=document.getElementById('selectedKindChip');if(kindChip)kindChip.textContent=formal?'正式知识':'演示节点';const sourceChip=document.getElementById('selectedSourceChip');if(sourceChip)sourceChip.textContent=formal?'来源待核对':'无正式来源';const level=document.getElementById('selectedLevel');if(level)level.textContent=formal?path.length+' 级谱系':'演示层级';const created=document.getElementById('selectedCreatedAt');if(created)created.textContent=formal&&localGraphNodes[i].createdAt?new Date(localGraphNodes[i].createdAt).toLocaleDateString():'未记录';const sourceCount=document.getElementById('selectedSourceCount');if(sourceCount)sourceCount.textContent=formal?'读取中…':'无正式来源';if(formal){const selectedId=localGraphNodes[i].id;NEBULA_LOCAL.listNodeSources(selectedId).then(rows=>{if(String(window.__guanfuSelectedNodeId)===String(selectedId)){if(sourceCount)sourceCount.textContent=rows.length+' 份资料';if(sourceChip)sourceChip.textContent=rows.length?'已关联来源':'尚无来源';const detailSourceStatus=document.getElementById('detailStatusMeta')?.children?.[1];if(detailSourceStatus)detailSourceStatus.textContent=rows.length?'来源：已关联 '+rows.length+' 份':'来源：尚无来源';}}).catch(()=>{if(sourceCount)sourceCount.textContent='读取失败';});}const timeline=document.getElementById('knowledgeTimeline');if(timeline){timeline.replaceChildren();if(formal&&localGraphNodes[i].knowledgeTime){const item=document.createElement('div');item.className='time-point active';item.textContent=String(localGraphNodes[i].knowledgeTime);timeline.append(item);}else{const item=document.createElement('div');item.className='time-point';item.textContent='尚无已确认时间依据';timeline.append(item);}}document.getElementById('selectedName').textContent=nodes[i][0];document.getElementById('selectedDesc').textContent=focusDefinition(i);document.getElementById('detailTitle').textContent=nodes[i][0];document.getElementById('detailDefinition').textContent=focusDefinition(i);document.getElementById('detailPath').textContent=formal?path.join(' / '):'虚拟探索 / '+focusHistory.slice(0,focusCursor+1).map(x=>nodes[x]?.[0]||'').join(' / ');const parentNode=formal?localNodeById(localGraphNodes[i].parentId):null;const parentMeta=document.getElementById('detailParentMeta');if(parentMeta)parentMeta.textContent=formal?'父级：'+(parentNode?.name||parentNode?.coreWord||'根节点'):'父级：演示';const childMeta=document.getElementById('detailChildMeta');if(childMeta)childMeta.textContent=formal?'直接下级：'+localNodeChildren(localGraphNodes[i].id).length:'子级：示例';const horizontalCount=formal?localGraphRelations.filter(r=>String(r.sourceNodeId)===String(localGraphNodes[i].id)||String(r.targetNodeId)===String(localGraphNodes[i].id)).length:0;const horizontalMeta=document.getElementById('detailHorizontalMeta');if(horizontalMeta)horizontalMeta.textContent=formal?'横向关系：'+horizontalCount+' 条已确认':'横向关系：演示';const status=document.getElementById('detailStatusMeta');if(status){status.innerHTML='';(formal?['正式知识 · 已确认','来源：'+(localGraphNodes[i].sourceCount||'待核对'),'框架：'+(localFramework?.name||'我的知识框架')]:['演示节点 · 非正式知识','无正式来源证据','不会写入个人框架']).forEach(label=>{const tag=document.createElement('span');tag.className='status';tag.textContent=label;status.appendChild(tag)})}document.getElementById('selectedRelationCount').textContent=formal?'已确认横向关系 '+localGraphRelations.filter(r=>String(r.sourceNodeId)===String(localGraphNodes[i].id)||String(r.targetNodeId)===String(localGraphNodes[i].id)).length+' 项':'演示连线 · 非正式关系';renderTrailOnly();}function renderTrailOnly(){updateFocusTrail()}function selectNode(i,append=true){if(!nodes[i])return;selected=i;if(!isDemoUniverse&&localGraphNodes[i])logicStack=localNodePath(localGraphNodes[i].id).map(n=>n.id);focusActive=true;document.body.classList.add("focus-active");window.__guanfuSelectedNodeId=!isDemoUniverse?localGraphNodes[i]?.id||null:null;if(localGraphNodes[i])NEBULA_LOCAL.getMindContext(localGraphNodes[i].id,{focusMode:'focus'}).then(ctx=>{const path=document.getElementById('continuumPath');if(path)path.textContent=ctx.ancestorPath.map(x=>x.name).join(' / ');const depth=document.getElementById('continuumCoreDepth');if(depth)depth.textContent='LEVEL '+String(ctx.currentLevel).padStart(2,'0');const detailPath=document.getElementById('detailPath');if(detailPath)detailPath.textContent=ctx.ancestorPath.map(x=>x.name).join(' / ');}).catch(()=>{});controls.autoRotate=false;focusGoal=positions[i].clone();focusRotationGoal.set(-Math.atan2(positions[i].y,Math.hypot(positions[i].x,positions[i].z))*.34,Math.atan2(positions[i].x,positions[i].z)*.48,-Math.atan2(positions[i].x,Math.max(.001,positions[i].y))*.12);focusRollGoal=Math.max(-.16,Math.min(.16,positions[i].x*.012));if(append){focusHistory=focusHistory.slice(0,focusCursor+1);if(focusHistory[focusHistory.length-1]!==i)focusHistory.push(i);focusCursor=focusHistory.length-1;}spheres.forEach((s,j)=>{s.userData.targetOpacity=j===i?1:.16;s.userData.targetScale=j===i?1.58:1;s.userData.targetGlow=j===i?.24:.018;s.material.transparent=true});const panel=document.getElementById('continuumFocus');panel.classList.add('open');panel.classList.remove('arriving');void panel.offsetWidth;panel.classList.add('arriving');renderContinuum();renderLogic();drawMini()}function navigateContinuum(direction){
- const validDirections=['forward','backward','left','right'];if(!validDirections.includes(direction))return;
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;let focusActive=false;let focusGoal=null;const focusRotationGoal=new THREE.Euler(0,0,0,'XYZ');let focusRollGoal=0;let focusHistory=[];let focusCursor=-1;const continuationDescriptions={};const continuationMeta={};let idToIndex=new Map();let isDemoUniverse=true;const focusDefinition=i=>continuationDescriptions[i]||(localGraphNodes[i]?.desc||localGraphNodes[i]?.coreWord|| (isDemoUniverse?'此处为视觉与交互示例，不是已确认的正式知识。':nodes[i]?.[0]+' 尚未补充定义。'));const directionNames={forward:'瞻前',backward:'顾后',left:'向内',right:'向外'};let directionalMap={};function updateFocusTrail(){const box=document.getElementById('continuumTrail');box.innerHTML='';focusHistory.forEach((idx,k)=>{if(k){const sep=document.createElement('span');sep.textContent='›';box.appendChild(sep)}const b=document.createElement('button');b.textContent=nodes[idx][0];b.classList.toggle('current',k===focusCursor);b.onclick=()=>{focusCursor=k;selectNode(idx,false)};box.appendChild(b)});document.getElementById('continuumTrailCount').textContent=(focusCursor+1)+' / '+focusHistory.length+' 个位置';document.getElementById('continuumBack').disabled=focusCursor<=0;document.getElementById('continuumForward').disabled=focusCursor>=focusHistory.length-1;document.getElementById('continuumPath').textContent='知识宇宙 / '+focusHistory.slice(0,focusCursor+1).map(i=>nodes[i][0]).join(' / ')}function renderContinuum(){const i=selected,links=directionalMap[i]||{},meta=continuationMeta[i],formal=!isDemoUniverse&&!!localGraphNodes[i],path=formal?localNodePath(localGraphNodes[i].id).map(n=>n.name||n.coreWord||'未命名知识'):[],descriptions={forward:'时间向前回溯 · 起源、前序、历史与形成条件',backward:'时间向后延展 · 影响、继承、演化与后续变化',left:'向内深入 · 本质、定义、组成、结构与运行机制',right:'向外展开 · 人物、社会、经济、文化、技术与外部关联'};['forward','backward','left','right'].forEach(d=>{const target=links[d],valid=Number.isInteger(target)&&!!nodes[target],key='cq'+d[0].toUpperCase()+d.slice(1);document.getElementById(key+'Title').textContent=valid?nodes[target][0]:'尚无已确认定位';document.getElementById(key+'Desc').textContent=valid?descriptions[d]+' · '+nodes[target][0]:(d==='left'&&formal&&(localGraphNodes[i].domainPath||localGraphNodes[i].domain||localGraphNodes[i].field)?'已记录领域标签：'+(Array.isArray(localGraphNodes[i].domainPath)?localGraphNodes[i].domainPath.join(' / '):String(localGraphNodes[i].domainPath||localGraphNodes[i].domain||localGraphNodes[i].field))+'；尚无明确空间关系，不据此跳转':descriptions[d]+' · 当前没有足够的正式数据，不推测、不补造')});const lineage=document.getElementById('positionLineage'),timePosition=document.getElementById('positionTime'),world=document.getElementById('positionWorld'),relations=document.getElementById('positionRelations');
+if(lineage)lineage.textContent=formal?(path.join(' / ')||'根节点'):'演示路径 · '+Math.max(1,focusCursor+1)+' 层';
+if(timePosition)timePosition.textContent=formal&&localGraphNodes[i].knowledgeTime?String(localGraphNodes[i].knowledgeTime):'待证据定位';
+if(world)world.textContent='待证据定位';
+if(relations)relations.textContent=formal?'已确认关系需逐条查看':'待证据定位';
+document.getElementById('continuumCoreTitle').textContent=nodes[i][0];document.getElementById('continuumCoreDefinition').textContent=focusDefinition(i);document.getElementById('continuumCoreDepth').textContent='NODE '+String(i+1).padStart(2,'0');const indexLabel=document.getElementById('selectedIndexLabel');if(indexLabel)indexLabel.textContent=formal?(i+1)+' / '+nodes.length:'演示空间';const kindChip=document.getElementById('selectedKindChip');if(kindChip)kindChip.textContent=formal?'正式知识':'演示节点';const sourceChip=document.getElementById('selectedSourceChip');if(sourceChip)sourceChip.textContent=formal?'来源待核对':'无正式来源';const level=document.getElementById('selectedLevel');if(level)level.textContent=formal?path.length+' 级谱系':'演示层级';const created=document.getElementById('selectedCreatedAt');if(created)created.textContent=formal&&localGraphNodes[i].createdAt?new Date(localGraphNodes[i].createdAt).toLocaleDateString():'未记录';const sourceCount=document.getElementById('selectedSourceCount');if(sourceCount)sourceCount.textContent=formal?'读取中…':'无正式来源';if(formal){const selectedId=localGraphNodes[i].id;NEBULA_LOCAL.listNodeSources(selectedId).then(rows=>{if(String(window.__guanfuSelectedNodeId)===String(selectedId)){if(sourceCount)sourceCount.textContent=rows.length+' 份资料';if(sourceChip)sourceChip.textContent=rows.length?'已关联来源':'尚无来源';const detailSourceStatus=document.getElementById('detailStatusMeta')?.children?.[1];if(detailSourceStatus)detailSourceStatus.textContent=rows.length?'来源：已关联 '+rows.length+' 份':'来源：尚无来源';}}).catch(()=>{if(sourceCount)sourceCount.textContent='读取失败';});}const timeline=document.getElementById('knowledgeTimeline');if(timeline){timeline.replaceChildren();if(formal&&localGraphNodes[i].knowledgeTime){const item=document.createElement('div');item.className='time-point active';item.textContent=String(localGraphNodes[i].knowledgeTime);timeline.append(item);}else{const item=document.createElement('div');item.className='time-point';item.textContent='尚无已确认时间依据';timeline.append(item);}}document.getElementById('selectedName').textContent=nodes[i][0];document.getElementById('selectedDesc').textContent=focusDefinition(i);document.getElementById('detailTitle').textContent=nodes[i][0];document.getElementById('detailDefinition').textContent=focusDefinition(i);document.getElementById('detailPath').textContent=formal?path.join(' / '):'虚拟探索 / '+focusHistory.slice(0,focusCursor+1).map(x=>nodes[x]?.[0]||'').join(' / ');const parentNode=formal?localNodeById(localGraphNodes[i].parentId):null;const parentMeta=document.getElementById('detailParentMeta');if(parentMeta)parentMeta.textContent=formal?'父级：'+(parentNode?.name||parentNode?.coreWord||'根节点'):'父级：演示';const childMeta=document.getElementById('detailChildMeta');if(childMeta)childMeta.textContent=formal?'直接下级：'+localNodeChildren(localGraphNodes[i].id).length:'子级：示例';const horizontalCount=formal?localGraphRelations.filter(r=>String(r.sourceNodeId)===String(localGraphNodes[i].id)||String(r.targetNodeId)===String(localGraphNodes[i].id)).length:0;const horizontalMeta=document.getElementById('detailHorizontalMeta');if(horizontalMeta)horizontalMeta.textContent=formal?'横向关系：'+horizontalCount+' 条已确认':'横向关系：演示';const status=document.getElementById('detailStatusMeta');if(status){status.innerHTML='';(formal?['正式知识 · 已确认','来源：'+(localGraphNodes[i].sourceCount||'待核对'),'框架：'+(localFramework?.name||'我的知识框架')]:['演示节点 · 非正式知识','无正式来源证据','不会写入个人框架']).forEach(label=>{const tag=document.createElement('span');tag.className='status';tag.textContent=label;status.appendChild(tag)})}document.getElementById('selectedRelationCount').textContent=formal?'已确认横向关系 '+localGraphRelations.filter(r=>String(r.sourceNodeId)===String(localGraphNodes[i].id)||String(r.targetNodeId)===String(localGraphNodes[i].id)).length+' 项':'演示连线 · 非正式关系';renderTrailOnly();}function renderTrailOnly(){updateFocusTrail()}function selectNode(i,append=true){if(!nodes[i])return;selected=i;if(!isDemoUniverse&&localGraphNodes[i])logicStack=localNodePath(localGraphNodes[i].id).map(n=>n.id);focusActive=true;document.body.classList.add("focus-active");window.__guanfuSelectedNodeId=!isDemoUniverse?localGraphNodes[i]?.id||null:null;if(localGraphNodes[i])NEBULA_LOCAL.getMindContext(localGraphNodes[i].id,{focusMode:'focus'}).then(ctx=>{const path=document.getElementById('continuumPath');if(path)path.textContent=ctx.ancestorPath.map(x=>x.name).join(' / ');const depth=document.getElementById('continuumCoreDepth');if(depth)depth.textContent='LEVEL '+String(ctx.currentLevel).padStart(2,'0');const detailPath=document.getElementById('detailPath');if(detailPath)detailPath.textContent=ctx.ancestorPath.map(x=>x.name).join(' / ');}).catch(()=>{});controls.autoRotate=false;focusGoal=positions[i].clone();focusRotationGoal.set(-Math.atan2(positions[i].y,Math.hypot(positions[i].x,positions[i].z))*.34,Math.atan2(positions[i].x,positions[i].z)*.48,-Math.atan2(positions[i].x,Math.max(.001,positions[i].y))*.12);focusRollGoal=Math.max(-.16,Math.min(.16,positions[i].x*.012));if(append){focusHistory=focusHistory.slice(0,focusCursor+1);if(focusHistory[focusHistory.length-1]!==i)focusHistory.push(i);focusCursor=focusHistory.length-1;}spheres.forEach((s,j)=>{s.userData.targetOpacity=j===i?1:.16;s.userData.targetScale=j===i?1.58:1;s.userData.targetGlow=j===i?.24:.018;s.material.transparent=true});const panel=document.getElementById('continuumFocus');panel.classList.add('open');panel.classList.remove('arriving');void panel.offsetWidth;panel.classList.add('arriving');renderContinuum();renderLogic();drawMini()}const directionPrompts={
+ forward:[['时代与历史背景','把当前对象放回它形成的时代脉络中'],['起源与前序人物','追问更早的来源、人物与前置事件'],['形成条件与原因','拆分促成它出现的条件，区分证据与推断']],
+ backward:[['后世影响','追踪它对后续人物、作品或事件的影响'],['演变与转化','观察它如何变化、分化或被重新解释'],['继承与历史结果','寻找延续、继承与长期结果']],
+ left:[['核心定义与本质','它究竟是什么，哪些特征不可缺少'],['组成与内部结构','它由哪些部分构成，部分如何组织'],['材料、机制与过程','材料、原理、工艺、流程或运行机制']],
+ right:[['同时代的人物与事件','寻找同一时期可核实的人物、事件与作品'],['社会与跨领域环境','关联政治、经济、文化、艺术与科技环境'],['文明与远距离关联','探索跨地域、跨文明、跨学科的关联线索']]
+};
+function openContinuumChoices(direction){
+ const panel=document.getElementById('continuumChoicePanel'),list=document.getElementById('continuumChoiceList');
+ const labels={forward:'瞻前 · 向过去追溯',backward:'顾后 · 向未来延伸',left:'向内 · 向本质深入',right:'向外 · 向外部关联'};
+ document.getElementById('choiceDirectionLabel').textContent=labels[direction];
+ document.getElementById('choicePanelTitle').textContent='选择一个探索入口';
+ list.replaceChildren();
+ const existing=(directionalMap[selected]?.[direction]||[]).filter(i=>Number.isInteger(i)&&nodes[i]);
+ directionPrompts[direction].forEach((prompt,index)=>{
+  const child=existing.find(i=>continuationMeta[i]?.choiceIndex===index);
+  const button=document.createElement('button');button.className='continuum-choice';
+  const title=document.createElement('strong');title.textContent=prompt[0]+(child?' · 已建立':'');
+  const desc=document.createElement('small');desc.textContent=prompt[1]+(child?' · 点击进入已有路径':' · 点击建立独立的待探索节点');
+  button.append(title,desc);button.addEventListener('click',()=>createExplorationNode(direction,index));list.append(button);
+ });
+ panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function createExplorationNode(direction,choiceIndex){
  const links=directionalMap[selected]||(directionalMap[selected]={});
- let target=links[direction];
- if(isDemoUniverse){
-  if(!Number.isInteger(target)||!nodes[target]){
-   const labels={forward:['起源与前序','历史背景与形成条件'],backward:['延续与影响','继承、演化与后续变化'],left:['本质与构成','定义、原理、组成与运行机制'],right:['外部世界','人物、社会、经济、文化与技术关联']};
-   const pair=labels[direction],parent=selected,base=positions[parent]||new THREE.Vector3();
-   const vectors={forward:new THREE.Vector3(0,3.8,-1.2),backward:new THREE.Vector3(0,-3.8,1.2),left:new THREE.Vector3(-4.2,0,0),right:new THREE.Vector3(4.2,0,0)};
-   const offset=vectors[direction].clone().add(new THREE.Vector3(0,0,-1.1));
-   const title=directionNames[direction]+' · '+pair[0];
-   target=nodes.length;nodes.push([title,base.x+offset.x,base.y+offset.y,base.z+offset.z,.16]);
-   const pos=base.clone().add(offset);positions.push(pos);
-   const geometry=new THREE.IcosahedronGeometry(.115,1);
-   const material=new THREE.MeshStandardMaterial({color:0xaab8c2,roughness:.48,metalness:.16,emissive:0x35434d,emissiveIntensity:.13,transparent:true});
-   const sphere=new THREE.Mesh(geometry,material);sphere.position.copy(pos);sphere.userData.index=target;sphere.userData.targetOpacity=1;sphere.userData.targetScale=1;sphere.userData.targetGlow=.035;core.add(sphere);spheres.push(sphere);
-   edges.push([parent,target]);const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([base,pos]),lineMat);core.add(line);
-   directionalMap[target]={};continuationDescriptions[target]=pair[1]+'。这是可继续递归探索的抽象示例节点，不代表已经核实的事实或个人知识。';
-   continuationMeta[target]={virtual:true,parent,direction};
-   links[direction]=target;
-  }
-  selectNode(target,true);return;
- }
- if(!Number.isInteger(target)||!nodes[target]){toast('这个方向暂时没有已确认的知识关系；不会自动补造正式知识。');return;}
- selectNode(target,true);
-}document.querySelectorAll('[data-continuum]').forEach(b=>b.addEventListener('click',()=>navigateContinuum(b.dataset.continuum)));document.getElementById('continuumBack').onclick=()=>{if(focusCursor>0){focusCursor--;selectNode(focusHistory[focusCursor],false)}};document.getElementById('continuumForward').onclick=()=>{if(focusCursor<focusHistory.length-1){focusCursor++;selectNode(focusHistory[focusCursor],false)}};document.getElementById('continuumExit').onclick=()=>{focusActive=false;document.body.classList.remove('focus-active');document.getElementById('continuumFocus').classList.remove('open');controls.autoRotate=true;focusGoal=null;focusRotationGoal.set(0,0,0);focusRollGoal=0;core.rotation.set(0,0,0);camera.up.set(0,1,0);focusHistory=[];focusCursor=-1;spheres.forEach(s=>{s.userData.targetOpacity=1;s.userData.targetGlow=.1;s.userData.targetScale=1});controls.target.set(0,0,0);camera.position.set(0,1.8,18);controls.update();drawMini()};document.getElementById('continuumOpenDetail').onclick=async()=>{
+ const targets=Array.isArray(links[direction])?links[direction]:(Number.isInteger(links[direction])?[links[direction]]:[]);
+ const existing=targets.find(i=>continuationMeta[i]?.choiceIndex===choiceIndex);
+ if(Number.isInteger(existing)&&nodes[existing]){selectNode(existing,true);return;}
+ if(!isDemoUniverse){toast('正式知识关系尚未经过证据确认；当前不自动创建或推断关系。');return;}
+ const prompt=directionPrompts[direction][choiceIndex],parent=selected,base=positions[parent]||new THREE.Vector3();
+ const lane={forward:new THREE.Vector3(0,1,0),backward:new THREE.Vector3(0,-1,0),left:new THREE.Vector3(-1,0,0),right:new THREE.Vector3(1,0,0)}[direction];
+ const siblingOffset=(targets.length-(choiceIndex+1))*0.72;
+ const offset=lane.clone().multiplyScalar(3.7+choiceIndex*.42).add(new THREE.Vector3(siblingOffset,0,-1.15));
+ const title=directionNames[direction]+' · '+prompt[0]+'（待探索）',target=nodes.length,pos=base.clone().add(offset);
+ nodes.push([title,pos.x,pos.y,pos.z,.15]);positions.push(pos);
+ const geometry=new THREE.IcosahedronGeometry(.115,1),material=new THREE.MeshStandardMaterial({color:0xaab8c2,roughness:.48,metalness:.16,emissive:0x35434d,emissiveIntensity:.13,transparent:true});
+ const sphere=new THREE.Mesh(geometry,material);sphere.position.copy(pos);sphere.userData.index=target;sphere.userData.targetOpacity=1;sphere.userData.targetScale=1;sphere.userData.targetGlow=.035;core.add(sphere);spheres.push(sphere);
+ edges.push([parent,target]);core.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([base,pos]),lineMat));
+ links[direction]=targets.concat(target);directionalMap[target]={};continuationDescriptions[target]=prompt[1]+'。这是待探索的抽象节点，不代表已经核实的事实或个人知识。';
+ continuationMeta[target]={virtual:true,parent,direction,choiceIndex,identity:'demo:'+parent+':'+direction+':'+choiceIndex};
+ document.getElementById('continuumChoicePanel').hidden=true;selectNode(target,true);
+}
+function navigateContinuum(direction){
+ if(!['forward','backward','left','right'].includes(direction))return;
+ if(!isDemoUniverse){const links=directionalMap[selected]||{},value=links[direction];const targets=Array.isArray(value)?value:(Number.isInteger(value)?[value]:[]);if(targets.length===1&&nodes[targets[0]]){selectNode(targets[0],true);return;}if(targets.length>1){toast('该方向存在多个关系目标；请在关系列表中选择具体对象。');return;}toast('这个方向暂时没有已确认的知识关系；不会自动补造正式知识。');return;}
+ openContinuumChoices(direction);
+}
+document.querySelectorAll('[data-continuum]').forEach(b=>b.addEventListener('click',()=>navigateContinuum(b.dataset.continuum)));
+document.getElementById('closeChoicePanel').onclick=()=>{document.getElementById('continuumChoicePanel').hidden=true};
+document.querySelectorAll('[data-continuum]').forEach(b=>b.addEventListener('click',()=>navigateContinuum(b.dataset.continuum)));document.getElementById('continuumBack').onclick=()=>{if(focusCursor>0){focusCursor--;selectNode(focusHistory[focusCursor],false)}};document.getElementById('continuumForward').onclick=()=>{if(focusCursor<focusHistory.length-1){focusCursor++;selectNode(focusHistory[focusCursor],false)}};document.getElementById('continuumExit').onclick=()=>{focusActive=false;document.body.classList.remove('focus-active');document.getElementById('continuumFocus').classList.remove('open');controls.autoRotate=true;focusGoal=null;focusRotationGoal.set(0,0,0);focusRollGoal=0;core.rotation.set(0,0,0);camera.up.set(0,1,0);focusHistory=[];focusCursor=-1;spheres.forEach(s=>{s.userData.targetOpacity=1;s.userData.targetGlow=.1;s.userData.targetScale=1});controls.target.set(0,0,0);camera.position.set(0,1.8,18);controls.update();drawMini()};document.getElementById('continuumOpenDetail').onclick=async()=>{
  document.getElementById('nodeDetail').classList.add('open');
  const host=document.getElementById('nodeEvidenceList'),nodeId=window.__guanfuSelectedNodeId;
  host.replaceChildren();
