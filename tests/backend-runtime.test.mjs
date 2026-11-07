@@ -214,11 +214,16 @@ assert.ok(parentSuggestionIndex >= 0, "topic parent should match the existing fr
 const createProposal = await api.createFilterSuggestionProposal(locationIngestion.filterCase.id, parentSuggestionIndex);
 assert.equal(createProposal.proposalType, "create");
 assert.equal((await api.loadGraph()).nodes.some(x => x.name === "谢赫画品"), false, "AI suggestions must not write to the formal graph");
+await assert.rejects(() => api.finalizeFilterCase(locationIngestion.filterCase.id), /审核提案未处理/);
 await api.applyFilterCaseProposal(createProposal.id, "accept", "确认归入魏晋绘画理论");
 const placedGraph = await api.loadGraph();
 const placedNode = placedGraph.nodes.find(x => x.name === "谢赫画品");
 assert.equal(placedNode.parentId, "art-wei-jin");
 assert.equal((await api.listNodeSources(placedNode.id)).some(x => x.sourceId === locationSource.id), true, "accepted nodes must retain source links");
+const finalizedFilterCase = await api.finalizeFilterCase(locationIngestion.filterCase.id);
+assert.equal(finalizedFilterCase.status, "approved");
+assert.equal(finalizedFilterCase.currentStage, "completed");
+assert.equal(finalizedFilterCase.completionSummary.total, 1);
 
 const relationProposal = await api.createKnowledgeRelationProposal(placedNode.id, "art-southern", {
   type: "historical_context", label: "时代与实践关联", reasoning: "用于核对画论与南朝绘画实践之间的历史关联。",
