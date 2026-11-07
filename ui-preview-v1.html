@@ -1055,7 +1055,6 @@ document.getElementById('logicRoot').onclick=()=>{if(!localGraphNodes.length)ret
 renderLogic();
 
 // Load the user's actual local graph and its persisted framework projection; otherwise retain clearly-labelled preview nodes.
-let localGraphNodes=[];
 async function connectLocalKnowledgeUniverse(){
  try{
   const graph=await NEBULA_LOCAL.loadGraph();
