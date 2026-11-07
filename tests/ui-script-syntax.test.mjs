@@ -25,7 +25,7 @@ assert.ok(html.includes("b.onclick=()=>{focusCursor=k;const entry=focusExplorati
 assert.ok(html.includes("quadrants-retracting"), "Entering a directional knowledge branch must retract the four-direction controls.");
 assert.ok(html.includes("classList.remove('quadrants-retracting')"), "Closing the choice panel or entering a new core must restore directional controls.");
 assert.ok(html.includes('id="minimapQuadrantReturn"'), "The minimap must provide a way to reopen four-direction exploration.");
-assert.ok(html.includes("body.focus-active .right-panel .mini-map .minimap-quadrant-return{opacity:1;pointer-events:auto}"), "The minimap return control must be available while focused.");
+assert.ok(html.includes(".right-panel .mini-map.quadrants-stowed .minimap-quadrant-return{opacity:1;pointer-events:auto}"), "The minimap return control must be available while the four-direction guide is stowed.");
 assert.ok(html.includes("transform:scale(.12)!important;"), "Retracted quadrants must shrink while fading.");
 const selectNodeBody = html.match(/function selectNode\(i,append=true\)\{([\s\S]*?)\}const directionPrompts/);
 assert.ok(selectNodeBody, "Expected to locate selectNode implementation.");
