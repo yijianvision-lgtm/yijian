@@ -20,6 +20,12 @@ A persistent, interactive 3D personal knowledge system.
 
 - **Formal page:** [index.html](index.html) — legacy production entry; it has not yet been migrated to the newer Mind workspace.
 - **Independent UI preview:** [Open 观复 Mind preview](https://yijianvision-lgtm.github.io/yijian/ui-preview-v1.html) — latest committed preview source; confirm Pages deployment before treating it as the live release.
+
+- **V2-A｜静域沉浸版：** [打开独立预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v2-a-immersive.html) · [GitHub 源文件](ui-preview-v2-a-immersive.html)
+- **V2-B｜认知舰桥版：** [打开独立预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v2-b-bridge.html) · [GitHub 源文件](ui-preview-v2-b-bridge.html)
+- **V2-C｜谱系导航版：** [打开独立预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v2-c-lineage.html) · [GitHub 源文件](ui-preview-v2-c-lineage.html)
+
+These three V2 concepts preserve the existing preview interactions and local data layer while testing distinct information layouts. They are review candidates, not a production replacement; choose one before migrating the formal entry page.
 - **Design charter:** [观复 Mind｜最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md).
 - **Implementation blueprint:** [产品结构与后台实施蓝图](docs/GUANFU-MIND-IMPLEMENTATION-BLUEPRINT.md).
 
