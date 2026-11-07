@@ -110,3 +110,12 @@ assert.ok(preview.includes("renderer.domElement.addEventListener('pointerup'"), 
 assert.ok(preview.includes("matchMedia('(prefers-reduced-motion: reduce)').matches"), "Automatic camera rotation must respect reduced-motion preferences.");
 assert.ok(preview.includes("pixelRatioForViewport"), "Renderer pixel ratio must adapt to viewport size.");
 assert.ok(preview.includes("renderer.setPixelRatio(pixelRatioForViewport())"), "Renderer resolution must be recalculated on resize.");
+
+const mindArchitecture = await readFile(new URL("../docs/MIND-V2-ARCHITECTURE.md", import.meta.url), "utf8");
+assert.ok(mindArchitecture.includes("树（Framework / Tree）是骨架"), "MIND V2 must define the framework tree as a distinct semantic layer.");
+assert.ok(mindArchitecture.includes("网（Relations / Network）是关系"), "MIND V2 must define typed many-to-many relations separately.");
+assert.ok(mindArchitecture.includes("图（Universe Map / Spatial Map）是全局"), "MIND V2 must define spatial projection as a separate global map.");
+assert.ok(mindArchitecture.includes("坐标不得创建或删除知识关系"), "Spatial coordinates must never fabricate knowledge semantics.");
+assert.ok(mindArchitecture.includes("知识时间与学习时间分开记录"), "Knowledge time and learner time must remain distinct.");
+assert.ok(mindArchitecture.includes("只有接受后才写入正式知识"), "AI proposals must require explicit user approval.");
+assert.ok(mindArchitecture.includes("全局层") && mindArchitecture.includes("深入层"), "The spatial model must include global and recursive depth layers.");
