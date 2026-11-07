@@ -107,3 +107,41 @@
 - 正式入口：`index.html`，保持不动。
 - 知识模型：进入整体复核阶段；不把 V2 架构方案自动当成最终模型。
 - 后台：保持 Local-first；Worker 为可选组件，未部署/未验收前不标记为可用。
+
+
+## 7. 当前仓库与 CI 的已核实问题（2026-11-08）
+
+### 仓库文件现状
+当前 main 的目录树中可见：
+- V1：`ui-preview-v1.html`
+- V2：A/B/C 三个页面
+- V3：A/B/C 三个页面
+- V4：A/B/C 三个页面，以及历史实验 `ui-preview-v4-a-plus-corner-map.html`
+- V5：A、C 两个页面
+- V6/V7/V8/V9 的部分旧页面不在当前 main 文件树中；不能把 README 中的历史链接当成当前文件仍存在。
+
+### 最近一次后台检查失败原因
+- Actions run：`42390565440`
+- Job：`check`（job ID `128457066833`）
+- JavaScript syntax：通过。
+- UI preview inline script syntax：通过。
+- Backend contract：失败。
+- 失败不是 IndexedDB 运行逻辑断言，而是测试文件 `tests/backend-contract.test.mjs` 第 55 行仍读取 `ui-preview-v7-a-learning.html`，但该文件不在当前 main 文件树，触发 `ENOENT`。
+- 因此前述运行的 IndexedDB runtime tests 被跳过；不能称为后台全套测试通过，也不能据此断言后台业务实现本身失败。
+- 应修正测试目标与当前保留页面一致，或将历史页面归档并明确测试范围；不能为了让 CI 变绿而删掉真实业务测试。
+
+### Pages 发布状态
+- 最近可核实成功的 Pages 部署对应 commit：`ae9de4336ee1f44af80e3cd371baf4d8808c5b0e`，run `42390565587`。
+- main 当前 HEAD：`295ef34a913601ea31779c292064c372d0c03bf3`，新增 `ui-preview-gallery.html` 后未取得对应的新 Pages 成功部署记录。
+- 所以目录页与该提交之后的页面变更暂不能宣称已在线发布。
+- 本次恢复分支不触发 main Pages 发布；没有改动 main 的 `index.html`。
+
+## 8. 下一步执行顺序（不跳步）
+
+1. 保持本分支为恢复/审计区，不合并 main。
+2. 完成 V1–V9 历史页面和原型文件的真实路径、commit、差异盘点；不按 README 文案推断文件存在。
+3. 对照用户原始纲领，拆分“用户明确要求”“曾经提出的方案”“助手建议”“已实现代码”“已测试”“已部署”“用户已验收”。
+4. 单独复核知识模型：知识对象、谱系、跨框架归属、关系类型、时间、空间、四向/四维、来源证据、版本与撤销。先出模型差异表，不直接改 schema。
+5. 先修正 CI 的陈旧页面引用并恢复 runtime test 执行，再审查测试覆盖是否只验证字符串存在而缺少行为断言。
+6. 以用户当前选择的 V3-A 为视觉方向，建立新一轮独立预览；旧原件和历史 V3-A 文件保持只读。
+7. 只有用户验收后，才讨论将独立预览迁入正式入口。
