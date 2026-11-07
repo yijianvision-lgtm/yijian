@@ -113,7 +113,7 @@ assert.equal(batch.status, "received");
 const itemA = await api.createExtractionItem({ batchId: batch.id, sourceId: "evidence-1", title: "Concept A", excerpt: "A source-backed concept", locator: { page: 2 } });
 const itemB = await api.createExtractionItem({ batchId: batch.id, sourceId: "evidence-1", title: "Concept B", excerpt: "A distinct concept" });
 const filterCase = await api.createFilterCase({ inputItemIds: [itemA.id, itemB.id] });
-await assert.rejects(() => api.updateFilterCase(filterCase.id, { status: "approved" }), /不允许从 received 直接变更/);
+await assert.rejects(() => api.updateFilterCase(filterCase.id, { status: "approved" }), /不允许从 extracted 直接变更/);
 await api.updateExtractionBatch(batch.id, { status: "extracting" });
 await api.updateExtractionBatch(batch.id, { status: "extracted" });
 await api.updateFilterCase(filterCase.id, { status: "filtering", currentStage: "dedupe" });
