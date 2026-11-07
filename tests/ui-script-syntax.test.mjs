@@ -30,14 +30,19 @@ assert.ok(html.includes("transform:scale(.12)!important;"), "Retracted quadrants
 const selectNodeBody = html.match(/function selectNode\(i,append=true\)\{([\s\S]*?)\}const directionPrompts/);
 assert.ok(selectNodeBody, "Expected to locate selectNode implementation.");
 assert.ok(!selectNodeBody[1].includes("classList.add('quadrants-retracting')"), "Selecting a core node must preserve the four-direction guide; retraction belongs to the explicit knowledge-archive action.");
-assert.ok(selectNodeBody[1].includes("classList.remove('quadrants-retracting')"), "Selecting a new exploration core must restore its four-direction guide.");
-assert.ok(html.includes("document.getElementById('continuumOpenDetail').onclick=async()=>{\n document.getElementById('continuumFocus').classList.add('quadrants-retracting')"), "Opening the knowledge archive from the core must retract the guide.");
-assert.ok(html.includes("document.getElementById('openNodeDetail').onclick=()=>{document.getElementById('continuumFocus').classList.add('quadrants-retracting')"), "Opening the selected node archive must retract the guide.");
+assert.ok(selectNodeBody[1].includes("restoreFocusFromMinimap()"), "Selecting a new exploration core must restore its four-direction guide and clear the minimap state.");
+assert.ok(html.includes("document.getElementById('continuumOpenDetail').onclick=async()=>{\n retractFocusToMinimap();"), "Opening the knowledge archive from the core must retract both the guide and core point into the minimap.");
+assert.ok(html.includes("document.getElementById('openNodeDetail').onclick=()=>{retractFocusToMinimap();"), "Opening the selected node archive must retract both the guide and core point into the minimap.");
 assert.ok(html.includes('class="minimap-quadrant-compass"'), "The four directions must remain represented in the minimap while retracted.");
 assert.ok(html.includes('.right-panel .mini-map.quadrants-stowed .minimap-quadrant-compass{opacity:1;'), "The four-direction mini compass must appear when the guide is retracted.");
-assert.ok(html.includes("minimapQuadrantReturn?.addEventListener('click',event=>{event.stopPropagation();document.getElementById('continuumFocus')?.classList.remove('quadrants-retracting')"), "The minimap control must restore the four directions on demand.");
+assert.ok(html.includes("minimapQuadrantReturn?.addEventListener('click',event=>{event.stopPropagation();restoreFocusFromMinimap();"), "The minimap control must restore the core and four directions on demand.");
 
 
+assert.ok(html.includes("function retractFocusToMinimap(){"), "Both archive entry points must share one core-and-quadrant retraction action.");
+assert.ok(html.includes("#continuumFocus.quadrants-retracting .continuum-core{"), "The central core point must retract with the four-direction guide.");
+assert.ok(html.includes("var(--core-minimap-dx,0px)") && html.includes("var(--core-minimap-dy,0px)"), "The core point must travel toward the minimap center rather than merely disappear.");
+assert.ok(html.includes("corePoint.style.setProperty('--core-minimap-dx'") && html.includes("corePoint.style.setProperty('--core-minimap-dy'"), "The core-to-minimap movement must use measured on-screen positions.");
+assert.ok((html.split("retractFocusToMinimap();").length - 1) === 2, "Both full-archive entry points must use the same retraction action.");
 console.log("Checked " + scripts.length + " inline scripts and V3-A exploration contracts.");
 
 assert.ok(html.includes("document.getElementById('search').addEventListener('click',()=>open('globalSearch'))"), "Global search should open only after an explicit click, not merely when the page or input receives focus.");
