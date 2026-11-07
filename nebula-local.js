@@ -768,9 +768,9 @@ NEBULA_LOCAL.normalizeConversationExport = function(raw,format="txt") {
     const parsed=JSON.parse(sourceText),messages=[];
     const contentText=value=>{
       if(typeof value==="string")return value;
-      if(Array.isArray(value))return value.map(contentText).filter(Boolean).join("\\n");
+      if(Array.isArray(value))return value.map(contentText).filter(Boolean).join("\n");
       if(!value||typeof value!=="object")return "";
-      for(const key of ["parts","blocks"])if(Array.isArray(value[key]))return value[key].map(contentText).filter(Boolean).join("\\n");
+      for(const key of ["parts","blocks"])if(Array.isArray(value[key]))return value[key].map(contentText).filter(Boolean).join("\n");
       for(const key of ["text","content","value","body"])if(typeof value[key]==="string")return value[key];
       return "";
     };
@@ -785,7 +785,7 @@ NEBULA_LOCAL.normalizeConversationExport = function(raw,format="txt") {
     };
     walk(parsed);
     return {
-      transcript:messages.length?messages.join("\\n\\n"):sourceText,
+      transcript:messages.length?messages.join("\n\n"):sourceText,
       metadata:{importFormat:"json",deepseekExport:true,parsedMessageCount:messages.length,...(!messages.length?{jsonParseWarning:"JSON 已解析，但未识别出标准消息列表；原始 JSON 已保留"}:{})}
     };
   } catch(error) {
