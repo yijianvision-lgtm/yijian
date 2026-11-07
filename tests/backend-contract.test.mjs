@@ -42,4 +42,4 @@ assert.match(local, /buildReferenceExtractionCandidates/);
 assert.match(local, /saveReferenceBeforeExtraction/);
 
 assert.match(local, /extractionJaccard/);
-assert.match(local, /matchType:"near_duplicate"/);
+assert.match(local, /matchType:exact\?"exact":"near_duplicate"/);
