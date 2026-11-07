@@ -1517,3 +1517,153 @@ Object.assign(NEBULA_LOCAL,{
     return updated;
   }
 });
+
+
+// P2/P3: framework projection, persistent spatial context and source-evidence resolution.
+function mindNodeAncestors(nodeId,nodes) {
+  const path=[],seen=new Set();let current=nodes.find(n=>String(n.id)===String(nodeId));
+  while(current&&!seen.has(String(current.id))) {
+    seen.add(String(current.id));path.unshift(current);
+    current=nodes.find(n=>String(n.id)===String(current.parentId));
+  }
+  return path;
+}
+function mindDescendantIds(rootIds,nodes) {
+  const included=new Set(rootIds.map(String));let changed=true;
+  while(changed){changed=false;for(const node of nodes)if(node.parentId&&included.has(String(node.parentId))&&!included.has(String(node.id))){included.add(String(node.id));changed=true;}}
+  return included;
+}
+Object.assign(NEBULA_LOCAL,{
+  async createFrameworkFromCurrentGraph(title="我的知识框架",description="由当前知识结构建立的个人框架") {
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    if(!nodes.length) throw new Error("当前知识图谱为空，无法建立框架。");
+    const roots=nodes.filter(n=>!n.parentId).map(n=>n.id);
+    const framework=await this.createFramework({title,description,rootNodeIds:roots,metadata:{origin:"current_graph",graphSavedAt:graph.savedAt||null}});
+    await this.syncFrameworkFromGraph(framework.id,{reason:"从当前知识图谱建立初始框架"});
+    return this.getFramework(framework.id);
+  },
+  async syncFrameworkFromGraph(frameworkId,options={}) {
+    const framework=await this.getFramework(frameworkId);
+    if(!framework) throw new Error("找不到目标框架。");
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[],links=graph?.links||[];
+    const roots=nodes.filter(n=>!n.parentId).map(n=>n.id);
+    const updated=await this.updateFramework(frameworkId,{
+      rootNodeIds:roots,
+      metadata:{...(framework.metadata||{}),graphSavedAt:graph?.savedAt||null,nodeCount:nodes.length,relationCount:links.length,syncedAt:Date.now()}
+    });
+    const snapshot={frameworkId,title:updated.title,rootNodeIds:roots,nodes:cloneJSON(nodes),links:cloneJSON(links),
+      relations:await this.listKnowledgeRelations(),syncedAt:Date.now()};
+    await this.saveFrameworkVersion({frameworkId,snapshot,changeSummary:options.reason||"同步当前知识结构",createdBy:"user"});
+    return {framework:updated,nodeCount:nodes.length,linkCount:links.length};
+  },
+  async getFrameworkTree(frameworkId) {
+    const framework=await this.getFramework(frameworkId);
+    if(!framework) throw new Error("找不到知识框架。");
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    const included=mindDescendantIds(framework.rootNodeIds||[],nodes);
+    const selected=nodes.filter(n=>included.has(String(n.id)));
+    const byId=new Map(selected.map(n=>[String(n.id),{...n,children:[]}]));
+    const roots=[];
+    for(const node of selected) {
+      const item=byId.get(String(node.id)),parent=byId.get(String(node.parentId));
+      if(parent) parent.children.push(item); else roots.push(item);
+    }
+    const sort=(items)=>items.sort((a,b)=>Number(a.sortOrder??a.order??0)-Number(b.sortOrder??b.order??0)||String(a.name).localeCompare(String(b.name),"zh-CN")).forEach(x=>sort(x.children));
+    sort(roots);
+    return {framework,roots,nodeCount:selected.length,relations:(await this.listKnowledgeRelations()).filter(r=>included.has(String(r.sourceNodeId))&&included.has(String(r.targetNodeId)))};
+  },
+  async getSpatialProjection(frameworkId) {
+    const tree=await this.getFrameworkTree(frameworkId);
+    const positions=await this.listNodePositions(frameworkId);
+    const positionMap=new Map(positions.map(p=>[String(p.nodeId),p]));
+    const nodes=tree.roots.flatMap(function walk(node,depth=1){
+      const saved=positionMap.get(String(node.id));
+      const semanticCoordinates=saved?.semanticCoordinates||{
+        lineageLevel:depth,parentId:node.parentId||null,
+        timeKey:node.knowledgeTime||node.date||null,
+        domainKey:node.domain||node.domainPath||null
+      };
+      const layoutCoordinates=saved?.layoutCoordinates||{x:Number(node.x)||0,y:Number(node.y)||0,z:Number(node.z)||0};
+      return [{id:node.id,name:node.name,depth,parentId:node.parentId||null,semanticCoordinates,layoutCoordinates},
+        ...node.children.flatMap(child=>walk(child,depth+1))];
+    });
+    return {frameworkId,version:tree.framework.versionId||null,nodes,relations:tree.relations,dimensions:["lineage","time","space","horizontal"]};
+  },
+  async getMindContext(currentNodeId=null,options={}) {
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    const frameworks=await this.listFrameworks();
+    const framework=options.frameworkId?await this.getFramework(options.frameworkId):
+      frameworks.find(f=>(f.rootNodeIds||[]).some(id=>mindDescendantIds([id],nodes).has(String(currentNodeId))))||frameworks[0]||null;
+    const path=currentNodeId?mindNodeAncestors(currentNodeId,nodes):[];
+    const current=path.at(-1)||null,parent=current?nodes.find(n=>String(n.id)===String(current.parentId)):null;
+    const siblings=current?nodes.filter(n=>String(n.parentId||"")===String(current.parentId||"")&&String(n.id)!==String(current.id)).map(n=>n.id):[];
+    const relations=current?await this.listKnowledgeRelations(current.id):[];
+    const evidence=current?await this.getNodeEvidence(current.id):[];
+    return {
+      currentNodeId:current?.id||null,currentFrameworkId:framework?.id||null,
+      currentLevel:current?.level||path.length,ancestorPath:path.map(n=>({id:n.id,name:n.name})),
+      siblingNodeIds:siblings,selectedRelationIds:relations.map(r=>r.id),
+      activeDimension:options.activeDimension||"lineage",currentSourceLocator:options.currentSourceLocator||evidence[0]?.link?.evidenceLocator||null,
+      focusMode:options.focusMode||"overview",cameraPose:options.cameraPose||null,
+      spatialProjectionVersion:framework?.versionId||null,parentNodeId:parent?.id||null
+    };
+  },
+  async resolveExtractionEvidence(itemId) {
+    const item=await this.getExtractionItem(itemId);
+    if(!item) throw new Error("找不到提取候选。");
+    const [source,reference,batch]=await Promise.all([
+      item.sourceId?this.getSource(item.sourceId):null,
+      item.referenceId?this.getReference(item.referenceId):null,
+      item.batchId?this.getExtractionBatch(item.batchId):null
+    ]);
+    let locatedText=item.excerpt||item.content||"";
+    const locator=item.locator||{};
+    if(reference&&locator.kind==="pdf_page"&&Array.isArray(reference.pages)) {
+      const page=reference.pages.find(p=>Number(p.page)===Number(locator.page));
+      if(page?.text) locatedText=page.text;
+    } else if(reference&&locator.kind==="topic"&&Array.isArray(reference.tree)) {
+      const topic=reference.tree[locator.topicIndex];
+      if(topic) locatedText=[topic.title,topic.note].filter(Boolean).join("\n");
+    }
+    const cases=await this.listFilterCases();
+    const decisions=(await Promise.all(cases.filter(x=>x.batchId===item.batchId).map(x=>this.listFilterDecisions(x.id)))).flat();
+    return {item,source,reference:reference?{id:reference.id,name:reference.name,extension:reference.extension,mime:reference.mime}:null,
+      batch,locator,locatedText,decisions:decisions.filter(d=>d.before?.itemId===itemId||d.evidenceIds?.includes(item.sourceId))};
+  },
+  async resolveNodeEvidence(nodeId) {
+    const links=await this.listNodeSources(nodeId),resolved=[];
+    for(const link of links) {
+      const content=await this.getSourceContent(link.sourceId);
+      const source=content?.source,record=content?.record;
+      let locator=link.evidenceLocator||null,excerpt=link.excerpt||"";
+      if(record&&locator?.kind==="pdf_page"&&Array.isArray(record.pages)) {
+        const page=record.pages.find(p=>Number(p.page)===Number(locator.page));
+        if(page?.text&&!excerpt)excerpt=page.text;
+      }
+      if(record&&locator?.kind==="topic"&&Array.isArray(record.tree)) {
+        const topic=record.tree[locator.topicIndex];
+        if(topic&&!excerpt)excerpt=[topic.title,topic.note].filter(Boolean).join("\n");
+      }
+      resolved.push({link,source,record:record?{id:record.id,name:record.name||record.title,extension:record.extension,mime:record.mime}:null,locator,excerpt,available:!!record});
+    }
+    const relations=await this.listKnowledgeRelations(nodeId);
+    const relationEvidence=[];
+    for(const relation of relations) relationEvidence.push({relation,evidence:await this.listRelationEvidence(relation.id)});
+    return {nodeId,sources:resolved,relations:relationEvidence};
+  },
+  async resolveEvidenceLocator(sourceId,locator={}) {
+    const result=await this.getSourceContent(sourceId);
+    if(!result) throw new Error("找不到来源记录。");
+    const record=result.record;
+    let excerpt="",available=!!record;
+    if(record&&locator.kind==="pdf_page") excerpt=record.pages?.find(p=>Number(p.page)===Number(locator.page))?.text||"";
+    else if(record&&locator.kind==="topic") {
+      const topic=record.tree?.[locator.topicIndex];excerpt=topic?[topic.title,topic.note].filter(Boolean).join("\n"):"";
+    } else if(record&&locator.kind==="document_block"&&record.html&&typeof DOMParser!=="undefined") {
+      const doc=new DOMParser().parseFromString(record.html,"text/html");
+      const blocks=[...doc.body.querySelectorAll("h1,h2,h3,h4,p,li")];
+      excerpt=blocks[Number(locator.blockIndex)]?.textContent||"";
+    } else if(record&&locator.kind==="text_offset") excerpt=record.text||record.transcript||"";
+    return {source:result.source,recordId:record?.id||null,locator,excerpt,available,found:!!excerpt};
+  }
+});
