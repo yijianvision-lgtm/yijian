@@ -1544,6 +1544,7 @@ document.addEventListener("click",event=>{
  if(button.id==="researchDraft"){event.preventDefault();event.stopImmediatePropagation();saveResearchDraft();return;}
  if(button.id==="submitRecall"){event.preventDefault();event.stopImmediatePropagation();saveRealLearningRecord();return;}
  if(button.id==="showHint"){event.preventDefault();event.stopImmediatePropagation();$("recallFeedback").textContent=selectedLearningNode?.desc||"当前正式知识节点尚未补充可用定义提示。";return;}
+ if(button.id==="restoreBackup"){event.preventDefault();event.stopImmediatePropagation();$("backupFileInput").click();return;}
  if(!["exportBackup","restoreCheck","restoreConfirm"].includes(button.id))return;
  event.preventDefault();event.stopImmediatePropagation();runRealBackupAction(button);
 },true);
