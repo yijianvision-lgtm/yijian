@@ -9,9 +9,37 @@ globalThis.localStorage = {
 };
 globalThis.window = { dispatchEvent() {} };
 
+// Seed a v4 database before loading the v5 module to verify non-destructive upgrade.
+const legacyDb = await new Promise((resolve, reject) => {
+  const req = indexedDB.open("nebula_local_v2", 4);
+  req.onupgradeneeded = () => {
+    const db = req.result;
+    const keyed = new Set(["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations"]);
+    for (const name of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations"]) {
+      if (!db.objectStoreNames.contains(name)) {
+        if (keyed.has(name)) db.createObjectStore(name, { keyPath: "id" });
+        else db.createObjectStore(name);
+      }
+    }
+  };
+  req.onsuccess = () => resolve(req.result);
+  req.onerror = () => reject(req.error);
+});
+await new Promise((resolve, reject) => {
+  const tx = legacyDb.transaction(["graph","sources"], "readwrite");
+  tx.objectStore("graph").put({ id: "main", nodes: [{ id: "legacy-v4", name: "Preserved v4 node" }], links: [] }, "main");
+  tx.objectStore("sources").put({ id: "legacy-v4-source", sourceType: "personal_note", title: "Preserved v4 source", createdAt: Date.now() });
+  tx.oncomplete = resolve;
+  tx.onerror = () => reject(tx.error);
+});
+legacyDb.close();
+
 await import("../nebula-local.js");
 const api = globalThis.NEBULA_LOCAL;
 assert.ok(api, "NEBULA_LOCAL should be exposed after module load.");
+const migratedGraph = await api.loadGraph();
+assert.ok(migratedGraph.nodes.some(node => node.id === "legacy-v4"), "v4 graph data must survive the v5 upgrade.");
+assert.equal((await api.getSource("legacy-v4-source")).title, "Preserved v4 source", "v4 source records must survive the v5 upgrade.");
 
 await api.saveGraph([{ id: "base", name: "Base knowledge", desc: "Initial definition" }], []);
 const conversation = await api.saveConversation({
