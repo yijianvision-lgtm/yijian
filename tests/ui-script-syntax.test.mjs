@@ -49,7 +49,8 @@ assert.ok(html.includes("renderContinuum();\\n const archive=document.getElement
 assert.ok(html.includes("#nodeDetail{z-index:40}"), "The full knowledge archive must render above the 3D exploration layer.");
 assert.ok(html.includes("host.append(safeText('p','正在读取关联来源…'));"), "The archive must show a visible loading state while original sources are resolved.");
 assert.ok(html.includes("corePoint.addEventListener('transitionend',onTransitionEnd);"), "The archive-opening flow must wait for the core-to-minimap transition.");
-\nconsole.log("Checked " + scripts.length + " inline scripts and V3-A exploration contracts.");
+
+console.log("Checked " + scripts.length + " inline scripts and V3-A exploration contracts.");
 
 assert.ok(html.includes("document.getElementById('search').addEventListener('click',()=>open('globalSearch'))"), "Global search should open only after an explicit click, not merely when the page or input receives focus.");
 assert.ok(!html.includes("document.getElementById('search').addEventListener('focus',()=>open('globalSearch'))"), "Global search must not auto-open on focus during page entry.");
