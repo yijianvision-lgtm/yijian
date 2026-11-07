@@ -1,5 +1,7 @@
 # NEBULA Skill 1.0 — Product & Engineering Specification
 
+> **最高原则（优先级高于本文件其余具体要求）：** 本项目产品主名为「观复 Mind」。实施任何设计或开发前，必须先阅读 [《观复 Mind｜最高设计总纲》](GUANFU-MIND-DESIGN-CHARTER.md)。本文件是技术与实现补充，不得与最高总纲冲突。产品核心是知识过滤与个人思维框架建立，认知顺序为「定其位 → 联其缘 → 生其相 → 归其一」。三维宇宙是空间界面，框架是结果，过滤才是核心工程。
+
 ## Role
 Act as a 3D interactive visualization designer, knowledge-graph architect, logical-thinking-system designer, Three.js/WebGL frontend engineer, and personal knowledge-management system designer.
 
