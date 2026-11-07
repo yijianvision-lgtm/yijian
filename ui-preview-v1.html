@@ -1500,7 +1500,7 @@ async function runLocalSearch(){
   if(!matches.length){host.append(safeText("div","没有找到匹配的本机正式知识或来源。","filter-empty"));return;}
   matches.slice(0,80).forEach(item=>{
    const row=safeText("button","","result-item");row.append(safeText("b",item.title),safeText("small",item.kind+" · "+item.detail));
-   row.addEventListener("click",async()=>{if(item.nodeId){window.__guanfuSelectNode?.(item.nodeId);document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));}else if(item.sourceId||item.conversationId){activeSourceId=item.sourceId||item.conversationId;document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("sources").classList.add("open");await refreshSourceLibrary();document.querySelectorAll(".source-file").forEach(target=>{if(target.dataset.sourceId===String(activeSourceId))target.click();});}else if(item.researchId){document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("lab").classList.add("open");}else if(item.learningId){document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("learning").classList.add("open");}});
+   row.addEventListener("click",async()=>{if(item.nodeId){window.__guanfuSelectNode?.(item.nodeId);document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));}else if(item.sourceId||item.conversationId){activeSourceId=item.sourceId||item.conversationId;document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("sources").classList.add("open");await refreshSourceLibrary();document.querySelectorAll(".source-file").forEach(target=>{if(target.dataset.sourceId===String(activeSourceId))target.click();});}else if(item.researchId){selectedResearchId=item.researchId;document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("lab").classList.add("open");await refreshResearchWorkspace();document.querySelectorAll("#researchSessionList button").forEach(row=>{if(row.textContent.includes(item.title))row.click();});}else if(item.learningId){document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("learning").classList.add("open");}});
    host.append(row);
   });
  }catch(error){host.append(safeText("div","本机搜索失败："+error.message,"filter-empty"));}
@@ -1563,6 +1563,7 @@ $("savePastedConversation").addEventListener("click",async()=>{
 });
 refreshSourceLibrary().catch(error=>{$("sourceImportState").textContent="资料库读取失败："+error.message;});
 refreshFilterWorkbench();
+let selectedResearchId=null;
 async function refreshResearchWorkspace(){
  try{
   const rows=await NEBULA_LOCAL.listResearchSessions();
@@ -1571,7 +1572,7 @@ async function refreshResearchWorkspace(){
   rows.forEach(item=>{
    const row=safeText("button","","result-item");
    row.append(safeText("b",item.title||item.query||"未命名研究"),safeText("small",(item.status||"draft")+" · "+new Date(item.updatedAt||item.createdAt||Date.now()).toLocaleString()));
-   row.addEventListener("click",()=>{$("researchTitle").value=item.title||"";$("researchQuery").value=item.query||"";$("researchNotes").value=item.notes||"";$("researchStatus").textContent="已载入本机研究草稿；修改后再次保存会创建更新记录。";});
+   row.addEventListener("click",()=>{selectedResearchId=item.id;$("researchTitle").value=item.title||"";$("researchQuery").value=item.query||"";$("researchNotes").value=item.notes||"";$("researchStatus").textContent="已载入本机研究草稿；修改后再次保存会创建更新记录。";});
    host.append(row);
   });
  }catch(error){$("researchSessionList").replaceChildren(safeText("div","读取研究记录失败："+error.message,"filter-empty"));}
@@ -1580,7 +1581,7 @@ async function saveResearchDraft(){
  const title=$("researchTitle").value.trim(),query=$("researchQuery").value.trim(),notes=$("researchNotes").value.trim();
  if(!title&&!query){$("researchStatus").textContent="请至少填写研究主题或研究问题。";return;}
  try{
-  const record=await NEBULA_LOCAL.saveResearchSession({title:title||query.slice(0,80),query,notes,status:"draft",nodeId:window.__guanfuSelectedNodeId||null,origin:"local-research-workspace"});
+  const record=await NEBULA_LOCAL.saveResearchSession({id:selectedResearchId||undefined,title:title||query.slice(0,80),query,notes,status:"draft",nodeId:window.__guanfuSelectedNodeId||null,origin:"local-research-workspace"});selectedResearchId=record.id;
   $("researchStatus").textContent="研究草稿已保存在本机："+record.id+"。它尚未进入正式知识框架。";
   await refreshResearchWorkspace();await refreshMindOverview();
  }catch(error){$("researchStatus").textContent="保存失败："+error.message;}
