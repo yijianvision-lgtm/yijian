@@ -74,6 +74,16 @@ localDb.close();
 const firstReview = await api.saveLearningRecord({ nodeId: "base", activityType: "recall", score: 1 });
 assert.equal(firstReview.schedule.intervalDays, 1);
 assert.ok(firstReview.schedule.nextReviewAt > Date.now());
+const dashboardSnapshot = await api.getCognitiveDashboard();
+assert.equal(dashboardSnapshot.nodeCount, 1);
+assert.equal(dashboardSnapshot.learningRecords, 1);
+const learningQueue = await api.buildLearningQueue();
+assert.ok(learningQueue.some(item => item.nodeId === "base"), "Formal nodes with structural gaps should appear in the learning queue.");
+const researchDraft = await api.saveResearchSession({title:"Local research draft",query:"Test a local research question",notes:"Evidence remains a draft."});
+const updatedResearchDraft = await api.saveResearchSession({...researchDraft,notes:"Updated evidence note."});
+assert.equal(updatedResearchDraft.id, researchDraft.id);
+assert.equal((await api.listResearchSessions()).length, 1);
+
 await api.saveResearchSession({ title: "Research fixture", query: "knowledge graph" });
 
 const backup = await api.exportFullBackup();
