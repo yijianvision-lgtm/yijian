@@ -736,6 +736,12 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
 @media(max-width:760px){.logic-children{padding-left:0!important}.logic-child{width:calc(100% - 28px)!important;margin-left:28px!important;grid-template-columns:1fr;gap:5px;padding:12px!important}.logic-children:before{left:14px}.logic-child:before{left:-15px;width:10px}.logic-child:after{left:-19px}.logic-child em{white-space:normal}#continuumFocus .continuum-core:after{width:180px;height:112px}}
 @media(prefers-reduced-motion:reduce){#continuumFocus .continuum-quadrant{animation:none!important}#continuumFocus.arriving .continuum-routes .route{animation:none!important;opacity:.5!important}}
 
+
+.candidate-evidence-btn{margin-top:8px;padding:5px 8px;border:1px solid rgba(220,231,238,.12);border-radius:3px;background:rgba(255,255,255,.025);color:#aebbc3;font-size:8px;cursor:pointer}
+.candidate-evidence-btn:hover{border-color:rgba(220,231,238,.28);color:#e2e9ed;background:rgba(255,255,255,.055)}
+.filter-candidate{display:flex;flex-direction:column;align-items:flex-start}
+.filter-candidate small{display:block}
+
 </style>
 </head>
 <body>
@@ -1134,7 +1140,26 @@ async function renderFilterCase(){
   row.append(safeText("b",candidate.title||"未命名候选"),safeText("p",candidate.excerpt||candidate.content||"暂无提取文字"));
   const locator=candidate.locator||{};
   const locatorText=(locator.kind||"未定位")+(locator.page?" · 第 "+locator.page+" 页":"")+(locator.topicPath?.length?" · "+locator.topicPath.join(" / "):"");
-  row.append(safeText("small",locatorText));candidates.append(row);
+  row.append(safeText("small",locatorText));
+  const evidenceButton=safeText("button","查看原文定位","candidate-evidence-btn");
+  evidenceButton.addEventListener("click",async()=>{
+   try{
+    const evidence=await NEBULA_LOCAL.resolveExtractionEvidence(candidate.id);
+    const sourceName=evidence.source?.name||evidence.reference?.name||"本地来源";
+    const locator=evidence.locator||{};
+    const locatorLabel=(locator.kind||"片段")+(locator.page?" · 第 "+locator.page+" 页":"")+(locator.topicPath?.length?" · "+locator.topicPath.join(" / "):"")+(Number.isInteger(locator.blockIndex)?" · 段落 "+(locator.blockIndex+1):"");
+    const detail=$("filterSuggestionDetail");
+    detail.replaceChildren(
+     safeText("div","SOURCE EVIDENCE · 原始资料回溯","eyebrow"),
+     safeText("b",sourceName+" · "+locatorLabel),
+     safeText("p",evidence.locatedText||candidate.excerpt||candidate.content||"原文定位暂不可用；当前保留提取片段。")
+    );
+    const meta=safeText("div","","inspector-meta");
+    meta.append(safeText("span",evidence.reference?"已找到原始资料":"未找到原始资料记录"),safeText("span",evidence.locatedText?"定位文本可读取":"仅有候选摘录"),safeText("span","提取批次："+(evidence.batch?.id||"未知")));
+    detail.append(meta);
+   }catch(error){setFilterMessage("原文回溯失败："+error.message);}
+  });
+  row.append(evidenceButton);candidates.append(row);
  });
  const suggestions=$("filterSuggestionList");suggestions.replaceChildren();
  const all=item.locationSuggestions||[];
@@ -1155,8 +1180,10 @@ async function renderFilterCase(){
   meta.append(safeText("span","置信等级："+(selectedSuggestion.confidence||"未知")),safeText("span","匹配分："+(Number(selectedSuggestion.score||0)*100).toFixed(0)+"%"),safeText("span","来源："+(selectedSuggestion.evidence?.sourceId||"未关联")));
   detail.append(meta);
  }else detail.replaceChildren(safeText("div","EVIDENCE & POSITION","eyebrow"),safeText("b","尚无定位建议"),safeText("p","运行四维定位后，选择任一建议查看证据与不确定性。"));
- $("createLocationProposal").textContent=selectedSuggestion?.dimension==="lineage"&&selectedSuggestion?.kind==="parent_candidate"?"生成谱系审核提案":"当前维度仅作定位参考";
- $("createLocationProposal").disabled=!(selectedSuggestion?.dimension==="lineage"&&selectedSuggestion?.kind==="parent_candidate");
+ const canPlace=selectedSuggestion?.dimension==="lineage"&&selectedSuggestion?.kind==="parent_candidate";
+ const canRelate=selectedSuggestion?.dimension==="horizontal"&&selectedSuggestion?.kind==="related_concept";
+ $("createLocationProposal").textContent=canPlace?"生成谱系审核提案":canRelate?"生成横向关系提案":"当前维度仅作定位参考";
+ $("createLocationProposal").disabled=!(canPlace||canRelate);
  const proposals=$("filterProposalList");proposals.replaceChildren();
  const pending=(filterSnapshot.pendingProposals||[]).filter(p=>p.filterCaseId===item.id);
  if(!pending.length)proposals.append(safeText("div","暂无待审核提案。选择一条定位建议后可生成提案。","filter-empty"));
