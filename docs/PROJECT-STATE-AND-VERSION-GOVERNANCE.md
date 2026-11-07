@@ -193,3 +193,21 @@
 - **T6 用户验收**：用户实际操作并明确认可。
 
 任一层通过都不能代替更高层；UI 通过不代表模型正确，CI 通过不代表已部署，部署成功不代表用户验收。
+
+
+## 10. 2026-11-08 追加核实：Pages 实际已部署
+
+更正此前“gallery 尚无新部署记录”的状态：再次读取 GitHub Actions 后确认，main 提交 `295ef34a913601ea31779c292064c372d0c03bf3` 已触发并成功完成 Pages 构建与部署。
+
+- Pages run：`42394879138`
+- build job：`128470002674`，success
+- deploy job：`128470120408`，success
+- report-build-status：`128470120409`，success
+- Jekyll CI run：`42394879965`，success
+- backend checks run：`42394880044`，failure（原因仍是已撤回的 V7 页面引用）
+- 因此 main 上 `ui-preview-gallery.html` 和现存 V2–V5 页面已随该 Pages 部署发布。V3-A 在线地址：
+  `https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-a-cosmos.html`
+  原型目录：
+  `https://yijianvision-lgtm.github.io/yijian/ui-preview-gallery.html`
+
+本轮无法通过外部网页读取工具完成真实浏览器点击验收；但 Pages build/deploy 两个 GitHub Actions job 均成功。因此发布状态可标记为 S4（静态部署成功），交互浏览器验收仍是 S5 待验证。恢复分支中的三份早期归档和模型审计文档不在 main Pages 上，不可误称已部署。
