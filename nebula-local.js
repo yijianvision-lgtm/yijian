@@ -1418,6 +1418,14 @@ Object.assign(NEBULA_LOCAL,{
     const proposal=await this.listProposals("pending").then(rows=>rows.find(x=>x.id===proposalId));
     if(!proposal) throw new Error("找不到待审核的过滤提案。");
     const result=await this.applyProposal(proposalId,decision,reviewerNote);
+    if(proposal.filterCaseId) {
+      const fc=await this.getFilterCase(proposal.filterCaseId);
+      if(fc) await this.appendFilterDecision({filterCaseId:fc.id,decisionType:decision==="accept"?"accept":"reject",actor:"user",
+        before:{proposalId,extractionItemId:proposal.extractionItemId||null},
+        after:{decision,proposalType:proposal.proposalType},
+        rationale:reviewerNote||(decision==="accept"?"用户确认过滤提案。":"用户拒绝该过滤提案。"),
+        evidenceIds:proposal.evidenceSourceIds||[]});
+    }
     if(decision!=="accept") return result;
     const graph=await this.loadGraph();
     if(proposal.proposalType==="create") {
@@ -1426,12 +1434,11 @@ Object.assign(NEBULA_LOCAL,{
         if(sourceId&&nodeId) await this.linkNodeSource({nodeId,sourceId,evidenceLocator:proposal.evidence?.locator||null,
           excerpt:proposal.evidence?.excerpt||"",relation:"origin"});
       }
-    }
-    if(proposal.filterCaseId) {
-      const fc=await this.getFilterCase(proposal.filterCaseId);
-      if(fc) await this.appendFilterDecision({filterCaseId:fc.id,decisionType:"accept",actor:"user",
-        before:{proposalId},after:{decision:"accept",proposalType:proposal.proposalType},
-        rationale:reviewerNote||"用户确认过滤提案。",evidenceIds:proposal.evidenceSourceIds||[]});
+      if(proposal.filterCaseId&&proposal.extractionItemId) {
+        await this.appendFilterDecision({filterCaseId:proposal.filterCaseId,decisionType:"locate",actor:"user",
+          before:{itemId:proposal.extractionItemId,proposalId},after:{action:"placed",nodeId},
+          rationale:reviewerNote||"用户确认候选知识点的框架位置。",evidenceIds:proposal.evidenceSourceIds||[]});
+      }
     }
     return {...result,graph};
   }
@@ -1467,5 +1474,46 @@ Object.assign(NEBULA_LOCAL,{
       });
     }
     return {...result,relation:relation||null};
+  }
+});
+
+Object.assign(NEBULA_LOCAL,{
+  async recordFilterItemDisposition(filterCaseId,itemId,action,rationale="") {
+    const filterCase=await this.getFilterCase(filterCaseId);
+    if(!filterCase) throw new Error("找不到过滤任务。");
+    if(!(filterCase.inputItemIds||[]).includes(itemId)) throw new Error("该候选不属于当前过滤任务。");
+    if(!["keep_unplaced","reject_candidate","defer"].includes(action)) throw new Error("候选处理决定无效。");
+    return this.appendFilterDecision({
+      filterCaseId,decisionType:action==="reject_candidate"?"reject":"locate",actor:"user",
+      before:{itemId},after:{action},rationale:String(rationale||"用户记录候选处理决定。"),
+      evidenceIds:[(await this.getExtractionItem(itemId))?.sourceId].filter(Boolean)
+    });
+  },
+  async finalizeFilterCase(filterCaseId) {
+    const filterCase=await this.getFilterCase(filterCaseId);
+    if(!filterCase) throw new Error("找不到过滤任务。");
+    if(filterCase.status!=="needs_review") throw new Error("过滤任务必须处于待审核状态才能完成归位。");
+    const [decisions,proposals]=await Promise.all([this.listFilterDecisions(filterCaseId),this.listProposals("pending")]);
+    const pending=proposals.filter(p=>p.filterCaseId===filterCaseId);
+    if(pending.length) throw new Error("仍有 "+pending.length+" 条审核提案未处理。");
+    const unresolved=[];
+    for(const itemId of filterCase.inputItemIds||[]) {
+      const latest=decisions.filter(d=>d.actor==="user"&&d.before?.itemId===itemId&&
+        ["locate","reject"].includes(d.decisionType)).sort((a,b)=>b.createdAt-a.createdAt)[0];
+      if(!latest||!["placed","keep_unplaced","reject_candidate"].includes(latest.after?.action)) unresolved.push(itemId);
+    }
+    if(unresolved.length) throw new Error("仍有 "+unresolved.length+" 个候选未作出最终处理决定。");
+    const rejected=(filterCase.inputItemIds||[]).every(itemId=>{
+      const latest=decisions.filter(d=>d.actor==="user"&&d.before?.itemId===itemId&&["locate","reject"].includes(d.decisionType)).sort((a,b)=>b.createdAt-a.createdAt)[0];
+      return latest?.after?.action==="reject_candidate";
+    });
+    const status=rejected?"rejected":"approved";
+    const updated=await this.updateFilterCase(filterCaseId,{status,currentStage:"completed",completedAt:Date.now(),completionSummary:{
+      total:(filterCase.inputItemIds||[]).length,unplaced:decisions.filter(d=>d.actor==="user"&&d.after?.action==="keep_unplaced").length,
+      rejected:decisions.filter(d=>d.actor==="user"&&d.after?.action==="reject_candidate").length
+    }});
+    await this.appendFilterDecision({filterCaseId,decisionType:status==="approved"?"accept":"reject",actor:"user",
+      before:{status:"needs_review"},after:{status},rationale:"所有提取候选均已逐项处理，过滤案件完成。",evidenceIds:[]});
+    return updated;
   }
 });
