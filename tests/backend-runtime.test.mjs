@@ -142,6 +142,10 @@ await api.saveGraph([
 ], []);
 await api.saveSource({ id: "evidence-1", sourceType: "personal_note", title: "Evidence note" });
 await api.linkNodeSource({ nodeId: "source", sourceId: "evidence-1", evidenceLocator: "p.1" });
+const mergeFramework = await api.createFramework({ title: "Merge placement fixture", rootNodeIds: ["source"] });
+const sourcePlacement = await api.createFrameworkPlacement({ frameworkId: mergeFramework.id, nodeId: "source", role: "source-context" });
+const mergePath = await api.createExplorationPath({ title: "Merge path fixture", frameworkId: mergeFramework.id, rootNodeId: "source" });
+const mergeStep = await api.appendExplorationStep({ pathId: mergePath.id, toNodeId: "child", direction: "向内" });
 await api.saveKnowledgeRelation({ sourceNodeId: "source", targetNodeId: "child", type: "supports" });
 const merge = await api.createProposal({
   proposalType: "merge",
@@ -156,6 +160,13 @@ assert.ok(!graph.nodes.some(node => node.id === "source"));
 assert.equal(graph.nodes.find(node => node.id === "child").parentId, "target");
 assert.ok((await api.listNodeSources("target")).some(link => link.sourceId === "evidence-1"));
 assert.ok((await api.listKnowledgeRelations("target")).some(link => link.targetNodeId === "child"));
+const remappedPlacements = await api.listFrameworkPlacements(mergeFramework.id, "target");
+assert.ok(remappedPlacements.some(x => x.originalNodeId === "source"), "Merge must preserve framework placement context and record the original object ID.");
+const remappedPath = await api.getExplorationPathSnapshot(mergePath.id);
+assert.equal(remappedPath.path.rootNodeId, "target");
+assert.equal(remappedPath.path.originalRootNodeId, "source");
+assert.equal(remappedPath.steps[0].fromNodeId, "target");
+assert.equal(remappedPath.steps[0].originalFromNodeId, "source", "Merge must remap active path references while preserving traversal provenance.");
 
 const split = await api.createProposal({
   proposalType: "split",
@@ -167,6 +178,10 @@ await api.applyProposal(split.id, "accept", "runtime test");
 graph = await api.loadGraph();
 assert.ok(graph.nodes.some(node => node.id === "target" && node.name === "Part A"));
 assert.ok(graph.nodes.some(node => node.name === "Part B"));
+const splitA = graph.nodes.find(node => node.id === "target");
+const splitB = graph.nodes.find(node => node.name === "Part B");
+assert.equal(splitA.splitGroupId, splitB.splitGroupId, "Split nodes must retain a shared split provenance group.");
+assert.equal((await api.getExplorationPathSnapshot(mergePath.id)).path.rootNodeId, "target", "Existing paths remain attached to the retained stable identity after split.");
 
 const batch = await api.createExtractionBatch({ sourceId: "evidence-1", parserVersion: "test-parser" });
 assert.equal(batch.status, "received");
