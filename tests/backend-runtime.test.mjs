@@ -130,6 +130,42 @@ assert.equal((await api.getNodePosition(framework.id, "target")).level, 1);
 const relation = (await api.listKnowledgeRelations("target"))[0];
 const relationEvidence = await api.createRelationEvidence({ relationId: relation.id, sourceId: "evidence-1", locator: "p.1", excerpt: "Evidence excerpt" });
 assert.equal((await api.listRelationEvidence(relation.id))[0].id, relationEvidence.id);
+
+const ingestionSource = await api.saveSource({ id: "src-ingestion-test", sourceType: "lecture", title: "Structured lecture sample" });
+const ingestion = await api.createExtractionFromParsedSource({
+  sourceId: ingestionSource.id,
+  referenceId: "ref-ingestion-test",
+  name: "Structured lecture sample",
+  pages: [
+    { page: 1, text: "第一段知识内容。包含可追溯的页码。\n\n第二段知识内容。" },
+    { page: 2, text: "第三段知识内容，来自第二页。" }
+  ],
+  warnings: []
+});
+assert.equal(ingestion.status, "extracted");
+assert.equal(ingestion.items.length, 3);
+assert.equal(ingestion.filterCase.status, "extracted");
+assert.equal(ingestion.filterCase.currentStage, "dedupe");
+assert.equal(ingestion.items[0].locator.kind, "pdf_page");
+assert.equal(ingestion.items[0].locator.page, 1);
+assert.equal((await api.listExtractionItems(ingestion.id)).length, 3);
+assert.equal((await api.getExtractionBatch(ingestion.id)).stats.completed, 3);
+
+const mindmapSource = await api.saveSource({ id: "src-mindmap-test", sourceType: "lecture", title: "Mindmap sample" });
+const mindmapIngestion = await api.createExtractionFromParsedSource({
+  sourceId: mindmapSource.id,
+  referenceId: "ref-mindmap-test",
+  name: "Mindmap sample",
+  tree: [
+    { title: "总主题", parent: null, note: "根主题说明" },
+    { title: "分支主题", parent: "总主题", note: "分支说明", sourcePart: "content.xml" }
+  ]
+});
+assert.equal(mindmapIngestion.items.length, 2);
+assert.equal(mindmapIngestion.items[1].locator.kind, "topic");
+assert.deepEqual(mindmapIngestion.items[1].locator.topicPath, ["总主题", "分支主题"]);
+assert.equal(mindmapIngestion.items[1].locator.sourcePart, "content.xml");
+
 const v5Backup = await api.exportFullBackup();
 assert.equal((await api.previewFullBackup(v5Backup.blob)).schemaVersion, 5);
 
