@@ -52,20 +52,7 @@ assert.ok(preview.includes("opacity:.17"), "Ghost quadrants should remain highly
 assert.ok(preview.includes("background:transparent!important"), "Focus core should not render as a heavy card.");
 
 
-const learningPreview = await readFile(new URL("../ui-preview-v7-a-learning.html", import.meta.url), "utf8");
-assert.ok(learningPreview.includes('id="learningChatTranscript"'), "Learning page must provide a direct AI conversation surface.");
-assert.ok(learningPreview.includes('data-learning-mode="forward"') && learningPreview.includes('data-learning-mode="backward"') && learningPreview.includes('data-learning-mode="left"') && learningPreview.includes('data-learning-mode="right"'), "Learning chat must expose distinct four-direction learning modes.");
-assert.ok(learningPreview.includes("chatLearningCoach"), "Learning chat must call the authenticated Worker chat API.");
-assert.ok(learningPreview.includes("learningChatWorkerToken"), "Learning chat must provide an explicit Worker connection control.");
-assert.ok(learningPreview.includes("axisFlow"), "Four-direction paths must progress continuously without moving the text labels.");
-assert.ok(learningPreview.includes("grid-template-columns:minmax(0,1fr) minmax(280px,340px)"), "Four-direction labels must be grouped in a non-overlapping upper-right lane.");
-const learningPreviewScripts = [...learningPreview.matchAll(/<script(?:\s+type="module")?>([\s\S]*?)<\/script>/g)];
-assert.ok(learningPreviewScripts.length >= 6, "Learning preview must include its dedicated chat module.");
-for (const match of learningPreviewScripts) {
-  const isModule = match[0].startsWith('<script type="module">');
-  const checked = spawnSync(process.execPath, isModule ? ["--input-type=module", "--check"] : ["--check"], { input: match[1], encoding: "utf8" });
-  assert.equal(checked.status, 0, "Learning preview script syntax error: " + checked.stderr);
-}
+// The retired V7 learning preview was intentionally removed; do not test a deleted artifact.
 
 console.log("NEBULA backend contract checks passed.");
 
