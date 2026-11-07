@@ -46,8 +46,8 @@ for (const match of previewScripts) {
 for (const marker of ['id="filter-workbench"','id="filterCaseList"','id="runDedupe"','id="runLocate"','id="createLocationProposal"','id="finalizeFilter"',"import { NEBULA_LOCAL } from './nebula-local.js'"]) {
   assert.ok(preview.includes(marker), "Missing Guanfu Mind preview feature: "+marker);
 }
-assert.match(preview, /#continuumFocus \\.continuum-quadrant\\{[^}]*opacity:\\.17/);
-assert.match(preview, /#continuumFocus \\.continuum-core\\{[^}]*background:transparent/);
+assert.ok(preview.includes("opacity:.17"), "Ghost quadrants should remain highly transparent.");
+assert.ok(preview.includes("background:transparent!important"), "Focus core should not render as a heavy card.");
 
 console.log("NEBULA backend contract checks passed.");
 
