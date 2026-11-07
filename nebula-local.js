@@ -736,8 +736,9 @@ Object.assign(NEBULA_LOCAL,{
   },
   async getCognitiveDashboard(){
     const [sources,proposals,learning,research,graph,gaps]=await Promise.all([this.listSources(),this.listProposals("pending"),this.listLearningRecords(),this.listResearchSessions(),this.loadGraph(),this.detectKnowledgeGaps()]);
-    const nodes=graph?.nodes||[];
-    return {nodeCount:nodes.length,sourceCount:sources.length,pendingReviews:proposals.length,learningRecords:learning.length,researchSessions:research.length,needsReviewCount:nodes.filter(n=>n.needsReview||n.status==="needs_review").length,knowledgeGapCount:gaps.length,missingEvidenceCount:gaps.filter(g=>g.missing.some(x=>x.key==="evidence")).length,dueReviewCount:new Set([...new Map(learning.map(x=>[String(x.nodeId),x])).values()].filter(x=>x.schedule?.nextReviewAt<=Date.now()).map(x=>String(x.nodeId))).size,generatedAt:Date.now()};
+    const nodes=graph?.nodes||[],latestLearningByNode=new Map();
+    for(const record of learning)if(!latestLearningByNode.has(String(record.nodeId)))latestLearningByNode.set(String(record.nodeId),record);
+    return {nodeCount:nodes.length,sourceCount:sources.length,pendingReviews:proposals.length,learningRecords:learning.length,researchSessions:research.length,needsReviewCount:nodes.filter(n=>n.needsReview||n.status==="needs_review").length,knowledgeGapCount:gaps.length,missingEvidenceCount:gaps.filter(g=>g.missing.some(x=>x.key==="evidence")).length,dueReviewCount:[...latestLearningByNode.values()].filter(x=>x.schedule?.nextReviewAt<=Date.now()).length,generatedAt:Date.now()};
   }
 });
 
