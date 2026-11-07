@@ -9,13 +9,13 @@ globalThis.localStorage = {
 };
 globalThis.window = { dispatchEvent() {} };
 
-// Seed a v4 database before loading the v6 module to verify additive, non-destructive upgrade.
+// Seed a v5 database before loading the v6 module to verify the exact production upgrade path.
 const legacyDb = await new Promise((resolve, reject) => {
-  const req = indexedDB.open("nebula_local_v2", 4);
+  const req = indexedDB.open("nebula_local_v2", 5);
   req.onupgradeneeded = () => {
     const db = req.result;
-    const keyed = new Set(["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations"]);
-    for (const name of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations"]) {
+    const keyed = new Set(["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence"]);
+    for (const name of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence"]) {
       if (!db.objectStoreNames.contains(name)) {
         if (keyed.has(name)) db.createObjectStore(name, { keyPath: "id" });
         else db.createObjectStore(name);
@@ -38,8 +38,8 @@ await import("../nebula-local.js");
 const api = globalThis.NEBULA_LOCAL;
 assert.ok(api, "NEBULA_LOCAL should be exposed after module load.");
 const migratedGraph = await api.loadGraph();
-assert.ok(migratedGraph.nodes.some(node => node.id === "legacy-v4"), "v4 graph data must survive the v6 upgrade.");
-assert.equal((await api.getSource("legacy-v4-source")).title, "Preserved v4 source", "v4 source records must survive the v6 upgrade.");
+assert.ok(migratedGraph.nodes.some(node => node.id === "legacy-v4"), "v5 graph data must survive the v6 upgrade.");
+assert.equal((await api.getSource("legacy-v4-source")).title, "Preserved v4 source", "v5 source records must survive the v6 upgrade.");
 
 const deepseekMappingFixture = JSON.stringify({
   mapping: {
