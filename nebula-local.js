@@ -761,6 +761,37 @@ NEBULA_LOCAL.saveReference = async function(file) {
   await this.saveSource({id:"src_"+item.id,sourceType:"lecture",title:item.name,referenceId:item.id,fileName:item.name,mime:item.mime,size:item.size,fileHash,parserWarnings:item.warnings||[],createdAt:item.savedAt});
   return item;
 };
+NEBULA_LOCAL.normalizeConversationExport = function(raw,format="txt") {
+  const sourceText=String(raw??"");
+  if(String(format).toLowerCase()!=="json") return {transcript:sourceText,metadata:{importFormat:String(format).toLowerCase()}};
+  try {
+    const parsed=JSON.parse(sourceText),messages=[];
+    const contentText=value=>{
+      if(typeof value==="string")return value;
+      if(Array.isArray(value))return value.map(contentText).filter(Boolean).join("\\n");
+      if(!value||typeof value!=="object")return "";
+      for(const key of ["parts","blocks"])if(Array.isArray(value[key]))return value[key].map(contentText).filter(Boolean).join("\\n");
+      for(const key of ["text","content","value","body"])if(typeof value[key]==="string")return value[key];
+      return "";
+    };
+    const walk=value=>{
+      if(Array.isArray(value)){value.forEach(walk);return;}
+      if(!value||typeof value!=="object")return;
+      const rawRole=value.role||value.author?.role||value.speaker||value.sender||value.from;
+      const role=rawRole&&typeof rawRole==="object"?(rawRole.role||rawRole.name||""):rawRole;
+      const body=contentText(value.content??value.text??value.body??value.message?.content??value.message?.body);
+      if(role&&body){messages.push(String(role)+": "+body);return;}
+      Object.entries(value).forEach(([key,child])=>{if(!["metadata","settings","config","attachments","files"].includes(key))walk(child);});
+    };
+    walk(parsed);
+    return {
+      transcript:messages.length?messages.join("\\n\\n"):sourceText,
+      metadata:{importFormat:"json",deepseekExport:true,parsedMessageCount:messages.length,...(!messages.length?{jsonParseWarning:"JSON 已解析，但未识别出标准消息列表；原始 JSON 已保留"}:{})}
+    };
+  } catch(error) {
+    return {transcript:sourceText,metadata:{importFormat:"json",jsonParseWarning:"JSON 无法解析，按原文保存"}};
+  }
+};
 NEBULA_LOCAL.saveConversation = async function(record) {
   const transcript=String(record?.transcript||record?.text||"");
   const contentHash=await sha256Hex(transcript);
