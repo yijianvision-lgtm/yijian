@@ -47,6 +47,9 @@ assert.ok(html.includes("async function openKnowledgeArchive(){"), "Both archive
 assert.ok(/await retractFocusToMinimap\(\);\s*document\.querySelectorAll\('\.overlay\.open'\)\.forEach\(panel=>\{if\(panel!==archive\)panel\.classList\.remove\('open'\)\}\);\s*archive\.classList\.add\('open'\);/.test(html), "The archive must appear after the core and four directions finish retracting, with competing overlays cleared.");
 assert.ok(html.includes("renderContinuum();\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
 assert.ok(html.includes(".overlay.open{display:block}#nodeDetail{z-index:60!important}.overlay-head{"), "The knowledge archive must stack above the full-screen #continuumFocus layer (z-index 40).");
+const archiveZIndex = Number(html.match(/#nodeDetail\\{z-index:(\\d+)!important\\}/)?.[1] || 0);
+const focusZIndexes = [...html.matchAll(/#continuumFocus\\{[^}]*?z-index:(\\d+)!important/g)].map(match => Number(match[1]));
+assert.ok(archiveZIndex > Math.max(0, ...focusZIndexes), "The archive must have a higher stacking level than every full-screen exploration layer.");
 assert.ok(!html.includes(".#nodeDetail{z-index:40}"), "The archive z-index rule must not be prefixed with an invalid class selector.");
 assert.ok(html.includes(".overlay-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:22px}"), "The archive header class must have a valid class selector.");
 assert.ok(html.includes("document.querySelectorAll('.overlay.open').forEach(panel=>{if(panel!==archive)panel.classList.remove('open')});"), "Opening the archive must close any previously open overlay so it cannot cover the archive.");
