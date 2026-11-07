@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>星图知识宇宙</title>
+<style>
+:root{--bg:#050811;--panel:rgba(13,20,37,.78);--line:rgba(151,180,230,.2);--ink:#edf3ff;--muted:#8d9bb7;--cyan:#83d9ff;--violet:#b49aff;--gold:#f4d58a}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif}
+body{background:radial-gradient(ellipse at 50% 45%,#101a35 0%,#080e1d 43%,#03050b 100%)}
+#space{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+header{position:fixed;z-index:5;left:22px;right:22px;top:17px;display:flex;justify-content:space-between;align-items:center;gap:12px;pointer-events:none}
+header>*{pointer-events:auto}.brand{font-size:17px;font-weight:750;letter-spacing:.08em;text-shadow:0 0 20px #77bfff55}.brand i{font-style:normal;color:var(--cyan)}
+.actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+button,input,textarea{font:inherit;color:inherit}button{border:1px solid var(--line);background:rgba(16,26,48,.75);padding:8px 11px;border-radius:9px;cursor:pointer;backdrop-filter:blur(12px)}button:hover{border-color:#83d9ff88;background:#172747}button.primary{background:#315c91;border-color:#73caff;color:white}
+#hint{position:fixed;left:24px;top:75px;color:#8292b2;font-size:12px;letter-spacing:.04em;z-index:2;pointer-events:none}
+#timeline{position:fixed;left:24px;right:24px;bottom:20px;height:84px;border:1px solid var(--line);border-radius:15px;background:linear-gradient(100deg,rgba(8,14,28,.8),rgba(16,25,46,.6));backdrop-filter:blur(18px);z-index:3;padding:10px 15px;display:flex;flex-direction:column;gap:8px}
+.t-head{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}.track{height:2px;background:linear-gradient(90deg,#526eae,#83d9ff,#b49aff);position:relative;margin:8px 8px 0}
+.tick{position:absolute;top:-5px;width:10px;height:10px;border-radius:50%;background:#a8dfff;box-shadow:0 0 12px #83d9ff;transform:translateX(-50%);cursor:pointer}.tick.active{background:#fff;box-shadow:0 0 0 5px #83d9ff33,0 0 20px #83d9ff}
+#timelineLabels{display:flex;justify-content:space-between;font-size:10px;color:#8492ad;margin-top:4px;gap:8px}
+#float{position:fixed;z-index:4;width:min(620px,calc(100vw - 28px));max-height:min(72vh,700px);overflow:auto;border:1px solid rgba(152,194,255,.28);border-radius:18px;background:linear-gradient(145deg,rgba(19,31,56,.88),rgba(8,14,29,.82));backdrop-filter:blur(24px) saturate(140%);box-shadow:0 18px 80px #0009,0 0 45px #69bfff18;display:none;transform:translate(-50%,-50%);scrollbar-color:#405477 transparent}
+#float:before{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;background:linear-gradient(120deg,#a5dcff0d,transparent 45%,#b49aff0a)}
+.f-head{position:relative;padding:15px 17px 12px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.eyebrow{font-size:10px;letter-spacing:.16em;color:var(--cyan);text-transform:uppercase}.f-head h2{font-size:19px;margin:3px 0 3px}.f-head p{margin:0;color:var(--muted);font-size:12px}
+.quads{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px}
+.quad{min-height:118px;padding:11px 12px;border:1px solid rgba(148,180,230,.19);border-radius:12px;background:rgba(15,26,48,.54)}
+.quad h3{font-size:12px;margin:0 0 7px;letter-spacing:.05em}.quad p{font-size:12px;line-height:1.65;color:#c0cce0;margin:0;white-space:pre-wrap}
+.quad:nth-child(1){box-shadow:inset 0 2px #7fcfff}.quad:nth-child(2){box-shadow:inset 0 2px #a995ff}.quad:nth-child(3){box-shadow:inset 0 2px #70d6b1}.quad:nth-child(4){box-shadow:inset 0 2px #e5c27c}
+.meta{position:relative;padding:0 14px 14px;display:flex;gap:8px;flex-wrap:wrap}.chip{font-size:10px;color:#b8c8e2;border:1px solid var(--line);border-radius:20px;padding:4px 8px}
+#editor{position:fixed;z-index:6;right:18px;top:75px;width:min(330px,calc(100vw - 36px));max-height:75vh;overflow:auto;display:none;padding:15px;border:1px solid var(--line);border-radius:15px;background:rgba(9,16,32,.94);backdrop-filter:blur(20px);box-shadow:0 18px 60px #0009}
+#editor h3{margin:0 0 12px}.field{display:grid;gap:5px;margin:9px 0}.field label{font-size:11px;color:var(--muted)}.field input,.field textarea{width:100%;background:#0c162a;border:1px solid var(--line);border-radius:8px;padding:8px;outline:none}.field textarea{min-height:65px;resize:vertical}.editgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.editgrid textarea{min-height:83px}
+#toast{position:fixed;z-index:8;left:50%;top:78px;transform:translateX(-50%);background:#16243d;border:1px solid var(--line);padding:8px 13px;border-radius:30px;color:#d9e8ff;display:none;font-size:12px}
+@media(max-width:600px){header{left:12px;right:12px;top:10px;align-items:flex-start}.brand{font-size:14px}.actions button{font-size:11px;padding:7px}.actions{max-width:70%}#hint{left:14px;top:65px;font-size:10px}#timeline{left:10px;right:10px;bottom:10px;height:78px;padding:8px 10px}.quads{gap:6px;padding:8px}.quad{padding:9px;min-height:125px}.quad p{font-size:11px}#float{max-height:66vh}}
+</style>
+</head>
+<body>
+<canvas id="space"></canvas>
+<header><div class="brand">✧ <i>NEBULA</i> / KNOWLEDGE UNIVERSE</div><div class="actions">
+<button id="add">＋ 星点</button><button id="edit">编辑节点</button><button id="export">导出数据</button><button id="import">导入</button><input id="file" type="file" accept="application/json" hidden>
+</div></header>
+<div id="hint">拖动旋转空间 · 滚轮缩放 · 点击星点查看四向思考</div>
+<div id="float"><div class="f-head"><div><div class="eyebrow">FOUR-DIMENSIONAL VIEW / 四向透视</div><h2 id="ftitle"></h2><p id="fdesc"></p></div><button id="close">✕</button></div><div class="quads" id="quads"></div><div class="meta" id="meta"></div></div>
+<aside id="editor"><h3>✧ 节点编辑</h3>
+<div class="field"><label>知识点名称</label><input id="ename"></div>
+<div class="field"><label>简要说明</label><textarea id="edesc"></textarea></div>
+<div class="editgrid" id="eqs"></div>
+<div class="field"><label>时间 / 时期</label><input id="etime" placeholder="例如：约公元 600 年 / 初期"></div>
+<div class="field"><label>时间链说明</label><input id="eperiod" placeholder="前置事件 → 当前节点 → 后续影响"></div>
+<div class="field"><label>关联星点（输入节点名称，以逗号分隔）</label><input id="elinks"></div>
+<div class="actions"><button class="primary" id="save">保存</button><button id="del">删除节点</button><button id="ecancel">关闭</button></div></aside>
+<div id="timeline"><div class="t-head"><span>✧ 时间链 / CHRONOLOGY</span><span id="timeCaption">选择星点以查看其时间位置</span></div><div class="track" id="track"></div><div id="timelineLabels"></div></div>
+<div id="toast"></div>
+<script>
+(()=>{
+const $=id=>document.getElementById(id),canvas=$('space'),ctx=canvas.getContext('2d');
+const seed=[
+{id:'a',name:'问题意识',desc:'从一个值得解释的现象出发，明确真正需要回答的问题。',x:-1.5,y:.2,z:0,time:'起点',period:'观察现象 → 提出问题',q:['追问现象出现的背景、条件与来源。','推演这个问题若被解决，会带来什么认识或行动。','联系相邻领域，寻找可借鉴的概念与案例。','辨析问题边界：哪些属于问题本身，哪些只是表象。'],links:['b','c']},
+{id:'b',name:'概念与定义',desc:'给关键概念划定边界，避免同一个词在不同语境中含义漂移。',x:-.3,y:-.9,z:.7,time:'形成阶段',period:'问题意识 → 概念界定 → 分析框架',q:['概念从何种语境、经验或理论中产生？','定义会如何影响后续判断与实践？','与近义概念、相关学科建立联系。','比较不同定义的范围、假设与适用条件。'],links:['a','d','e']},
+{id:'c',name:'证据与材料',desc:'收集可检验的信息，让判断建立在材料而非直觉之上。',x:1.3,y:-.5,z:-.4,time:'研究阶段',period:'提出问题 → 收集材料 → 验证判断',q:['证据来自哪里？形成过程是否可靠？','新证据可能改变哪些既有结论？','联系其他来源，寻找交叉验证。','辨析事实、解释、推测与立场。'],links:['a','d']},
+{id:'d',name:'结构与机制',desc:'把分散因素组织起来，解释它们如何相互作用。',x:.5,y:.8,z:.8,time:'分析阶段',period:'材料积累 → 结构识别 → 机制解释',q:['结构形成前有哪些历史条件与驱动因素？','机制持续运行会产生哪些连锁结果？','与其他系统或模型比较其共同结构。','区分关键变量、约束条件和偶然因素。'],links:['b','c','e']},
+{id:'e',name:'结论与应用',desc:'把分析转化为可说明、可检验、可迁移的认识。',x:1.8,y:.7,z:.1,time:'输出阶段',period:'机制解释 → 形成结论 → 应用与修正',q:['结论依赖哪些前提与证据？','应用后可能出现哪些长期影响？','可以迁移到哪些场景或领域？','与替代方案比较，识别局限和边界。'],links:['b','d']}
+];
+let nodes=JSON.parse(localStorage.getItem('nebulaKG')||'null')||seed,selected=null,rotX=-.25,rotY=.45,zoom=1,drag=null,stars=[];
+const dirs=['前 · 瞻前','后 · 顾后','左 · 左顾','右 · 右盼'];
+function saveData(){localStorage.setItem('nebulaKG',JSON.stringify(nodes))}
+function current(){return nodes.find(n=>n.id===selected)}
+function resize(){let d=devicePixelRatio||1;canvas.width=innerWidth*d;canvas.height=innerHeight*d;canvas.style.width=innerWidth+'px';canvas.style.height=innerHeight+'px';ctx.setTransform(d,0,0,d,0,0);draw()}
+function project(n){let x=n.x,y=n.y,z=n.z,cy=Math.cos(rotY),sy=Math.sin(rotY),cx=Math.cos(rotX),sx=Math.sin(rotX);let X=x*cy-z*sy,Z=x*sy+z*cy,Y=y*cx-Z*sx;Z=y*sx+Z*cx;let depth=4.5+Z,scale=Math.min(innerWidth,innerHeight)*.28*zoom/depth;return {x:innerWidth/2+X*scale,y:innerHeight*.47+Y*scale,z:Z,r:Math.max(4,10/depth),depth}}
+function draw(){let w=innerWidth,h=innerHeight;ctx.clearRect(0,0,w,h);
+let g=ctx.createRadialGradient(w*.5,h*.45,5,w*.5,h*.45,Math.max(w,h)*.7);g.addColorStop(0,'#101c39');g.addColorStop(.5,'#080f20');g.addColorStop(1,'#03050b');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+stars.forEach(s=>{ctx.globalAlpha=s.a;ctx.fillStyle='#b8d9ff';ctx.beginPath();ctx.arc(s.x*w,s.y*h,s.r,0,Math.PI*2);ctx.fill()});ctx.globalAlpha=1;
+let pts=nodes.map(n=>({n,p:project(n)})).sort((a,b)=>a.p.depth-b.p.depth);
+nodes.forEach(n=>(n.links||[]).forEach(id=>{let other=nodes.find(v=>v.id===id);if(!other)return;let a=project(n),b=project(other);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle='rgba(112,169,226,.28)';ctx.lineWidth=1.2;ctx.stroke()}));
+pts.forEach(({n,p})=>{let selectedNow=n.id===selected;let glow=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*4);glow.addColorStop(0,selectedNow?'#b9efff':'#8bcfff');glow.addColorStop(.3,selectedNow?'#63caffaa':'#559eea77');glow.addColorStop(1,'transparent');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(p.x,p.y,p.r*4,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(p.x,p.y,p.r*(selectedNow?1.5:1),0,Math.PI*2);ctx.fillStyle=selectedNow?'#effaff':'#a6cfff';ctx.fill();ctx.fillStyle='#dbeaff';ctx.font=(selectedNow?'13px':'11px')+' system-ui';ctx.textAlign='center';ctx.fillText(n.name,p.x,p.y+p.r+17);n.screen=p});
+}
+function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',1800)}
+function openNode(n){selected=n.id;let p=n.screen||project(n);$('float').style.display='block';$('ftitle').textContent=n.name;$('fdesc').textContent=n.desc||'尚未添加说明';$('quads').innerHTML=n.q.map((v,i)=>`<div class="quad"><h3>${dirs[i]}</h3><p>${esc(v||'点击「编辑节点」补充这一方向的思考。')}</p></div>`).join('');$('meta').innerHTML=`<span class="chip">时间位置：${esc(n.time||'未设置')}</span><span class="chip">时间链：${esc(n.period||'待补充')}</span><span class="chip">关联节点：${(n.links||[]).length}</span>`;let x=Math.max(310,Math.min(innerWidth-310,p.x)),y=Math.max(240,Math.min(innerHeight-175,p.y));$('float').style.left=x+'px';$('float').style.top=y+'px';$('timeCaption').textContent=n.time||'时间未设置';draw();renderTimeline()}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderTimeline(){let sorted=[...nodes].sort((a,b)=>nodes.indexOf(a)-nodes.indexOf(b));$('track').innerHTML=sorted.map((n,i)=>`<span class="tick ${n.id===selected?'active':''}" style="left:${sorted.length===1?50:i/(sorted.length-1)*100}%" title="${esc(n.name)}" data-id="${n.id}"></span>`).join('');$('timelineLabels').innerHTML=sorted.map(n=>`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.time||n.name)}</span>`).join('');$('track').querySelectorAll('.tick').forEach(t=>t.onclick=()=>{let n=nodes.find(x=>x.id===t.dataset.id);if(n)openNode(n)})}
+function edit(){let n=current();if(!n)return;$('editor').style.display='block';$('ename').value=n.name;$('edesc').value=n.desc;$('etime').value=n.time||'';$('eperiod').value=n.period||'';$('elinks').value=(n.links||[]).map(id=>nodes.find(x=>x.id===id)?.name).filter(Boolean).join(', ');$('eqs').innerHTML=n.q.map((v,i)=>`<div class="field"><label>${dirs[i]}</label><textarea data-q="${i}">${esc(v)}</textarea></div>`).join('')}
+$('save').onclick=()=>{let n=current();if(!n)return;n.name=$('ename').value.trim()||n.name;n.desc=$('edesc').value;n.time=$('etime').value;n.period=$('eperiod').value;n.q=[...$('eqs').querySelectorAll('textarea')].map(x=>x.value);n.links=$('elinks').value.split(',').map(s=>nodes.find(x=>x.name.trim()===s.trim())?.id).filter(x=>x&&x!==n.id);saveData();$('editor').style.display='none';if(selected)openNode(n);draw();renderTimeline();toast('节点已保存')};
+$('del').onclick=()=>{if(!selected||!confirm('删除这个星点？'))return;nodes=nodes.filter(n=>n.id!==selected);nodes.forEach(n=>n.links=(n.links||[]).filter(x=>x!==selected));selected=null;$('float').style.display='none';$('editor').style.display='none';saveData();draw();renderTimeline()};
+$('ecancel').onclick=()=>$('editor').style.display='none';$('edit').onclick=()=>{if(!selected){toast('请先点击一个星点');return}edit()};
+$('close').onclick=()=>$('float').style.display='none';
+$('add').onclick=()=>{let name=prompt('新知识点名称');if(!name?.trim())return;let n={id:Math.random().toString(36).slice(2),name:name.trim(),desc:'',x:(Math.random()-.5)*3,y:(Math.random()-.5)*2,z:(Math.random()-.5)*2,time:'待定',period:'待补充',q:['','','',''],links:selected?[selected]:[]};if(selected)current().links.push(n.id);nodes.push(n);selected=n.id;saveData();draw();openNode(n);edit()};
+$('export').onclick=()=>{let a=document.createElement('a'),u=URL.createObjectURL(new Blob([JSON.stringify(nodes,null,2)],{type:'application/json'}));a.href=u;a.download='星图知识网络.json';a.click();URL.revokeObjectURL(u)};
+$('import').onclick=()=>$('file').click();$('file').onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d))throw 0;nodes=d;selected=null;saveData();draw();renderTimeline();toast('导入成功')}catch{toast('文件格式不正确')}};
+function pick(x,y){let nearest=null,dist=30;nodes.forEach(n=>{let p=n.screen||project(n),d=Math.hypot(p.x-x,p.y-y);if(d<dist){dist=d;nearest=n}});if(nearest)openNode(nearest);else $('float').style.display='none'}
+canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,moved:false,rx:rotX,ry:rotY};canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;let dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>4)drag.moved=true;if(drag.moved){rotY=drag.ry+dx*.006;rotX=Math.max(-1.4,Math.min(1.4,drag.rx+dy*.006));draw()}});
+canvas.addEventListener('pointerup',e=>{if(drag&&!drag.moved)pick(e.clientX,e.clientY);drag=null});
+canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.55,Math.min(2.1,zoom*(e.deltaY<0?1.08:.92)));draw()},{passive:false});
+stars=Array.from({length:220},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.25+.2,a:Math.random()*.55+.12}));
+window.addEventListener('resize',resize);resize();renderTimeline();
+})();
+</script>
+</body></html>
