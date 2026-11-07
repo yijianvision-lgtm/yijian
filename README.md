@@ -1,4 +1,16 @@
-# NEBULA — 3D Knowledge Universe
+# 观复 Mind（NEBULA）｜Personal Knowledge Universe
+
+> 聚焦一点，知其在全局；生发万象，终归其一。一切为了框架建立。
+
+**产品主名：观复｜英文副名：Mind。** NEBULA 是项目/工程代号。产品不是驾驶舱、仪表盘或普通脑图，而是以知识过滤为核心、以个人思维框架建立为最终目的的认知定位界面。
+
+## 最高设计依据
+
+所有产品、UI、交互、数据与 AI 设计必须优先遵循：
+[《观复 Mind｜最高设计总纲》](docs/GUANFU-MIND-DESIGN-CHARTER.md)
+
+核心顺序：**定其位 → 联其缘 → 生其相 → 归其一**。
+框架是结果，过滤才是工程；一切为了框架建立。
 
 A persistent, interactive 3D personal knowledge system.
 
