@@ -1955,6 +1955,7 @@ Object.assign(NEBULA_LOCAL,{
  * exploration traversal are separate records and never rewrite node.parentId.
  */
 const getLegacyFrameworkTree = NEBULA_LOCAL.getFrameworkTree.bind(NEBULA_LOCAL);
+const getLegacyMindContext = NEBULA_LOCAL.getMindContext.bind(NEBULA_LOCAL);
 const GUANFU_RELATION_TYPES = new Set([
   "precedes","follows","influences","causes","derived_from","part_of","contains",
   "made_of","created_by","contemporary_with","contextualizes","contrasts_with",
@@ -1962,6 +1963,39 @@ const GUANFU_RELATION_TYPES = new Set([
 ]);
 const GUANFU_DIRECTIONS = new Set(["瞻前","顾后","向内","向外"]);
 Object.assign(NEBULA_LOCAL, {
+  async getMindContext(currentNodeId=null,options={}) {
+    if(!options.pathId) return getLegacyMindContext(currentNodeId,options);
+    const snapshot=await this.getExplorationPathSnapshot(options.pathId);
+    const {path,steps}=snapshot;
+    const stepMap=new Map(steps.map(step=>[String(step.id),step]));
+    let cursor=options.stepId?stepMap.get(String(options.stepId)):stepMap.get(String(path.currentStepId||""));
+    if(options.stepId&&!cursor) throw new Error("指定的探索步骤不属于当前路径。");
+    const chain=[],visited=new Set();
+    while(cursor) {
+      if(visited.has(String(cursor.id))) throw new Error("探索路径存在循环引用，无法生成上下文。");
+      visited.add(String(cursor.id));chain.push(cursor);
+      cursor=cursor.parentStepId?stepMap.get(String(cursor.parentStepId)):null;
+    }
+    chain.reverse();
+    const resolvedNodeId=chain.at(-1)?.toNodeId||path.rootNodeId;
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    const current=nodes.find(n=>String(n.id)===String(resolvedNodeId))||null;
+    const relations=current?await this.listKnowledgeRelations(current.id):[];
+    const evidence=current?await this.getNodeEvidence(current.id):[];
+    const pathNodes=[{id:path.rootNodeId,name:nodes.find(n=>String(n.id)===String(path.rootNodeId))?.name||"探索起点"},
+      ...chain.map(step=>({id:step.toNodeId,name:nodes.find(n=>String(n.id)===String(step.toNodeId))?.name||"知识对象",stepId:step.id,direction:step.direction,relationId:step.relationId||null,context:step.context||{}}))];
+    return {
+      currentNodeId:current?.id||resolvedNodeId,currentFrameworkId:path.frameworkId||null,
+      currentLevel:pathNodes.length,ancestorPath:pathNodes,
+      siblingNodeIds:[],selectedRelationIds:relations.map(r=>r.id),
+      activeDimension:options.activeDimension||"lineage",
+      currentSourceLocator:options.currentSourceLocator||evidence[0]?.link?.evidenceLocator||null,
+      focusMode:options.focusMode||"focus",cameraPose:options.cameraPose||null,
+      spatialProjectionVersion:null,parentNodeId:null,
+      explorationPathId:path.id,explorationStepId:chain.at(-1)?.id||null,
+      explorationContext:path.context||{},pathBranchDepth:chain.length
+    };
+  },
   async getFrameworkTree(frameworkId) {
     const placements=await this.listFrameworkPlacements(frameworkId);
     if(!placements.length) {
@@ -2076,6 +2110,7 @@ Object.assign(NEBULA_LOCAL, {
     if(item.parentStepId&&(!parentStep||String(parentStep.pathId)!==String(item.pathId))) throw new Error("分支起点必须属于当前探索路径。");
     const fromNodeId=item.fromNodeId||parentStep?.toNodeId||path.rootNodeId;
     if(!ids.has(String(fromNodeId))) throw new Error("探索来源知识对象不存在。");
+    if(parentStep&&String(fromNodeId)!==String(parentStep.toNodeId)) throw new Error("分支步骤的来源必须是所选父步骤抵达的知识对象。");
     let relation=null;
     if(item.relationId) {
       relation=await readRecord("knowledgeRelations",item.relationId);
