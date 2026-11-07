@@ -1209,7 +1209,7 @@ async function connectLocalKnowledgeUniverse(){
    directionalMap[i]={
     forward:node.parentId&&idToIndex.has(String(node.parentId))?idToIndex.get(String(node.parentId)):(kids.length?idToIndex.get(String(kids[0].id)):null),
     backward:timeNeighbor,
-    left:spatial? idToIndex.get(String(spatial.targetNodeId||spatial)):null,
+    left:spatial??null,
     right:related[0]??null
    };
    continuationDescriptions[i]=String(node.desc||node.coreWord||node.name||"");
