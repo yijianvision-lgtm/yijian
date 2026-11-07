@@ -64,3 +64,6 @@ assert.match(local, /dimension:"lineage"/);
 assert.match(local, /dimension:"time"/);
 assert.match(local, /dimension:"space"/);
 assert.match(local, /dimension:"horizontal"/);
+
+assert.match(local, /sourceType==="ai_conversation"\?this\.getConversation/);
+assert.match(local, /createExtractionFromParsedSource\(\{sourceId,referenceId:item\.id/);
