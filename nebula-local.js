@@ -554,10 +554,10 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
     const afterVersion={id:makeRecordId("version"),nodeId:before.id,versionNumber:version.versionNumber+1,contentSnapshot:cloneJSON(nodes[index]),changeReason:"审核通过后的新版本",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now(),createdBy:"user-approved-ai",supersedesVersionId:version.id};
     await putRecord("knowledgeVersions",afterVersion);nodes[index].currentVersionId=afterVersion.id;
   } else if(proposal.proposalType==="relation") {
-    const relation={id:makeRecordId("relation"),sourceNodeId:proposal.sourceNodeId||proposal.targetNodeId,targetNodeId:proposal.relatedNodeId||snapshot.targetNodeId,type:snapshot.type||"related",label:snapshot.label||"",rationale:proposal.reasoning||"",evidenceSourceIds:proposal.evidenceSourceIds||[],createdAt:Date.now()};
+    const relation={id:makeRecordId("relation"),sourceNodeId:proposal.sourceNodeId||proposal.targetNodeId,targetNodeId:proposal.relatedNodeId||snapshot.targetNodeId,type:snapshot.type||"related",label:snapshot.label||"",rationale:proposal.reasoning||"",evidenceSourceIds:proposal.evidenceSourceIds||[],status:"confirmed",confirmedBy:"user",createdAt:Date.now()};
     const knownNodeIds=new Set(nodes.map(n=>String(n.id)));
     if(!relation.sourceNodeId||!relation.targetNodeId||String(relation.sourceNodeId)===String(relation.targetNodeId)||!knownNodeIds.has(String(relation.sourceNodeId))||!knownNodeIds.has(String(relation.targetNodeId))) throw new Error("关系两端节点无效或不存在，未应用建议。");
-    await putRecord("knowledgeRelations",relation).catch(async()=>{throw new Error("关系记录写入失败。");});
+    await NEBULA_LOCAL.saveKnowledgeRelation(relation).catch(()=>{throw new Error("关系记录写入失败。");});
   } else if(proposal.proposalType==="merge") {
     if(!before) throw new Error("合并建议缺少保留目标节点。");
     const sourceIds=[...new Set((proposal.sourceNodeIds||proposal.mergeNodeIds||snapshot.sourceNodeIds||[]).map(String))].filter(id=>id!==String(before.id));
@@ -1699,18 +1699,27 @@ Object.assign(NEBULA_LOCAL,{
     const tree=await this.getFrameworkTree(frameworkId);
     const positions=await this.listNodePositions(frameworkId);
     const positionMap=new Map(positions.map(p=>[String(p.nodeId),p]));
+    const placements=await this.listFrameworkPlacements(frameworkId);
+    const placementByNode=new Map();
+    for(const placement of placements) {
+      const list=placementByNode.get(String(placement.nodeId))||[];
+      list.push(placement);placementByNode.set(String(placement.nodeId),list);
+    }
     const nodes=tree.roots.flatMap(function walk(node,depth=1){
       const saved=positionMap.get(String(node.id));
-      const semanticCoordinates=saved?.semanticCoordinates||{
-        lineageLevel:depth,parentId:node.parentId||null,
-        timeKey:node.knowledgeTime||node.date||null,
-        domainKey:node.domain||node.domainPath||null
+      const nodePlacements=placementByNode.get(String(node.id))||[];
+      const semanticCoordinates={
+        lineage:nodePlacements.length?nodePlacements.map(p=>({placementId:p.id,parentPlacementId:p.parentPlacementId||null,needsReview:!!p.needsReview})):
+          [{legacyParentId:node.parentId||null,legacyProjection:true,needsReview:true}],
+        time:{value:node.knowledgeTime||node.date||null,sourceField:node.knowledgeTime?"knowledgeTime":node.date?"date":null},
+        space:{value:node.spatialContext||node.location||node.geography||null,sourceField:node.spatialContext?"spatialContext":node.location?"location":node.geography?"geography":null},
+        horizontalRelationIds:tree.relations.filter(r=>String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id)).filter(r=>!["precedes","follows","part_of","contains","made_of","derived_from"].includes(r.relationType)).map(r=>r.id)
       };
       const layoutCoordinates=saved?.layoutCoordinates||{x:Number(node.x)||0,y:Number(node.y)||0,z:Number(node.z)||0};
-      return [{id:node.id,name:node.name,depth,parentId:node.parentId||null,semanticCoordinates,layoutCoordinates},
+      return [{id:node.id,name:node.name,depth,semanticCoordinates,layoutCoordinates},
         ...node.children.flatMap(child=>walk(child,depth+1))];
     });
-    return {frameworkId,version:tree.framework.versionId||null,nodes,relations:tree.relations,dimensions:["lineage","time","space","horizontal"]};
+    return {frameworkId,version:tree.framework.versionId||null,nodes,relations:tree.relations,dimensions:["lineage","time","space","horizontal"],projectionOnly:true,legacyLineageFallback:placements.length===0};
   },
   async getMindContext(currentNodeId=null,options={}) {
     const graph=await this.loadGraph(),nodes=graph?.nodes||[];
