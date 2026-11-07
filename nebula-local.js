@@ -942,13 +942,7 @@ function splitExtractionText(value,maxLength=1100) {
     if(current) chunks.push(current);
     return chunks;
   });
-  const out=[];let current="";
-  for(const unit of units) {
-    if(current && (current.length+unit.length+2)>maxLength) {out.push(current);current=unit;}
-    else current+=(current?"\n\n":"")+unit;
-  }
-  if(current) out.push(current);
-  return out;
+  return units;
 }
 function buildReferenceExtractionCandidates(reference) {
   const candidates=[];
