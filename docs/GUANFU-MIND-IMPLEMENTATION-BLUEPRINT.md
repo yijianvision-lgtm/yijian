@@ -266,7 +266,7 @@ Mind、Framework、Source、Review 等视图都从同一状态读取/更新。�
 
 ## 12. P1 第二批：来源接入与提取流水线
 
-**状态：实现已提交；以 GitHub Actions 运行结果为准。真实 PDF/Word/EMMX/XMind 样本仍需浏览器验收。**
+**状态：代码已提交；GitHub Actions 语法、接口契约、IndexedDB 运行测试及本地后台验证均通过（commit `a04ffab728a816ee9f5066e8227d21d67f14dc45`）。真实 PDF/Word/EMMX/XMind 样本仍需浏览器验收。**
 
 - 原始文件继续保存在 \`lectureSources\`，不修改原始 Blob。
 - 原有 \`saveReference\` 完成原件保存和来源登记后，自动进入提取流水线。
