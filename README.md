@@ -9,6 +9,8 @@
 所有产品、UI、交互、数据与 AI 设计必须优先遵循：
 [《观复 Mind｜最高设计总纲》](docs/GUANFU-MIND-DESIGN-CHARTER.md)
 
+实施与后台架构请继续阅读：[《产品结构与后台实施蓝图》](docs/GUANFU-MIND-IMPLEMENTATION-BLUEPRINT.md)
+
 核心顺序：**定其位 → 联其缘 → 生其相 → 归其一**。
 框架是结果，过滤才是工程；一切为了框架建立。
 
