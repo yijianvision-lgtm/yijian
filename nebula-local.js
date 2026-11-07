@@ -863,8 +863,8 @@ Object.assign(NEBULA_LOCAL,{
   async getSourceContent(sourceId) {
     const source=await this.getSource(sourceId);
     if(!source)return null;
-    if(source.sourceType==="lecture")return {source,record:await this.getReference(source.referenceId)};
-    if(source.sourceType==="ai_conversation")return {source,record:await this.getConversation(source.referenceId)};
+    if(source.sourceType==="lecture")return {source,record:source.referenceId?await this.getReference(source.referenceId):null};
+    if(source.sourceType==="ai_conversation")return {source,record:source.referenceId?await this.getConversation(source.referenceId):null};
     return {source,record:null};
   }
 });
