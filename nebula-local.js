@@ -861,7 +861,7 @@ async function callNebulaWorker(endpoint,token,path,options={}) {
   try { parsed=new URL(String(endpoint).trim()); } catch { throw new Error("Worker 地址不是有效 URL。"); }
   if(parsed.protocol!=="https:" && !["localhost","127.0.0.1"].includes(parsed.hostname))throw new Error("出于安全考虑，访问令牌和知识内容只能发送到 HTTPS Worker。");
   if(parsed.username||parsed.password)throw new Error("Worker 地址不能包含用户名或密码。");
-  const base=parsed.origin+parsed.pathname.replace(/\/+$/,"").replace(/\/(analyze|coach|mnemonic|research|share)$/,"");
+  const base=parsed.origin+parsed.pathname.replace(/\/+$/,"").replace(/\/(analyze|coach|chat|mnemonic|research|share)$/,"");
   const url=base+path;
   const headers={"Authorization":"Bearer "+token};
   if(options.body!==undefined)headers["Content-Type"]="application/json";
