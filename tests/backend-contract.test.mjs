@@ -41,5 +41,5 @@ assert.match(local, /FILTER_TRANSITIONS/);
 assert.match(local, /buildReferenceExtractionCandidates/);
 assert.match(local, /saveReferenceBeforeExtraction/);
 
-assert.match(local, /extractionJaccard/);
+assert.match(local, /extractionDice/);
 assert.match(local, /matchType:exact\?"exact":"near_duplicate"/);
