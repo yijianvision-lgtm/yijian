@@ -1972,7 +1972,10 @@ Object.assign(NEBULA_LOCAL, {
     if(!framework) throw new Error("找不到知识框架。");
     const graph=await this.loadGraph(),nodes=graph?.nodes||[];
     const nodeById=new Map(nodes.map(n=>[String(n.id),n]));
-    const placementById=new Map(placements.map(p=>[String(p.id),{...p,node:nodeById.get(String(p.nodeId))||null,children:[]}]));
+    const placementById=new Map(placements.map(p=>{
+      const entity=nodeById.get(String(p.nodeId))||{};
+      return [String(p.id),{...p,...entity,id:entity.id||p.nodeId,placementId:p.id,node:entity,children:[]}];
+    }));
     const roots=[];
     for(const placement of placements) {
       const item=placementById.get(String(placement.id));
