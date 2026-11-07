@@ -832,12 +832,14 @@ Object.assign(NEBULA_LOCAL,{
     const graph=await this.loadGraph(),ids=new Set((graph?.nodes||[]).map(n=>String(n.id)));
     if(!ids.has(String(record.sourceNodeId))||!ids.has(String(record.targetNodeId)))throw new Error("关系引用了不存在的知识节点。");
     const relationTypes=new Set(["precedes","follows","influences","causes","derived_from","part_of","contains","made_of","created_by","contemporary_with","contextualizes","contrasts_with","complements","analogous_to","related_to","unclassified"]);
-    const relationType=String(record.relationType||record.type||"unclassified");
-    if(!relationTypes.has(relationType))throw new Error("关系类型无效，请使用已定义的关系类型。");
+    const suppliedType=String(record.relationType||record.type||"unclassified");
+    if(record.relationType&&!relationTypes.has(suppliedType))throw new Error("关系类型无效，请使用已定义的关系类型。");
+    // Legacy free-form type labels are retained for audit but never promoted to confirmed semantics.
+    const relationType=relationTypes.has(suppliedType)?suppliedType:"unclassified";
     const status=record.status||"proposed";
     if(!["proposed","confirmed","disputed","rejected","unknown"].includes(status))throw new Error("关系确认状态无效。");
     if(status==="confirmed"&&!record.confirmedBy)throw new Error("确认关系必须记录确认者。");
-    return putRecord("knowledgeRelations",{...record,relationType,status,id:record.id||makeRecordId("relation"),createdAt:record.createdAt||Date.now(),updatedAt:Date.now()});
+    return putRecord("knowledgeRelations",{...record,relationType,...(relationType==="unclassified"&&suppliedType!=="unclassified"?{legacyRelationType:suppliedType}:{}),status,id:record.id||makeRecordId("relation"),createdAt:record.createdAt||Date.now(),updatedAt:Date.now()});
   },
   async listKnowledgeRelations(nodeId) {
     const rows=await request("knowledgeRelations","readonly",s=>s.getAll());
