@@ -1953,6 +1953,7 @@ Object.assign(NEBULA_LOCAL,{
  * Knowledge node identity remains in graph.nodes. Framework placement and
  * exploration traversal are separate records and never rewrite node.parentId.
  */
+const getLegacyFrameworkTree = NEBULA_LOCAL.getFrameworkTree.bind(NEBULA_LOCAL);
 const GUANFU_RELATION_TYPES = new Set([
   "precedes","follows","influences","causes","derived_from","part_of","contains",
   "made_of","created_by","contemporary_with","contextualizes","contrasts_with",
@@ -1960,6 +1961,28 @@ const GUANFU_RELATION_TYPES = new Set([
 ]);
 const GUANFU_DIRECTIONS = new Set(["瞻前","顾后","向内","向外"]);
 Object.assign(NEBULA_LOCAL, {
+  async getFrameworkTree(frameworkId) {
+    const placements=await this.listFrameworkPlacements(frameworkId);
+    if(!placements.length) {
+      const legacy=await getLegacyFrameworkTree(frameworkId);
+      return {...legacy,modelMode:"legacy-parentId-projection",requiresPlacementReview:true};
+    }
+    const framework=await this.getFramework(frameworkId);
+    if(!framework) throw new Error("找不到知识框架。");
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    const nodeById=new Map(nodes.map(n=>[String(n.id),n]));
+    const placementById=new Map(placements.map(p=>[String(p.id),{...p,node:nodeById.get(String(p.nodeId))||null,children:[]}]));
+    const roots=[];
+    for(const placement of placements) {
+      const item=placementById.get(String(placement.id));
+      const parent=placementById.get(String(placement.parentPlacementId||""));
+      if(parent) parent.children.push(item); else roots.push(item);
+    }
+    const sort=items=>items.sort((a,b)=>Number(a.sortOrder??0)-Number(b.sortOrder??0)||String(a.node?.name||"").localeCompare(String(b.node?.name||""),"zh-CN")).forEach(x=>sort(x.children));
+    sort(roots);
+    const nodeIds=new Set(placements.map(p=>String(p.nodeId)));
+    return {framework,roots,nodeCount:nodeIds.size,placementCount:placements.length,relations:(await this.listKnowledgeRelations()).filter(r=>nodeIds.has(String(r.sourceNodeId))&&nodeIds.has(String(r.targetNodeId))),modelMode:"framework-placement"};
+  },
   async createFrameworkPlacement(record) {
     const item=cleanRecord(record);
     item.frameworkId=requireId(item.frameworkId,"框架");
@@ -2001,6 +2024,16 @@ Object.assign(NEBULA_LOCAL, {
     const graph=await this.loadGraph(),nodes=graph?.nodes||[];
     const included=mindDescendantIds(framework.rootNodeIds||[],nodes);
     const selected=nodes.filter(n=>included.has(String(n.id)));
+    const depthOf=node=>{
+      let depth=0,cursor=node,seen=new Set();
+      while(cursor?.parentId!=null&&!seen.has(String(cursor.parentId))) {
+        seen.add(String(cursor.parentId));
+        cursor=nodes.find(n=>String(n.id)===String(cursor.parentId));
+        if(cursor) depth++;
+      }
+      return depth;
+    };
+    selected.sort((a,b)=>depthOf(a)-depthOf(b));
     const idByNode=new Map(),created=[];
     // Preserve legacy parent relations as reviewable framework placements only.
     for(const node of selected) {
