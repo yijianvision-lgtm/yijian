@@ -404,3 +404,15 @@ Mind、Framework、Source、Review 等视图都从同一状态读取/更新。�
 - 未修改正式 `index.html`，仅更新 `ui-preview-v1.html`。
 
 预览地址：https://yijianvision-lgtm.github.io/yijian/ui-preview-v1.html
+
+
+## 23. UI V22：候选到原始证据的可见回溯
+
+**状态：独立预览页已提交；部署与页面脚本检查待本轮 CI 回报。**
+
+- 过滤工作台每条提取候选新增“查看原文定位”入口。
+- 点击后调用 `resolveExtractionEvidence`，读取候选对应的来源记录、原始资料、解析批次、locator 和定位文本。
+- 根据 PDF 页码、EMMX/XMind 主题路径、DOCX 段落等 locator 展示原始位置；无法读取原文时明确回退显示候选摘录，不伪造原文。
+- 定位详情显示来源是否存在、定位文本是否可读取、提取批次 ID。
+- 四维建议选择器与审核提案入口分开：只有可执行的谱系候选和横向关系候选才启用对应提案操作。
+- 仍未修改正式 `index.html`；仅更新 `ui-preview-v1.html`。
