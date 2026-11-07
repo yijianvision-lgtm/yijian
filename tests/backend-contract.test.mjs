@@ -67,3 +67,14 @@ assert.match(local, /dimension:"horizontal"/);
 
 assert.match(local, /sourceType==="ai_conversation"\?this\.getConversation/);
 assert.match(local, /createExtractionFromParsedSource\(\{sourceId,referenceId:item\.id/);
+assert.ok(preview.includes("let nodes=[[['系统思维'"), "The spatial graph must be replaceable.");
+assert.ok(preview.includes("localGraphNodes=ordered"), "Formal nodes must populate the 3D graph.");
+assert.ok(preview.includes("idToIndex=new Map(ordered.map"), "Formal node IDs need stable spatial indices.");
+assert.ok(preview.includes("saveNodePosition({frameworkId:framework.id,nodeId:node.id"), "Deterministic positions must persist.");
+assert.ok(preview.includes("isDemoUniverse=true"), "Demo universe must be isolated.");
+assert.ok(preview.includes("演示节点 · 非正式知识"), "Demo nodes must not appear as confirmed knowledge.");
+assert.ok(preview.includes("temporalTarget"), "Time navigation requires an explicit temporal relation.");
+assert.ok(!preview.includes("Math.abs(a.year-year)-Math.abs(b.year-year)"), "Nearest year alone must not create a time relation.");
+assert.ok(preview.includes("deepseek-json-import"), "DeepSeek JSON imports must be identifiable.");
+assert.ok(preview.includes("parsedMessageCount"), "DeepSeek import must report parsed message count.");
+
