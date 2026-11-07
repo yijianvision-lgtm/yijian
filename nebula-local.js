@@ -1987,6 +1987,7 @@ Object.assign(NEBULA_LOCAL,{
  */
 const getLegacyFrameworkTree = NEBULA_LOCAL.getFrameworkTree.bind(NEBULA_LOCAL);
 const getLegacyMindContext = NEBULA_LOCAL.getMindContext.bind(NEBULA_LOCAL);
+const createLegacyFrameworkFromCurrentGraph = NEBULA_LOCAL.createFrameworkFromCurrentGraph.bind(NEBULA_LOCAL);
 const GUANFU_RELATION_TYPES = new Set([
   "precedes","follows","influences","causes","derived_from","part_of","contains",
   "made_of","created_by","contemporary_with","contextualizes","contrasts_with",
@@ -1994,6 +1995,13 @@ const GUANFU_RELATION_TYPES = new Set([
 ]);
 const GUANFU_DIRECTIONS = new Set(["瞻前","顾后","向内","向外"]);
 Object.assign(NEBULA_LOCAL, {
+  async createFrameworkFromCurrentGraph(title="我的知识框架",description="由当前知识结构建立的个人框架") {
+    const framework=await createLegacyFrameworkFromCurrentGraph(title,description);
+    // Creating a framework is an explicit user action: create reviewable placements,
+    // while preserving every knowledge object's original parentId and identity.
+    await this.migrateLegacyFrameworkPlacements(framework.id);
+    return this.getFramework(framework.id);
+  },
   async getMindContext(currentNodeId=null,options={}) {
     if(!options.pathId) return getLegacyMindContext(currentNodeId,options);
     const snapshot=await this.getExplorationPathSnapshot(options.pathId);
