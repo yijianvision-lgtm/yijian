@@ -1187,3 +1187,86 @@ NEBULA_LOCAL.saveReference = async function(file) {
     return {...saved,extractionStatus:"failed",extractionError:error.message};
   }
 };
+
+
+// Deterministic candidate comparison: suggestions only, never an automatic merge.
+function extractionTokenSet(value) {
+  const text=String(value||"").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
+  const tokens=new Set(text.split(/\s+/).filter(x=>x.length>1));
+  const compact=text.replace(/\s+/g,"");
+  const chars=Array.from(compact);
+  for(let i=0;i<chars.length-1;i++) tokens.add(chars[i]+chars[i+1]);
+  return tokens;
+}
+function extractionJaccard(a,b) {
+  if(!a.size&&!b.size) return 1;
+  let intersection=0;
+  for(const token of a) if(b.has(token)) intersection++;
+  const union=a.size+b.size-intersection;
+  return union?intersection/union:0;
+}
+Object.assign(NEBULA_LOCAL,{
+  async analyzeFilterCaseDuplicates(filterCaseId,options={}) {
+    const filterCase=await this.getFilterCase(filterCaseId);
+    if(!filterCase) throw new Error("找不到过滤任务。");
+    if(!["extracted","filtering","needs_review"].includes(filterCase.status)) throw new Error("当前过滤任务状态不允许执行重复辨异。");
+    const items=[];
+    for(const id of filterCase.inputItemIds||[]) {
+      const item=await this.getExtractionItem(id);
+      if(item) items.push(item);
+    }
+    const threshold=Math.max(0.55,Math.min(0.98,Number(options.threshold)||0.78));
+    const tokenCache=new Map(items.map(item=>[item.id,extractionTokenSet(item.normalizedContent||item.content||item.excerpt)]));
+    const pairs=[];
+    for(let i=0;i<items.length;i++) for(let j=i+1;j<items.length;j++) {
+      const a=items[i],b=items[j];
+      const textA=String(a.normalizedContent||a.content||a.excerpt||"").normalize("NFKC").toLowerCase().replace(/\s+/g," ").trim();
+      const textB=String(b.normalizedContent||b.content||b.excerpt||"").normalize("NFKC").toLowerCase().replace(/\s+/g," ").trim();
+      if(!textA||!textB) continue;
+      const exact=textA===textB;
+      const lengthRatio=Math.min(textA.length,textB.length)/Math.max(textA.length,textB.length);
+      const similarity=exact?1:extractionJaccard(tokenCache.get(a.id),tokenCache.get(b.id));
+      if(exact||(Math.min(textA.length,textB.length)>=45&&lengthRatio>=0.65&&similarity>=threshold)) {
+        pairs.push({
+          itemIds:[a.id,b.id],score:Number(similarity.toFixed(4)),
+          matchType:exact?"exact":"near_duplicate",
+          titles:[a.title||"",b.title||""],
+          sourceLocators:[a.locator||null,b.locator||null],
+          status:"proposed"
+        });
+      }
+    }
+    const nextStatus=filterCase.status==="extracted"?"filtering":filterCase.status;
+    const updated=await this.updateFilterCase(filterCaseId,{
+      status:nextStatus,currentStage:"dedupe_review",duplicateCandidates:pairs,
+      dedupeAnalyzedAt:Date.now(),dedupeThreshold:threshold
+    });
+    for(const pair of pairs) {
+      await this.appendFilterDecision({
+        filterCaseId,decisionType:"dedupe",actor:"system",
+        before:{itemIds:pair.itemIds},after:{matchType:pair.matchType,score:pair.score},
+        rationale:pair.matchType==="exact"?"规范化文本完全一致，作为重复候选提交人工核对。":"文本片段相似度达到候选阈值，作为近似重复提交人工核对。",
+        evidenceIds:pair.itemIds
+      });
+    }
+    return {filterCase:updated,pairs,comparedItems:items.length,threshold};
+  },
+  async recordFilterDuplicateDecision(filterCaseId,itemIds,action,rationale="") {
+    const filterCase=await this.getFilterCase(filterCaseId);
+    if(!filterCase) throw new Error("找不到过滤任务。");
+    const ids=[...new Set((itemIds||[]).map(String))];
+    if(ids.length!==2) throw new Error("重复辨异决策必须对应两个候选项。");
+    const pair=(filterCase.duplicateCandidates||[]).find(x=>x.itemIds?.length===2&&ids.every(id=>x.itemIds.includes(id)));
+    if(!pair) throw new Error("这两个候选项不在当前重复候选列表中。");
+    if(!["mark_duplicate","keep_separate","defer"].includes(action)) throw new Error("重复辨异决策无效。");
+    const decision=await this.appendFilterDecision({
+      filterCaseId,decisionType:"dedupe",actor:"user",before:{itemIds:ids,matchType:pair.matchType,score:pair.score},
+      after:{action},rationale:String(rationale||"用户确认重复辨异结果。"),evidenceIds:ids
+    });
+    const duplicateCandidates=(filterCase.duplicateCandidates||[]).map(x=>
+      x.itemIds?.length===2&&ids.every(id=>x.itemIds.includes(id))?{...x,resolution:action,resolvedAt:Date.now(),decisionId:decision.id}:x
+    );
+    await this.updateFilterCase(filterCaseId,{duplicateCandidates});
+    return decision;
+  }
+});
