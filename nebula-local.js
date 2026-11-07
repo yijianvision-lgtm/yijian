@@ -972,7 +972,8 @@ Object.assign(NEBULA_LOCAL,{
     if(!ids.length) throw new Error("过滤任务至少需要一个提取候选。");
     for(const id of ids) if(!(await this.getExtractionItem(id))) throw new Error("过滤任务引用了不存在的提取候选："+id);
     item.inputItemIds=ids;
-    item.status=item.status||"received";
+    // A filter case is created only after its input extraction items exist.
+    item.status=item.status||"extracted";
     if(!FILTER_STATUSES.has(item.status)) throw new Error("过滤任务状态无效。");
     item.currentStage=item.currentStage||"dedupe";
     item.proposedNodeIds=Array.isArray(item.proposedNodeIds)?item.proposedNodeIds:[];
