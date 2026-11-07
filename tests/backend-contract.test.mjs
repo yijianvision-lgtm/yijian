@@ -116,11 +116,14 @@ assert.ok(preview.includes("matchMedia('(prefers-reduced-motion: reduce)').match
 assert.ok(preview.includes("pixelRatioForViewport"), "Renderer pixel ratio must adapt to viewport size.");
 assert.ok(preview.includes("renderer.setPixelRatio(pixelRatioForViewport())"), "Renderer resolution must be recalculated on resize.");
 
+const charter = await readFile(new URL("../docs/GUANFU-MIND-DESIGN-CHARTER.md", import.meta.url), "utf8");
 const mindArchitecture = await readFile(new URL("../docs/MIND-V2-ARCHITECTURE.md", import.meta.url), "utf8");
-assert.ok(mindArchitecture.includes("树（Framework / Tree）是骨架"), "MIND V2 must define the framework tree as a distinct semantic layer.");
-assert.ok(mindArchitecture.includes("网（Relations / Network）是关系"), "MIND V2 must define typed many-to-many relations separately.");
-assert.ok(mindArchitecture.includes("图（Universe Map / Spatial Map）是全局"), "MIND V2 must define spatial projection as a separate global map.");
-assert.ok(mindArchitecture.includes("坐标不得创建或删除知识关系"), "Spatial coordinates must never fabricate knowledge semantics.");
-assert.ok(mindArchitecture.includes("知识时间与学习时间分离"), "Knowledge time and learner time must remain distinct.");
-assert.ok(mindArchitecture.includes("只有接受后才写入正式知识"), "AI proposals must require explicit user approval.");
-assert.ok(mindArchitecture.includes("全局层") && mindArchitecture.includes("深入层"), "The spatial model must include global and recursive depth layers.");
+assert.ok(charter.includes("稳定知识身份"), "The current charter must require stable knowledge identity.");
+assert.ok(charter.includes("同一个知识对象可从多条路径抵达"), "The current charter must support the same object across multiple exploration paths.");
+assert.ok(charter.includes("Framework Placement"), "The current charter must separate framework placement from global identity.");
+assert.ok(charter.includes("ExplorationPath"), "The current charter must model recursive exploration paths independently.");
+assert.ok(charter.includes("四向探索模型") && charter.includes("四维定位模型"), "Exploration directions and global dimensions must remain separate.");
+assert.ok(charter.includes("坐标本身不构成语义关系"), "Spatial coordinates must never fabricate knowledge semantics.");
+assert.ok(charter.includes("AI 不得未经确认直接覆盖用户知识"), "AI proposals must require explicit user approval.");
+assert.ok(mindArchitecture.includes("唯一主要 parentId"), "The legacy V2 architecture should remain available as a historical implementation reference.");
+assert.ok(charter.includes("旧 V2.0 文档作为历史方案"), "The current charter must explicitly supersede conflicting legacy V2 constraints.");
