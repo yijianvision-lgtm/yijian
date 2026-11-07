@@ -1382,7 +1382,7 @@ async function refreshSourceLibrary(){
   row.dataset.sourceId=ref.id;row.dataset.sourceKind=sourceCategory(ref);
   const main=safeText("div","");
   main.append(safeText("b",ref.name||"未命名资料"),safeText("small",(ref.extension||"未知格式").toUpperCase()+" · "+(ref.size?Math.max(1,Math.round(ref.size/1024))+" KB · ":"")+new Date(ref.savedAt||Date.now()).toLocaleDateString()));
-  row.append(main,safeText("span",ref.warnings?.length?"需检查":ref.kind==="conversation"?"对话原文":"本地原件","status"));
+  row.append(main,safeText("span",ref.warnings?.length||ref.metadata?.jsonParseWarning?"需检查":ref.kind==="conversation"?"对话原文":"本地原件","status"));
   row.addEventListener("click",async()=>{
    activeSourceId=ref.id;list.querySelectorAll(".source-file").forEach(x=>x.classList.toggle("active",x===row));
    try{
@@ -1571,7 +1571,7 @@ $("savePastedConversation").addEventListener("click",async()=>{
  status.textContent="正在本机保存原文并生成提取候选…";
  try{
   const result=await NEBULA_LOCAL.saveConversation({title,transcript,source:"deepseek-paste-import",metadata:{importFormat:"clipboard-text"}});
-  status.textContent=result.duplicate?"检测到相同对话内容，未重复创建来源或提取批次。":"已保存到本机；生成 "+(result.extractionItemCount||0)+" 个提取候选，等待过滤审核。";
+  status.textContent=result.duplicate?"检测到相同对话内容，未重复创建来源或提取批次。":"已保存到本机；生成 "+(result.extractionItemCount||0)+" 个提取候选，等待过滤审核。"+(result.metadata?.jsonParseWarning?" 注意："+result.metadata.jsonParseWarning:"");
   await refreshSourceLibrary();await refreshFilterWorkbench();
   if(!result.duplicate)$("pastedConversationText").value="";
  }catch(error){status.textContent="保存失败："+error.message;}
