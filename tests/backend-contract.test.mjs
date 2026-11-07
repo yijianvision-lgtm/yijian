@@ -77,4 +77,11 @@ assert.ok(preview.includes("temporalTarget"), "Time navigation requires an expli
 assert.ok(!preview.includes("Math.abs(a.year-year)-Math.abs(b.year-year)"), "Nearest year alone must not create a time relation.");
 assert.ok(preview.includes("deepseek-json-import"), "DeepSeek JSON imports must be identifiable.");
 assert.ok(preview.includes("parsedMessageCount"), "DeepSeek import must report parsed message count.");
+assert.ok(preview.includes("getCognitiveDashboard()"), "Dashboard must use local cognitive metrics.");
+assert.ok(preview.includes("buildLearningQueue(50)"), "Learning workspace must read the real local queue.");
+assert.ok(preview.includes("saveLearningRecord({nodeId:selectedLearningNode.id"), "Active recall must persist a real learning record.");
+assert.ok(preview.includes("saveResearchSession({id:selectedResearchId"), "Research drafts must persist and retain identity.");
+assert.ok(preview.includes("savePastedConversation"), "DeepSeek pasted conversations need a direct local intake path.");
+assert.ok(!preview.includes('<div class="metric-value">36</div>'), "Static source counts must not be presented as real data.");
+assert.ok(!preview.includes('<div class="metric-value">612</div>'), "Static relation counts must not be presented as real data.");
 
