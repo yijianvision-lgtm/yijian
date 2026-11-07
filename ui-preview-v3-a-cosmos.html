@@ -878,22 +878,24 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
 .custom-exploration-row button{padding:9px 13px;border:1px solid #bdcbd52b;border-radius:6px;background:#ffffff0a;color:#d8e1e7;font-size:9px;white-space:nowrap}
 .custom-exploration-row button:hover{background:#ffffff13}
 
-/* V25 — restore previous unboxed quadrant layout; move only core text to upper-right */
+/* V26 — center the core text; keep the original unboxed four-direction layout */
 #continuumFocus .continuum-core{
-  left:auto!important;right:3%!important;top:20%!important;bottom:auto!important;
-  transform:none!important;width:min(420px,34vw)!important;min-height:0!important;
-  padding:0!important;background:transparent!important;border:0!important;
-  border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important;
-  text-align:right!important;align-items:flex-end!important;
+  position:absolute!important;
+  left:50%!important;right:auto!important;top:50%!important;bottom:auto!important;
+  transform:translate(-50%,-50%)!important;
+  width:min(320px,34vw)!important;height:auto!important;min-height:0!important;
+  padding:12px 16px!important;
+  display:flex!important;flex-direction:column!important;
+  align-items:center!important;justify-content:center!important;
+  text-align:center!important;
+  background:transparent!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;backdrop-filter:none!important;
 }
-#continuumFocus .continuum-core-title{max-width:100%!important;line-height:1.32!important}
-#continuumFocus .continuum-core p{max-width:390px!important;text-align:right!important}
-#continuumFocus .continuum-core-meta{justify-content:flex-end!important}
-@media(max-width:1050px){
- #continuumFocus .continuum-core{right:2%!important;top:17%!important;width:min(360px,38vw)!important}
-}
+#continuumFocus .continuum-core-title{max-width:100%!important;text-align:center!important;line-height:1.32!important}
+#continuumFocus .continuum-core p{max-width:390px!important;text-align:center!important}
+#continuumFocus .continuum-core-meta{justify-content:center!important}
 @media(max-width:760px){
- #continuumFocus .continuum-core{right:3%!important;top:13%!important;width:min(280px,64vw)!important}
+ #continuumFocus .continuum-core{width:min(280px,58vw)!important;padding:8px!important}
  #continuumFocus .continuum-core-title{font-size:17px!important}
  #continuumFocus .continuum-core p{font-size:9px!important}
 }
