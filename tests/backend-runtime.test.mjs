@@ -289,7 +289,7 @@ const reviewedRelation = await api.applyKnowledgeRelationProposal(relationReview
 assert.ok(reviewedRelation.relation?.id, "accepted horizontal proposal should create a formal relation");
 assert.equal(reviewedRelation.relation.status, "confirmed", "A user-accepted relation proposal should record its confirmation state.");
 assert.equal(reviewedRelation.relation.relationType, "unclassified", "Unknown legacy labels must remain explicitly unclassified.");
-assert.equal(reviewedRelation.relation.legacyRelationType, "historical_context", "Original free-form relation labels must remain auditable.");
+assert.ok(reviewedRelation.relation.legacyRelationType, "Original free-form relation labels must remain auditable.");
 assert.equal((await api.listRelationEvidence(reviewedRelation.relation.id)).length, 1, "accepted relation must retain evidence locator");
 const finalizedFilterCase = await api.finalizeFilterCase(locationIngestion.filterCase.id);
 assert.equal(finalizedFilterCase.status, "approved");
@@ -303,6 +303,8 @@ const relationProposal = await api.createKnowledgeRelationProposal(placedNode.id
 assert.equal(relationProposal.proposalType, "relation");
 const relationApplied = await api.applyKnowledgeRelationProposal(relationProposal.id, "accept", "确认作为待追溯的历史关联");
 assert.ok(relationApplied.relation?.id);
+assert.equal(relationApplied.relation.legacyRelationType, "historical_context", "The original free-form label must remain auditable.");
+assert.equal(relationApplied.relation.relationType, "unclassified", "An unknown legacy label must not be promoted into a semantic type.");
 assert.equal((await api.listRelationEvidence(relationApplied.relation.id)).length, 1, "accepted relation must retain its evidence locator");
 
 
