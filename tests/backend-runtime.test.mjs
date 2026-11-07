@@ -287,6 +287,9 @@ assert.equal(relationReviewProposal.proposalType, "relation");
 assert.equal((await api.listKnowledgeRelations(placedNode.id)).some(x => String(x.targetNodeId) === String(relationReviewProposal.relatedNodeId)), false, "horizontal suggestions must not create formal relations before review");
 const reviewedRelation = await api.applyKnowledgeRelationProposal(relationReviewProposal.id, "accept", "确认存在横向知识联系");
 assert.ok(reviewedRelation.relation?.id, "accepted horizontal proposal should create a formal relation");
+assert.equal(reviewedRelation.relation.status, "confirmed", "A user-accepted relation proposal should record its confirmation state.");
+assert.equal(reviewedRelation.relation.relationType, "unclassified", "Unknown legacy labels must remain explicitly unclassified.");
+assert.equal(reviewedRelation.relation.legacyRelationType, "historical_context", "Original free-form relation labels must remain auditable.");
 assert.equal((await api.listRelationEvidence(reviewedRelation.relation.id)).length, 1, "accepted relation must retain evidence locator");
 const finalizedFilterCase = await api.finalizeFilterCase(locationIngestion.filterCase.id);
 assert.equal(finalizedFilterCase.status, "approved");
@@ -330,6 +333,9 @@ const placementB = await api.createFrameworkPlacement({
 });
 assert.notEqual(placementA.id, placementB.id, "One knowledge identity may have multiple contextual placements.");
 assert.equal((await api.listFrameworkPlacements(frameworkProjection.id, placedNode.id)).length, 2);
+const placementTree = await api.getFrameworkTree(frameworkProjection.id);
+assert.equal(placementTree.modelMode, "framework-placement", "Framework navigation must use contextual placements when present.");
+assert.equal(placementTree.roots.some(x => x.id === placedNode.id), true, "Placement tree entries must expose the stable knowledge object identity.");
 assert.equal((await api.loadGraph()).nodes.find(x => x.id === placedNode.id).parentId, originalParentId, "Creating framework placements must not rewrite the knowledge object's legacy parentId.");
 
 const pathA = await api.createExplorationPath({ title: "从绘画史进入", frameworkId: frameworkProjection.id, rootNodeId: "art-root", context: { userIntent: "追踪绘画史脉络" } });
@@ -345,6 +351,10 @@ assert.equal(forkedPath.parentPathId, pathA.id);
 const pathSnapshot = await api.getExplorationPathSnapshot(pathA.id);
 assert.equal(pathSnapshot.steps.length, 1);
 assert.equal(pathSnapshot.branchPoints[0].canFork, true);
+const pathMindContext = await api.getMindContext(null, { pathId: pathA.id });
+assert.equal(pathMindContext.currentNodeId, placedNode.id, "Mind context should resolve the active exploration path rather than the legacy parentId chain.");
+assert.equal(pathMindContext.explorationPathId, pathA.id);
+assert.equal(pathMindContext.ancestorPath.at(-1).direction, "向内");
 
 const versionBaseline = await api.saveNodeVersion({ ...placedNode, customSemanticField: "before" }, "版本完整性基线");
 const versionChanged = await api.saveNodeVersion({ ...placedNode, customSemanticField: "after" }, "测试完整语义字段版本");
