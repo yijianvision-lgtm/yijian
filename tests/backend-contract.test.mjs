@@ -23,7 +23,9 @@ assert.match(local, /getAllStoresSnapshot/);
 assert.match(local, /protocol!==\"https:\"/);
 assert.match(local, /BACKUP_LOCAL_STORAGE_KEYS/);
 assert.match(worker, /DEEPSEEK_API_KEY/);
-assert.match(worker, /NEBULA_SYNC_TOKEN/);\nassert.match(worker, /url\\.pathname === "\\/chat"/);\nassert.match(worker, /Unauthorized: invalid NEBULA access token/);
+assert.match(worker, /NEBULA_SYNC_TOKEN/);
+assert.match(worker, /url\.pathname === "\/chat"/);
+assert.match(worker, /Unauthorized: invalid NEBULA access token/);
 
 const inlineScripts = [...html.matchAll(/<script(?:\s+type="module")?>([\s\S]*?)<\/script>/g)];
 assert.ok(inlineScripts.length >= 2, "Expected the app bootstrap and main module scripts.");
@@ -57,14 +59,15 @@ assert.ok(learningPreview.includes("chatLearningCoach"), "Learning chat must cal
 assert.ok(learningPreview.includes("learningChatWorkerToken"), "Learning chat must provide an explicit Worker connection control.");
 assert.ok(learningPreview.includes("axisFlow"), "Four-direction paths must progress continuously without moving the text labels.");
 assert.ok(learningPreview.includes("grid-template-columns:minmax(0,1fr) minmax(280px,340px)"), "Four-direction labels must be grouped in a non-overlapping upper-right lane.");
-const learningPreviewScripts = [...learningPreview.matchAll(/<script(?:\\s+type="module")?>([\\s\\S]*?)<\\/script>/g)];
+const learningPreviewScripts = [...learningPreview.matchAll(/<script(?:\s+type="module")?>([\s\S]*?)<\/script>/g)];
 assert.ok(learningPreviewScripts.length >= 6, "Learning preview must include its dedicated chat module.");
 for (const match of learningPreviewScripts) {
   const isModule = match[0].startsWith('<script type="module">');
   const checked = spawnSync(process.execPath, isModule ? ["--input-type=module", "--check"] : ["--check"], { input: match[1], encoding: "utf8" });
   assert.equal(checked.status, 0, "Learning preview script syntax error: " + checked.stderr);
 }
-\nconsole.log("NEBULA backend contract checks passed.");
+
+console.log("NEBULA backend contract checks passed.");
 
 assert.match(local, /DB_VERSION = 5/);
 assert.match(local, /FILTER_TRANSITIONS/);
