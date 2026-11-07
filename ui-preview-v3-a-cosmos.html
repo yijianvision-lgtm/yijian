@@ -1084,12 +1084,19 @@ const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;let foc
   const currentStep=snapshot.steps.find(step=>String(step.id)===String(activeExplorationStepId));
   const pathFocus=currentStep?.toNodeId||snapshot.path.rootNodeId;
   if(String(pathFocus)!==String(from.id)){activeExplorationPathId=null;activeExplorationStepId=null;}
-  else if(snapshot.steps.length&&String(snapshot.steps.at(-1).id)!==String(activeExplorationStepId)){
-   const fork=await NEBULA_LOCAL.forkExplorationPath(activeExplorationPathId,activeExplorationStepId,{title:(from.name||from.coreWord||'知识探索')+' · 分支'});
-   activeExplorationPathId=fork.id;activeExplorationStepId=null;
+  else if(snapshot.steps.length&&String(snapshot.steps[snapshot.steps.length-1].id)!==String(activeExplorationStepId)){
+   if(activeExplorationStepId){
+    const fork=await NEBULA_LOCAL.forkExplorationPath(activeExplorationPathId,activeExplorationStepId,{title:(from.name||from.coreWord||'知识探索')+' · 分支'});
+    activeExplorationPathId=fork.id;activeExplorationStepId=null;
+   }else{
+    const parentPathId=activeExplorationPathId;
+    const fork=await NEBULA_LOCAL.createExplorationPath({title:(from.name||from.coreWord||'知识探索')+' · 根节点分支',frameworkId:snapshot.path.frameworkId||null,rootNodeId:from.id,context:{source:'v3-a-cosmos',forkedFrom:{pathId:parentPathId,stepId:null,nodeId:from.id}}});
+    activeExplorationPathId=fork.id;activeExplorationStepId=null;
+   }
   }
  }
  if(!activeExplorationPathId){const path=await NEBULA_LOCAL.createExplorationPath({title:(from.name||from.coreWord||'知识探索')+' · 探索路径',frameworkId:localFramework?.id||null,rootNodeId:from.id});activeExplorationPathId=path.id;activeExplorationStepId=null;}
+ if(focusCursor>=0){focusExplorationTrail[focusCursor]={pathId:activeExplorationPathId,stepId:activeExplorationStepId,nodeId:from.id};}
  const directionName={forward:'瞻前',backward:'顾后',left:'向内',right:'向外'}[direction];
  const relation=localGraphRelations.find(r=>r.status==='confirmed'&&((String(r.sourceNodeId)===String(from.id)&&String(r.targetNodeId)===String(to.id))||(String(r.sourceNodeId)===String(to.id)&&String(r.targetNodeId)===String(from.id)))&&((directionalMap[selected]?.[direction]||[]).includes(targetIndex)));
  const step=await NEBULA_LOCAL.appendExplorationStep({pathId:activeExplorationPathId,parentStepId:activeExplorationStepId||undefined,fromNodeId:from.id,toNodeId:to.id,direction:directionName,relationId:relation?.id||undefined,context:{source:'v3-a-cosmos',directionKey:direction,frameworkId:localFramework?.id||null}});
@@ -1394,8 +1401,8 @@ async function connectLocalKnowledgeUniverse(){
      return true;
     }).map(r=>String(r.sourceNodeId)===String(node.id)?r.targetNodeId:r.sourceNodeId)
      .map(id=>idToIndex.get(String(id))).filter((x,index,all)=>Number.isInteger(x)&&x!==i&&all.indexOf(x)===index);
-   const past=[...targets(["follows","derived_from"],"outgoing"),...targets(["precedes","influences"],"incoming")];
-   const future=[...targets(["precedes","influences"],"outgoing"),...targets(["follows","derived_from"],"incoming")];
+   const past=[...targets(["follows","derived_from"],"outgoing"),...targets(["precedes"],"incoming")];
+   const future=[...targets(["precedes"],"outgoing"),...targets(["follows","derived_from"],"incoming")];
    const inward=targets(["part_of","contains","made_of","created_by"]);
    const outward=targets(["contemporary_with","contextualizes","contrasts_with","complements","analogous_to","related_to"]);
    directionalMap[i]={forward:past,backward:future,left:inward,right:outward};
