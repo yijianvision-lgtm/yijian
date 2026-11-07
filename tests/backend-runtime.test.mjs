@@ -294,6 +294,18 @@ assert.ok(aiRelationResult.relation?.id);
 assert.equal((await api.listRelationEvidence(aiRelationResult.relation.id)).length, 1);
 assert.equal((await api.finalizeFilterCase(aiIngestion.filterCase.id)).status, "approved");
 
+
+const workbenchSnapshot = await api.getFilterWorkbenchSnapshot();
+assert.ok(workbenchSnapshot.stats.caseCount >= 3);
+assert.ok(workbenchSnapshot.cases.some(x => x.id === locationIngestion.filterCase.id));
+const knowledgeBrief = await api.buildKnowledgeBrief("art-root");
+assert.ok(knowledgeBrief.nodes.some(x => x.id === placedNode.id));
+assert.ok(knowledgeBrief.evidence.length >= 1);
+assert.ok(Array.isArray(knowledgeBrief.gaps));
+const frameworkMarkdown = await api.exportFrameworkMarkdown(frameworkProjection.id);
+assert.ok(frameworkMarkdown.includes("# 绘画史框架"));
+assert.ok(frameworkMarkdown.includes("谢赫画品"));
+
 const v5Backup = await api.exportFullBackup();
 assert.equal((await api.previewFullBackup(v5Backup.blob)).schemaVersion, 5);
 
