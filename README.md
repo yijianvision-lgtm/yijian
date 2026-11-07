@@ -66,6 +66,19 @@ The preview uses Three.js / WebGL for the spatial scene. When a local IndexedDB 
 See [NEBULA Skill 1.0](docs/NEBULA-SKILL.md) for detailed product and implementation requirements.
 
 
+### V7-A｜深空主线 · 对话学习与连续四向延伸（当前迭代）
+
+当前只沿 A「深空纯宇宙」继续迭代，不再制作新的 B/C 方案。V7-A 保留 V6-A 的画布优先布局、角落默认小地图与明确的左右面板入口，并集中处理三项体验：
+
+- **学习页 AI 对话：** 学习页加入一对一对话工作区，可切换综合理解、瞻前、顾后、左顾、右盼五种学习视角；仅在用户主动选择后附带当前知识节点；对话可由用户保存到本机资料库，不会自动修改正式知识。
+- **四向视野排布：** 四向文字固定在右侧上方的独立区域，中央核心知识不再与左右文字叠压。
+- **连续方向延伸：** 方向文字保持稳定，连续流动效果只出现在四向路径上，避免标签散动。
+
+AI 对话使用新增的 Cloudflare Worker `POST /chat`，要求服务端配置 `DEEPSEEK_API_KEY` 与 `NEBULA_SYNC_TOKEN`；网页只在当前页面内存中使用访问令牌，不存储模型 API 密钥。Worker 部署更新后才可进行真实 AI 对话。该版本为独立预览，不替换 `index.html`，不接入正式后台。
+
+- **[打开 V7-A 学习对话预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v7-a-learning.html)**
+- [GitHub 源文件](ui-preview-v7-a-learning.html)
+
 ### V6 三套完整交互预览（本轮修订）
 
 V6 根据验收意见重新处理地图默认状态与面板可发现性：小地图首次进入默认停靠角落，仍可选择关闭、侧边或展开；导航与知识详情始终有清晰入口。A 采用画布优先与可见边缘入口，B 采用完整可读的轨道工作台，C 采用纵向谱系导航与知识详情并置。三版为独立预览，不替换正式入口或接入正式后台。
