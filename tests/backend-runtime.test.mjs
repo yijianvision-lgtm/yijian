@@ -54,6 +54,23 @@ const conversationEvidence = await api.resolveExtractionEvidence(conversationIte
 assert.equal(conversationEvidence.source.sourceType, "ai_conversation");
 assert.equal(conversationEvidence.reference.id, conversation.id);
 assert.ok(conversationEvidence.locatedText.includes("local-only conversation fixture."));
+const extractionBatchCountBeforeDuplicate = (await api.listExtractionBatches("src_" + conversation.id)).length;
+const localDb = await new Promise((resolve, reject) => {
+  const req = indexedDB.open("nebula_local_v2");
+  req.onsuccess = () => resolve(req.result);
+  req.onerror = () => reject(req.error);
+});
+await new Promise((resolve, reject) => {
+  const tx = localDb.transaction("sources", "readwrite");
+  tx.objectStore("sources").delete("src_" + conversation.id);
+  tx.oncomplete = resolve;
+  tx.onerror = () => reject(tx.error);
+});
+const duplicateConversation = await api.saveConversation({title:"Legacy duplicate", transcript:"A local-only conversation fixture."});
+assert.equal(duplicateConversation.duplicate, true);
+assert.equal((await api.getSource("src_" + conversation.id)).sourceType, "ai_conversation", "Duplicate legacy conversations must recreate a missing source catalog entry.");
+assert.equal((await api.listExtractionBatches("src_" + conversation.id)).length, extractionBatchCountBeforeDuplicate, "Duplicate imports must not create another extraction batch.");
+localDb.close();
 const firstReview = await api.saveLearningRecord({ nodeId: "base", activityType: "recall", score: 1 });
 assert.equal(firstReview.schedule.intervalDays, 1);
 assert.ok(firstReview.schedule.nextReviewAt > Date.now());
