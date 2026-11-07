@@ -66,6 +66,16 @@ The preview uses Three.js / WebGL for the spatial scene. When a local IndexedDB 
 See [NEBULA Skill 1.0](docs/NEBULA-SKILL.md) for detailed product and implementation requirements.
 
 
+### V5 三套重新设计方案（默认不显示小地图）
+
+V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版均把小地图移出常驻信息面板，首次进入默认关闭。顶部“地图”选择器可切换关闭、角落、侧边或展开；关闭按钮可随时收起。小地图仅在用户主动选择后出现。
+
+- **V5-A｜深空纯宇宙：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v5-a-deep-cosmos.html) · [源文件](ui-preview-v5-a-deep-cosmos.html) — 隐去常驻左右面板，最大化三维宇宙画布。
+- **V5-B｜轨道轻控台：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v5-b-orbit-control.html) · [源文件](ui-preview-v5-b-orbit-control.html) — 左侧收敛为窄导航，右侧保留轻量知识检查器。
+- **V5-C｜谱系纵深：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v5-c-lineage-depth.html) · [源文件](ui-preview-v5-c-lineage-depth.html) — 保留纵向知识入口与结构导航，让谱系成为辅助层而非主画面。
+
+三版复用现有 Three.js 场景、节点交互与本地数据逻辑，主要重新组织布局和小地图交互，不代表三套独立引擎或后台已完成。仅为独立预览，未替换正式首页、未接入正式后台。
+
 ### V4 三套新一轮结构方案（A > B > C）
 
 本轮按用户确定的优先级推进：A 为主视觉与主体验，B 提供按需操作效率，C 提供纵向谱系阅读。三者仍为独立预览，不替换正式入口。
