@@ -1425,7 +1425,7 @@ async function connectLocalKnowledgeUniverse(){
    const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(size,1),new THREE.MeshBasicMaterial({color:0xe0e9ef,transparent:true,opacity:.026,side:THREE.BackSide}));mesh.add(halo);
   });
   edges.forEach(([a,b])=>core.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([positions[a],positions[b]]),liveLineMat)));
-  selected=Math.max(0,ordered.findIndex(n=>String(n.id)===String(root?.id)));focusActive=false;focusGoal=null;focusHistory=[];focusCursor=-1;
+  selected=Math.max(0,ordered.findIndex(n=>String(n.id)===String(root?.id)));focusActive=false;focusGoal=null;focusHistory=[];focusExplorationTrail=[];focusCursor=-1;activeExplorationPathId=null;activeExplorationStepId=null;pendingExplorationTrailEntry=null;
   spheres.forEach((s,i)=>{s.userData.targetOpacity=i===selected?1:.7;s.userData.targetScale=1;s.userData.targetGlow=i===selected?.16:.02;s.material.transparent=true;});
   controls.autoRotate=true;controls.target.copy(positions[selected]);camera.position.copy(positions[selected]).add(new THREE.Vector3(0,2,19));controls.update();
   renderContinuum();renderLogic();drawMini();
