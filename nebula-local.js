@@ -1706,18 +1706,19 @@ Object.assign(NEBULA_LOCAL,{
       list.push(placement);placementByNode.set(String(placement.nodeId),list);
     }
     const nodes=tree.roots.flatMap(function walk(node,depth=1){
-      const saved=positionMap.get(String(node.id));
-      const nodePlacements=placementByNode.get(String(node.id))||[];
+      const entity=node.node||node,nodeId=entity.id;
+      const saved=positionMap.get(String(nodeId));
+      const nodePlacements=node.placementId?[node]:(placementByNode.get(String(nodeId))||[]);
       const semanticCoordinates={
-        lineage:nodePlacements.length?nodePlacements.map(p=>({placementId:p.id,parentPlacementId:p.parentPlacementId||null,needsReview:!!p.needsReview})):
-          [{legacyParentId:node.parentId||null,legacyProjection:true,needsReview:true}],
-        time:{value:node.knowledgeTime||node.date||null,sourceField:node.knowledgeTime?"knowledgeTime":node.date?"date":null},
-        space:{value:node.spatialContext||node.location||node.geography||null,sourceField:node.spatialContext?"spatialContext":node.location?"location":node.geography?"geography":null},
-        horizontalRelationIds:tree.relations.filter(r=>String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id)).filter(r=>!["precedes","follows","part_of","contains","made_of","derived_from"].includes(r.relationType)).map(r=>r.id)
+        lineage:nodePlacements.length?nodePlacements.map(p=>({placementId:p.placementId||p.id,parentPlacementId:p.parentPlacementId||null,needsReview:!!p.needsReview})):
+          [{legacyParentId:entity.parentId||null,legacyProjection:true,needsReview:true}],
+        time:{value:entity.knowledgeTime||entity.date||null,sourceField:entity.knowledgeTime?"knowledgeTime":entity.date?"date":null},
+        space:{value:entity.spatialContext||entity.location||entity.geography||null,sourceField:entity.spatialContext?"spatialContext":entity.location?"location":entity.geography?"geography":null},
+        horizontalRelationIds:tree.relations.filter(r=>String(r.sourceNodeId)===String(nodeId)||String(r.targetNodeId)===String(nodeId)).filter(r=>!["precedes","follows","part_of","contains","made_of","derived_from"].includes(r.relationType)).map(r=>r.id)
       };
-      const layoutCoordinates=saved?.layoutCoordinates||{x:Number(node.x)||0,y:Number(node.y)||0,z:Number(node.z)||0};
-      return [{id:node.id,name:node.name,depth,semanticCoordinates,layoutCoordinates},
-        ...node.children.flatMap(child=>walk(child,depth+1))];
+      const layoutCoordinates=saved?.layoutCoordinates||{x:Number(entity.x)||0,y:Number(entity.y)||0,z:Number(entity.z)||0};
+      return [{id:nodeId,placementId:node.placementId||node.id!==nodeId?node.id:null,name:entity.name,depth,semanticCoordinates,layoutCoordinates},
+        ...(node.children||[]).flatMap(child=>walk(child,depth+1))];
     });
     return {frameworkId,version:tree.framework.versionId||null,nodes,relations:tree.relations,dimensions:["lineage","time","space","horizontal"],projectionOnly:true,legacyLineageFallback:placements.length===0};
   },
