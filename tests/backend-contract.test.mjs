@@ -90,3 +90,6 @@ assert.ok(preview.includes("syncFrameworkFromGraph(framework.id,{reason:\"正式
 assert.ok(!preview.includes('<div class="metric-value">36</div>'), "Static source counts must not be presented as real data.");
 assert.ok(!preview.includes('<div class="metric-value">612</div>'), "Static relation counts must not be presented as real data.");
 
+
+assert.match(preview, /getCognitiveDashboard\(\),NEBULA_LOCAL\.listKnowledgeRelations\(\),NEBULA_LOCAL\.getFilterWorkbenchSnapshot\(\),NEBULA_LOCAL\.loadGraph\(\)/, "Overview must fetch actual formal graph nodes before rendering its tree.");
+assert.match(preview, /const nodes=Array\.isArray\(graph\?\.nodes\)\?graph\.nodes:\[\]/, "Overview tree must render a safe empty state when no formal nodes exist.");
