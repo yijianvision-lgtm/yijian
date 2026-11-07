@@ -1343,22 +1343,23 @@ async function connectLocalKnowledgeUniverse(){
    const raw=node.domainPath||node.domain||node.field||[];
    return [...new Set((Array.isArray(raw)?raw:String(raw).split(/[>/、,，|]/)).map(x=>String(x).trim()).filter(Boolean))];
   }
+  // Four exploration directions are derived only from explicitly typed relations.
+  // Framework parentId is deliberately excluded: it is contextual placement, not time or ontology proof.
   ordered.forEach((node,i)=>{
-   const kids=childrenById.get(String(node.id))||[];
-   const year=explicitYear(node),domains=domainKeys(node);
-   const temporal=localGraphRelations.filter(r=>(String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id))&&/(before|after|precedes|follows|temporal|时间|先于|后于)/i.test(String(r.relationType||r.type||r.kind||"")));
-   const temporalTarget=temporal.map(r=>String(r.sourceNodeId)===String(node.id)?r.targetNodeId:r.sourceNodeId).map(id=>idToIndex.get(String(id))).find(index=>Number.isInteger(index)&&index!==i);
-   const timeNeighbor=Number.isInteger(temporalTarget)?temporalTarget:null;
-   // A shared domain label is context, not proof of a direct spatial relationship.
-   const domainNeighbor=null;
-   const related=localGraphRelations.filter(r=>!/(before|after|precedes|follows|temporal|时间|先于|后于)/i.test(String(r.relationType||r.type||r.kind||""))&&(String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id)))
-    .map(r=>String(r.sourceNodeId)===String(node.id)?r.targetNodeId:r.sourceNodeId).map(id=>idToIndex.get(String(id))).filter(x=>Number.isInteger(x)&&x!==i);
-   directionalMap[i]={
-    forward:node.parentId&&idToIndex.has(String(node.parentId))?idToIndex.get(String(node.parentId)):(kids.length?idToIndex.get(String(kids[0].id)):null),
-    backward:timeNeighbor,
-    left:domainNeighbor,
-    right:related[0]??null
-   };
+   const incident=localGraphRelations.filter(r=>String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id));
+   const targets=(types,orientation="either")=>incident.filter(r=>{
+     const type=String(r.relationType||"unclassified");
+     if(!types.includes(type))return false;
+     if(orientation==="outgoing")return String(r.sourceNodeId)===String(node.id);
+     if(orientation==="incoming")return String(r.targetNodeId)===String(node.id);
+     return true;
+    }).map(r=>String(r.sourceNodeId)===String(node.id)?r.targetNodeId:r.sourceNodeId)
+     .map(id=>idToIndex.get(String(id))).filter((x,index,all)=>Number.isInteger(x)&&x!==i&&all.indexOf(x)===index);
+   const past=[...targets(["follows","derived_from"],"outgoing"),...targets(["precedes","influences"],"incoming")];
+   const future=[...targets(["precedes","influences"],"outgoing"),...targets(["follows","derived_from"],"incoming")];
+   const inward=targets(["part_of","contains","made_of","created_by"]);
+   const outward=targets(["contemporary_with","contextualizes","contrasts_with","complements","analogous_to","related_to"]);
+   directionalMap[i]={forward:past,backward:future,left:inward,right:outward};
    continuationDescriptions[i]=String(node.desc||node.coreWord||node.name||"");
    layerData[node.name||node.coreWord||String(node.id)]={desc:node.desc||"",children:kids.map(child=>[child.name||child.coreWord||String(child.id),child.desc||""])};
   });
