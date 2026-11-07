@@ -83,6 +83,9 @@ assert.ok(preview.includes("saveLearningRecord({nodeId:selectedLearningNode.id")
 assert.ok(preview.includes("saveResearchSession({id:selectedResearchId"), "Research drafts must persist and retain identity.");
 assert.ok(preview.includes("savePastedConversation"), "DeepSeek pasted conversations need a direct local intake path.");
 assert.ok(preview.includes("logicStack=localNodePath(localGraphNodes[i].id).map(n=>n.id)"), "3D focus must synchronize the vertical framework path.");
+assert.ok(preview.includes('id="detailParentMeta"'), "Node detail must show the actual parent node.");
+assert.ok(preview.includes('id="detailChildMeta"'), "Node detail must show actual direct children.");
+assert.ok(preview.includes('id="detailHorizontalMeta"'), "Node detail must show confirmed horizontal relation counts.");
 assert.ok(preview.includes("syncFrameworkFromGraph(framework.id,{reason:\"正式图谱存在节点但框架根节点为空，恢复框架投影\"})"), "An empty stale framework projection must be repaired from the formal graph.");
 assert.ok(!preview.includes('<div class="metric-value">36</div>'), "Static source counts must not be presented as real data.");
 assert.ok(!preview.includes('<div class="metric-value">612</div>'), "Static relation counts must not be presented as real data.");
