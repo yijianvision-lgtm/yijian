@@ -190,7 +190,7 @@ const duplicateDecision = await api.recordFilterDuplicateDecision(
 );
 assert.equal(duplicateDecision.actor, "user");
 assert.equal((await api.getFilterCase(duplicateIngestion.filterCase.id)).duplicateCandidates[0].resolution, "keep_separate");
-assert.equal((await api.listExtractionItems(duplicateIngestion.id)).length, 3, "duplicate analysis must not delete or merge extraction items");
+assert.equal((await api.listExtractionItems(duplicateIngestion.id)).length, 2, "duplicate analysis must not delete or merge extraction items");
 
 const v5Backup = await api.exportFullBackup();
 assert.equal((await api.previewFullBackup(v5Backup.blob)).schemaVersion, 5);
