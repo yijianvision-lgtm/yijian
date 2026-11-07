@@ -25,6 +25,12 @@ A persistent, interactive 3D personal knowledge system.
 - **V2-B｜认知舰桥版：** [打开独立预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v2-b-bridge.html) · [GitHub 源文件](ui-preview-v2-b-bridge.html)
 - **V2-C｜谱系导航版：** [打开独立预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v2-c-lineage.html) · [GitHub 源文件](ui-preview-v2-c-lineage.html)
 
+### V3 三套明显不同的完整布局（本轮供选择）
+
+- **V3-A｜纯宇宙画布：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-a-cosmos.html) · [源文件](ui-preview-v3-a-cosmos.html) — 隐藏常驻侧栏，以全屏三维空间为主，信息收进底部浮动控制区。
+- **V3-B｜认知控制台：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-b-command.html) · [源文件](ui-preview-v3-b-command.html) — 左侧工作导航、中间三维工作区、右侧知识详情，固定三栏。
+- **V3-C｜纵向谱系工作台：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-c-lineage.html) · [源文件](ui-preview-v3-c-lineage.html) — 默认呈现纵向逻辑树，三维宇宙作为背景和定位上下文。
+
 These three V2 concepts preserve the existing preview interactions and local data layer while testing distinct information layouts. They are review candidates, not a production replacement; choose one before migrating the formal entry page.
 - **Design charter:** [观复 Mind｜最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md).
 - **Implementation blueprint:** [产品结构与后台实施蓝图](docs/GUANFU-MIND-IMPLEMENTATION-BLUEPRINT.md).
