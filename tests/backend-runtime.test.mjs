@@ -166,6 +166,32 @@ assert.equal(mindmapIngestion.items[1].locator.kind, "topic");
 assert.deepEqual(mindmapIngestion.items[1].locator.topicPath, ["总主题", "分支主题"]);
 assert.equal(mindmapIngestion.items[1].locator.sourcePart, "content.xml");
 
+
+const duplicateSource = await api.saveSource({ id: "src-duplicate-test", sourceType: "lecture", title: "Duplicate comparison sample" });
+const duplicateIngestion = await api.createExtractionFromParsedSource({
+  sourceId: duplicateSource.id,
+  referenceId: "ref-duplicate-test",
+  name: "Duplicate comparison sample",
+  pages: [{
+    page: 1,
+    text: "知识过滤必须先判断概念的定义、适用范围和来源语境，不能只因为文字相似就直接合并知识节点。\n\n知识过滤必须先判断概念的定义、适用范围以及来源语境，不能因为文字相似便直接合并知识节点。"
+  }]
+});
+assert.equal(duplicateIngestion.items.length, 2);
+const duplicateAnalysis = await api.analyzeFilterCaseDuplicates(duplicateIngestion.filterCase.id);
+assert.equal(duplicateAnalysis.filterCase.status, "filtering");
+assert.equal(duplicateAnalysis.pairs.length, 1);
+assert.equal(duplicateAnalysis.pairs[0].matchType, "near_duplicate");
+const duplicateDecision = await api.recordFilterDuplicateDecision(
+  duplicateIngestion.filterCase.id,
+  duplicateAnalysis.pairs[0].itemIds,
+  "keep_separate",
+  "语境不同，先保持独立。"
+);
+assert.equal(duplicateDecision.actor, "user");
+assert.equal((await api.getFilterCase(duplicateIngestion.filterCase.id)).duplicateCandidates[0].resolution, "keep_separate");
+assert.equal((await api.listExtractionItems(duplicateIngestion.id)).length, 3, "duplicate analysis must not delete or merge extraction items");
+
 const v5Backup = await api.exportFullBackup();
 assert.equal((await api.previewFullBackup(v5Backup.blob)).schemaVersion, 5);
 
