@@ -29,8 +29,11 @@ assert.ok(html.includes("body.focus-active .right-panel .mini-map .minimap-quadr
 assert.ok(html.includes("transform:scale(.12)!important;"), "Retracted quadrants must shrink while fading.");
 const selectNodeBody = html.match(/function selectNode\(i,append=true\)\{([\s\S]*?)\}const directionPrompts/);
 assert.ok(selectNodeBody, "Expected to locate selectNode implementation.");
-assert.ok(!selectNodeBody[1].includes('remove("quadrants-retracting")'), "Selecting a new core must not immediately undo the quadrant retraction.");
+assert.ok(selectNodeBody[1].includes("classList.add('quadrants-retracting')"), "Selecting a core node directly must trigger quadrant retraction, not only directional-button clicks.");
 assert.ok(html.includes("minimapQuadrantReturn?.addEventListener('click',event=>{event.stopPropagation();document.getElementById('continuumFocus')?.classList.remove('quadrants-retracting')"), "The minimap control must restore the four directions on demand.");
 
 
 console.log("Checked " + scripts.length + " inline scripts and V3-A exploration contracts.");
+
+assert.ok(html.includes("document.getElementById('search').addEventListener('click',()=>open('globalSearch'))"), "Global search should open only after an explicit click, not merely when the page or input receives focus.");
+assert.ok(!html.includes("document.getElementById('search').addEventListener('focus',()=>open('globalSearch'))"), "Global search must not auto-open on focus during page entry.");
