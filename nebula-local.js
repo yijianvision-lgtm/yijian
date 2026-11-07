@@ -3,8 +3,8 @@
  * No login, cloud database, account service or remote file storage.
  */
 const DB_NAME = "nebula_local_v2";
-const DB_VERSION = 4;
-const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations"];
+const DB_VERSION = 5;
+const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence"];
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -12,7 +12,7 @@ function openDB() {
     req.onupgradeneeded = () => {
       const db = req.result;
       for (const name of STORES) if (!db.objectStoreNames.contains(name)) {
-        if (["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations"].includes(name)) db.createObjectStore(name, { keyPath: "id" });
+        if (["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence"].includes(name)) db.createObjectStore(name, { keyPath: "id" });
         else db.createObjectStore(name);
       }
     };
@@ -420,7 +420,7 @@ async function backupPayload() {
   }
   const local={};
   try { for(const key of BACKUP_LOCAL_STORAGE_KEYS) { const value=localStorage.getItem(key); if(value!==null)local[key]=value; } } catch {}
-  return {format:"NEBULA_FULL_BACKUP",schemaVersion:4,exportedAt:nowISO(),stores,localStorage:local,
+  return {format:"NEBULA_FULL_BACKUP",schemaVersion:5,exportedAt:nowISO(),stores,localStorage:local,
     manifest:Object.fromEntries(Object.entries(stores).map(([k,v])=>[k,{records:v.length}])),
     notes:["原始讲义与 AI 对话分别备份，包含原始文件 Blob。","仅备份非敏感的 NEBULA 本地设置；访问令牌和 API 密钥不会导出。","本地文件夹授权句柄不会导出，恢复后需重新授权。"]};
 }
@@ -433,7 +433,7 @@ async function makeFullBackup() {
 }
 async function validateFullBackup(input) {
   const parsed=typeof input==="string"?JSON.parse(input):input;
-  if(!parsed||parsed.format!=="NEBULA_FULL_BACKUP"||!parsed.stores||typeof parsed.stores!=="object"||![3,4].includes(Number(parsed.schemaVersion))) throw new Error("这不是有效或受支持的 NEBULA 完整备份文件。");
+  if(!parsed||parsed.format!=="NEBULA_FULL_BACKUP"||!parsed.stores||typeof parsed.stores!=="object"||![3,4,5].includes(Number(parsed.schemaVersion))) throw new Error("这不是有效或受支持的 NEBULA 完整备份文件。");
   const supported=new Set(STORES);
   for(const [name,rows] of Object.entries(parsed.stores)) {
     if(!supported.has(name)||!Array.isArray(rows)) throw new Error("备份包含不支持的数据表："+name);
@@ -867,4 +867,182 @@ Object.assign(NEBULA_LOCAL,{
     if(source.sourceType==="ai_conversation")return {source,record:await this.getConversation(source.referenceId)};
     return {source,record:null};
   }
+});
+
+
+// --- Guanfu Mind P1: extraction, filtering and framework records (schema v5) ---
+const FILTER_STATUSES = new Set(["received","extracting","extracted","filtering","needs_review","approved","rejected","failed","archived"]);
+const FILTER_TRANSITIONS = {
+  received: new Set(["extracting","failed","archived"]),
+  extracting: new Set(["extracted","failed","archived"]),
+  extracted: new Set(["filtering","needs_review","failed","archived"]),
+  filtering: new Set(["needs_review","failed","archived"]),
+  needs_review: new Set(["filtering","approved","rejected","archived"]),
+  approved: new Set(["archived"]),
+  rejected: new Set(["filtering","archived"]),
+  failed: new Set(["received","archived"]),
+  archived: new Set()
+};
+const requireId = (value,label) => {
+  if(value===undefined||value===null||String(value).trim()==="") throw new Error(label+" ID 为必填项。");
+  return String(value);
+};
+const requireText = (value,label,max=20000) => {
+  const text=String(value??"").trim();
+  if(!text) throw new Error(label+"不能为空。");
+  if(text.length>max) throw new Error(label+"长度超出限制。");
+  return text;
+};
+const cleanRecord = record => {
+  if(!record||typeof record!=="object"||Array.isArray(record)) throw new Error("记录格式无效。");
+  return {...record};
+};
+async function createManagedRecord(store,record,prefix,required=[]) {
+  const item=cleanRecord(record);
+  for(const [key,label] of required) requireId(item[key],label);
+  const now=Date.now();
+  item.id=item.id?requireId(item.id,"记录"):makeRecordId(prefix);
+  item.createdAt=Number(item.createdAt)||now;
+  item.updatedAt=now;
+  await putRecord(store,item);
+  return item;
+}
+async function updateManagedRecord(store,id,patch,allowedFields) {
+  const current=await readRecord(store,requireId(id,"记录"));
+  if(!current) throw new Error("找不到要更新的记录。");
+  const changes=cleanRecord(patch);
+  for(const key of Object.keys(changes)) if(!allowedFields.includes(key)) throw new Error("不允许更新字段："+key);
+  const next={...current,...changes,id:current.id,createdAt:current.createdAt,updatedAt:Date.now()};
+  await putRecord(store,next);
+  return next;
+}
+async function transitionFilterRecord(store,id,nextStatus,patch={}) {
+  if(!FILTER_STATUSES.has(nextStatus)) throw new Error("过滤状态无效。");
+  const current=await readRecord(store,requireId(id,"记录"));
+  if(!current) throw new Error("找不到过滤记录。");
+  if(current.status!==nextStatus&&!FILTER_TRANSITIONS[current.status]?.has(nextStatus)) throw new Error("不允许从 "+current.status+" 直接变更为 "+nextStatus+"。");
+  const changes=cleanRecord(patch);
+  if(["id","createdAt","status","updatedAt"].some(key=>Object.prototype.hasOwnProperty.call(changes,key))) throw new Error("状态变更补丁不能覆盖系统字段。");
+  const next={...current,...changes,status:nextStatus,updatedAt:Date.now()};
+  await putRecord(store,next);
+  return next;
+}
+Object.assign(NEBULA_LOCAL,{
+  async createExtractionBatch(record) {
+    const item=cleanRecord(record);
+    if(item.sourceId && !(await this.getSource(item.sourceId))) throw new Error("提取批次引用的来源不存在。");
+    item.status=item.status||"received";
+    if(!FILTER_STATUSES.has(item.status)) throw new Error("提取批次状态无效。");
+    return createManagedRecord("extractionBatches",{...item,stats:item.stats||{total:0,completed:0,failed:0},warnings:Array.isArray(item.warnings)?item.warnings:[]},"extract",[]);
+  },
+  async getExtractionBatch(id){return readRecord("extractionBatches",id);},
+  async listExtractionBatches(sourceId){return (await request("extractionBatches","readonly",s=>s.getAll())).filter(x=>!sourceId||String(x.sourceId)===String(sourceId)).sort((a,b)=>b.createdAt-a.createdAt);},
+  async updateExtractionBatch(id,patch={}) {
+    const current=await readRecord("extractionBatches",id);
+    if(!current) throw new Error("找不到提取批次。");
+    const changes=cleanRecord(patch);
+    const nextStatus=changes.status||current.status;delete changes.status;
+    const next=await transitionFilterRecord("extractionBatches",id,nextStatus,changes);
+    return next;
+  },
+  async createExtractionItem(record) {
+    const item=cleanRecord(record);
+    item.batchId=requireId(item.batchId,"提取批次");
+    const batch=await this.getExtractionBatch(item.batchId);
+    if(!batch) throw new Error("提取候选必须属于一个已存在的提取批次。");
+    if(item.sourceId && !(await this.getSource(item.sourceId))) throw new Error("提取候选引用的来源不存在。");
+    item.status=item.status||"extracted";
+    if(!FILTER_STATUSES.has(item.status)) throw new Error("提取候选状态无效。");
+    return createManagedRecord("extractionItems",{...item,excerpt:String(item.excerpt||""),locator:item.locator||null},"item",[]);
+  },
+  async getExtractionItem(id){return readRecord("extractionItems",id);},
+  async listExtractionItems(batchId){return (await request("extractionItems","readonly",s=>s.getAll())).filter(x=>!batchId||String(x.batchId)===String(batchId)).sort((a,b)=>a.createdAt-b.createdAt);},
+  async updateExtractionItem(id,patch={}) {
+    const allowed=["title","content","normalizedContent","excerpt","locator","candidateType","quality","parserMetadata","warnings","sourceId"];
+    return updateManagedRecord("extractionItems",id,patch,allowed);
+  },
+  async createFilterCase(record) {
+    const item=cleanRecord(record);
+    const ids=[...new Set((item.inputItemIds||[]).map(x=>requireId(x,"提取候选")))];
+    if(!ids.length) throw new Error("过滤任务至少需要一个提取候选。");
+    for(const id of ids) if(!(await this.getExtractionItem(id))) throw new Error("过滤任务引用了不存在的提取候选："+id);
+    item.inputItemIds=ids;
+    item.status=item.status||"received";
+    if(!FILTER_STATUSES.has(item.status)) throw new Error("过滤任务状态无效。");
+    item.currentStage=item.currentStage||"dedupe";
+    item.proposedNodeIds=Array.isArray(item.proposedNodeIds)?item.proposedNodeIds:[];
+    return createManagedRecord("filterCases",item,"filter",[]);
+  },
+  async getFilterCase(id){return readRecord("filterCases",id);},
+  async listFilterCases(status) {return (await request("filterCases","readonly",s=>s.getAll())).filter(x=>!status||x.status===status).sort((a,b)=>b.updatedAt-a.updatedAt);},
+  async updateFilterCase(id,patch={}) {
+    const changes=cleanRecord(patch),current=await readRecord("filterCases",id);
+    if(!current) throw new Error("找不到过滤任务。");
+    const nextStatus=changes.status||current.status;delete changes.status;
+    const allowed=["currentStage","inputItemIds","candidateNodeId","proposedNodeIds","duplicateCandidates","locationSuggestions","relationSuggestions","evidenceGaps","conflicts","summary","reviewProposalId","lastError"];
+    for(const key of Object.keys(changes)) if(!allowed.includes(key)) throw new Error("不允许更新过滤任务字段："+key);
+    if(changes.inputItemIds) {
+      changes.inputItemIds=[...new Set(changes.inputItemIds.map(x=>requireId(x,"提取候选")))];
+      for(const itemId of changes.inputItemIds) if(!(await this.getExtractionItem(itemId))) throw new Error("过滤任务引用了不存在的提取候选："+itemId);
+    }
+    return transitionFilterRecord("filterCases",id,nextStatus,changes);
+  },
+  async appendFilterDecision(record) {
+    const item=cleanRecord(record);
+    item.filterCaseId=requireId(item.filterCaseId,"过滤任务");
+    if(!(await this.getFilterCase(item.filterCaseId))) throw new Error("决策引用的过滤任务不存在。");
+    const types=new Set(["dedupe","classify","locate","relate","verify","accept","reject","defer","edit"]);
+    if(!types.has(item.decisionType)) throw new Error("过滤决策类型无效。");
+    item.actor=item.actor||"user";
+    item.evidenceIds=Array.isArray(item.evidenceIds)?[...new Set(item.evidenceIds.map(String))]:[];
+    return createManagedRecord("filterDecisions",item,"decision",[]);
+  },
+  async listFilterDecisions(filterCaseId) {return (await request("filterDecisions","readonly",s=>s.getAll())).filter(x=>!filterCaseId||String(x.filterCaseId)===String(filterCaseId)).sort((a,b)=>a.createdAt-b.createdAt);},
+  async createFramework(record) {
+    const item=cleanRecord(record);
+    item.title=requireText(item.title,"框架名称",300);
+    item.rootNodeIds=Array.isArray(item.rootNodeIds)?[...new Set(item.rootNodeIds.map(String))]:[];
+    item.status=item.status||"active";
+    const saved=await createManagedRecord("frameworks",item,"framework",[]);
+    const version=await this.saveFrameworkVersion({frameworkId:saved.id,snapshot:{...saved},changeSummary:"创建框架",createdBy:"user"});
+    saved.versionId=version.id;
+    await putRecord("frameworks",{...saved,updatedAt:Date.now()});
+    return {...saved,versionId:version.id};
+  },
+  async getFramework(id){return readRecord("frameworks",id);},
+  async listFrameworks(){return (await request("frameworks","readonly",s=>s.getAll())).sort((a,b)=>b.updatedAt-a.updatedAt);},
+  async updateFramework(id,patch={}) {
+    const allowed=["title","description","rootNodeIds","status","metadata"];
+    const next=await updateManagedRecord("frameworks",id,patch,allowed);
+    await this.saveFrameworkVersion({frameworkId:next.id,snapshot:{...next},changeSummary:"更新框架",createdBy:"user"});
+    return next;
+  },
+  async saveFrameworkVersion(record) {
+    const item=cleanRecord(record);
+    item.frameworkId=requireId(item.frameworkId,"框架");
+    if(!(await this.getFramework(item.frameworkId))) throw new Error("框架版本引用的框架不存在。");
+    if(!item.snapshot||typeof item.snapshot!=="object") throw new Error("框架版本必须保存完整快照。");
+    return createManagedRecord("frameworkVersions",item,"framework_version",[]);
+  },
+  async listFrameworkVersions(frameworkId) {return (await request("frameworkVersions","readonly",s=>s.getAll())).filter(x=>String(x.frameworkId)===String(frameworkId)).sort((a,b)=>a.createdAt-b.createdAt);},
+  async saveNodePosition(record) {
+    const item=cleanRecord(record);
+    item.nodeId=requireId(item.nodeId,"知识节点");
+    item.frameworkId=requireId(item.frameworkId,"框架");
+    if(!(await this.getFramework(item.frameworkId))) throw new Error("节点位置引用的框架不存在。");
+    return putRecord("nodePositions",{...item,id:item.id||item.frameworkId+"::"+item.nodeId,updatedAt:Date.now()});
+  },
+  async getNodePosition(frameworkId,nodeId){return readRecord("nodePositions",String(frameworkId)+"::"+String(nodeId));},
+  async listNodePositions(frameworkId){return (await request("nodePositions","readonly",s=>s.getAll())).filter(x=>!frameworkId||String(x.frameworkId)===String(frameworkId));},
+  async createRelationEvidence(record) {
+    const item=cleanRecord(record);
+    item.relationId=requireId(item.relationId,"知识关系");
+    const relations=await request("knowledgeRelations","readonly",s=>s.getAll());
+    if(!relations.some(x=>String(x.id)===String(item.relationId))) throw new Error("证据引用的知识关系不存在。");
+    if(item.sourceId && !(await this.getSource(item.sourceId))) throw new Error("关系证据引用的来源不存在。");
+    item.reviewStatus=item.reviewStatus||"proposed";
+    if(!["proposed","confirmed","disputed","unknown"].includes(item.reviewStatus)) throw new Error("关系证据状态无效。");
+    return createManagedRecord("relationEvidence",item,"relation_evidence",[]);
+  },
+  async listRelationEvidence(relationId) {return (await request("relationEvidence","readonly",s=>s.getAll())).filter(x=>!relationId||String(x.relationId)===String(relationId)).sort((a,b)=>a.createdAt-b.createdAt);}
 });
