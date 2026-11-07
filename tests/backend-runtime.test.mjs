@@ -47,6 +47,13 @@ const conversation = await api.saveConversation({
   transcript: "A local-only conversation fixture.",
   blob: new Blob(["original attachment"], { type: "text/plain" })
 });
+assert.ok(conversation.extractionBatchId, "AI conversations should enter the extraction pipeline.");
+assert.ok(conversation.extractionItemCount >= 1, "Conversation text should produce filter candidates.");
+const conversationItems = await api.listExtractionItems(conversation.extractionBatchId);
+const conversationEvidence = await api.resolveExtractionEvidence(conversationItems[0].id);
+assert.equal(conversationEvidence.source.sourceType, "ai_conversation");
+assert.equal(conversationEvidence.reference.id, conversation.id);
+assert.ok(conversationEvidence.locatedText.includes("local-only conversation fixture."));
 const firstReview = await api.saveLearningRecord({ nodeId: "base", activityType: "recall", score: 1 });
 assert.equal(firstReview.schedule.intervalDays, 1);
 assert.ok(firstReview.schedule.nextReviewAt > Date.now());
