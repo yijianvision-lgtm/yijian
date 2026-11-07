@@ -1463,9 +1463,10 @@ document.querySelectorAll("#filter-workbench [data-close]").forEach(button=>butt
 window.addEventListener("keydown",event=>{if(event.key==="Escape")$("filter-workbench").classList.remove("open");});
 async function refreshMindOverview(){
  try{
-  const [dashboard,relations,filterSnapshot]=await Promise.all([
-   NEBULA_LOCAL.getCognitiveDashboard(),NEBULA_LOCAL.listKnowledgeRelations(),NEBULA_LOCAL.getFilterWorkbenchSnapshot()
+  const [dashboard,relations,filterSnapshot,graph]=await Promise.all([
+   NEBULA_LOCAL.getCognitiveDashboard(),NEBULA_LOCAL.listKnowledgeRelations(),NEBULA_LOCAL.getFilterWorkbenchSnapshot(),NEBULA_LOCAL.loadGraph()
   ]);
+  const nodes=Array.isArray(graph?.nodes)?graph.nodes:[];
   $("overviewNodeCount").textContent=dashboard.nodeCount;
   $("overviewSourceCount").textContent=dashboard.sourceCount;
   $("overviewRelationCount").textContent=relations.length;
