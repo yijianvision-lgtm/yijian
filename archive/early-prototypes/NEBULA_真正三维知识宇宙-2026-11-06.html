@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEBULA · 真正的三维知识宇宙</title>
+<style>
+:root{--ink:#e9f2ff;--muted:#8798b7;--line:#344665;--cyan:#83dcff}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030711;color:var(--ink);font:14px/1.5 system-ui,"Segoe UI",sans-serif}
+#stage{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 45%,#111d39,#070d1b 52%,#02040a)}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+header{position:fixed;z-index:4;top:15px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:center;gap:12px;pointer-events:none}
+header>*{pointer-events:auto}.brand{font-weight:800;letter-spacing:.12em;text-shadow:0 0 22px #75caff66}.brand b{color:#83dcff}
+.tools{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+button,input,textarea{font:inherit;color:inherit}button{border:1px solid #354765;background:#101b30d9;border-radius:9px;padding:8px 11px;cursor:pointer;backdrop-filter:blur(14px)}button:hover{border-color:#8bdfff;background:#192c49}button.primary{background:#245b89;border-color:#65c8ff}
+#hint{position:fixed;top:67px;left:21px;color:#8294b3;font-size:12px;z-index:2;pointer-events:none}
+#axes{position:fixed;bottom:112px;left:20px;color:#7f91af;font-size:11px;line-height:1.8;pointer-events:none;z-index:2}
+#timeline{position:fixed;z-index:3;bottom:13px;left:18px;right:18px;height:82px;border:1px solid #34445f;background:#091326c9;backdrop-filter:blur(18px);border-radius:14px;padding:9px 14px}
+#timeline .top{display:flex;justify-content:space-between;color:#91a2c0;font-size:11px}.track{height:2px;background:linear-gradient(90deg,#5679b9,#79d9ff,#ae9aff);margin:12px 8px 9px;position:relative}.tick{position:absolute;top:-4px;width:10px;height:10px;border-radius:50%;background:#9ee4ff;box-shadow:0 0 12px #83dcff;transform:translateX(-50%);cursor:pointer}.tick.active{background:white;box-shadow:0 0 0 5px #8bdfff33,0 0 18px #8bdfff}
+.labels{display:flex;justify-content:space-between;gap:6px;color:#8191ad;font-size:10px;white-space:nowrap;overflow:hidden}.labels span{overflow:hidden;text-overflow:ellipsis}
+#float{display:none;position:fixed;z-index:5;width:min(590px,calc(100vw - 24px));max-height:67vh;overflow:auto;transform:translate(-50%,-50%);border:1px solid #8dcaff55;border-radius:18px;background:linear-gradient(145deg,#172944df,#080f20e8);backdrop-filter:blur(25px) saturate(150%);box-shadow:0 20px 80px #000b,0 0 45px #66caff22}
+.fhead{padding:14px 16px;border-bottom:1px solid #52698b55;display:flex;justify-content:space-between;gap:10px}.eyebrow{font-size:10px;letter-spacing:.15em;color:#86dcff}.fhead h2{margin:3px 0;font-size:19px}.fhead p{margin:0;color:#a7b7d1;font-size:12px}
+.quads{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px}.quad{border:1px solid #9bb9e333;background:#101f37b8;border-radius:12px;padding:11px;min-height:112px}.quad h3{font-size:12px;margin:0 0 7px}.quad p{font-size:12px;line-height:1.65;color:#c7d5e9;margin:0;white-space:pre-wrap}.quad:nth-child(1){border-top:2px solid #75d1ff}.quad:nth-child(2){border-top:2px solid #b39bff}.quad:nth-child(3){border-top:2px solid #73d9b2}.quad:nth-child(4){border-top:2px solid #e6c47e}
+.meta{padding:0 14px 13px;display:flex;gap:7px;flex-wrap:wrap}.chip{font-size:10px;border:1px solid #4a6080;border-radius:20px;padding:4px 8px;color:#c1d2eb}
+#editor{display:none;position:fixed;z-index:7;right:16px;top:70px;width:min(340px,calc(100vw - 32px));max-height:78vh;overflow:auto;background:#091326f2;border:1px solid #415779;border-radius:14px;padding:14px;backdrop-filter:blur(20px);box-shadow:0 20px 60px #000b}
+#editor h3{margin:0 0 10px}.field{display:grid;gap:4px;margin:8px 0}.field label{font-size:11px;color:#9bacc7}.field input,.field textarea{width:100%;background:#101d33;border:1px solid #344967;border-radius:8px;padding:8px;outline:none}.field textarea{min-height:58px;resize:vertical}.qedit{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#toast{display:none;position:fixed;z-index:9;top:74px;left:50%;transform:translateX(-50%);background:#172945;border:1px solid #476487;border-radius:30px;padding:8px 14px;font-size:12px}
+@media(max-width:600px){header{left:10px;right:10px;top:9px;align-items:flex-start}.brand{font-size:12px}.tools{max-width:70%}.tools button{font-size:10px;padding:6px}#hint{top:59px;left:12px;font-size:10px}#timeline{left:8px;right:8px;bottom:8px;height:77px;padding:8px}.quads{gap:6px;padding:8px}.quad{padding:8px;min-height:120px}.quad p{font-size:11px}}
+</style></head>
+<body>
+<div id="stage"><canvas id="gl"></canvas></div>
+<header><div class="brand">✧ <b>NEBULA</b> / 3D KNOWLEDGE UNIVERSE</div><div class="tools">
+<button id="add" class="primary">＋ 星点</button><button id="edit">编辑节点</button><button id="reset">重置视角</button><button id="export">导出数据</button><button id="import">导入</button><input type="file" id="file" accept="application/json" hidden>
+</div></header>
+<div id="hint">拖动：绕空间旋转　·　滚轮：沿 Z 轴缩放　·　点击星点：打开四向透视</div>
+<div id="axes">WORLD COORDINATES<br>X · 横向空间<br>Y · 纵向空间<br>Z · 深度空间</div>
+<div id="float"><div class="fhead"><div><div class="eyebrow">SPATIAL NODE / FOUR-WAY VIEW</div><h2 id="ftitle"></h2><p id="fdesc"></p></div><button id="close">✕</button></div><div class="quads" id="quads"></div><div class="meta" id="meta"></div></div>
+<aside id="editor"><h3>✧ 编辑三维知识节点</h3>
+<div class="field"><label>知识点名称</label><input id="ename"></div><div class="field"><label>简要说明</label><textarea id="edesc"></textarea></div>
+<div class="qedit" id="qedit"></div>
+<div class="field"><label>时间 / 时期</label><input id="etime" placeholder="例如：公元 600 年 / 初期"></div><div class="field"><label>时间链</label><input id="eperiod" placeholder="前置事件 → 当前节点 → 后续影响"></div>
+<div class="field"><label>关联星点名称（逗号分隔）</label><input id="elinks"></div>
+<div class="field"><label>空间位置 X / Y / Z（可选，逗号分隔）</label><input id="epos" placeholder="0, 0, 0"></div>
+<div class="tools"><button class="primary" id="save">保存</button><button id="del">删除</button><button id="cancel">关闭</button></div></aside>
+<div id="timeline"><div class="top"><span>✧ 时间链 / CHRONOLOGY</span><span id="timeCaption">点击星点查看时间位置</span></div><div class="track" id="track"></div><div class="labels" id="labels"></div></div>
+<div id="toast"></div>
+<script>
+(()=>{
+const $=id=>document.getElementById(id),canvas=$('gl'),gl=canvas.getContext('webgl',{antialias:true,alpha:false});
+if(!gl){$('hint').textContent='当前浏览器未能启用 WebGL，请开启硬件加速。';return}
+const initial=[
+{id:'a',name:'问题意识',desc:'从值得解释的现象出发，明确真正需要回答的问题。',pos:[-1.6,.3,-.7],time:'起点',period:'观察现象 → 提出问题',q:['追溯现象产生的背景、条件与来源。','推演问题解决后可能带来的认识或行动。','联系相邻领域，寻找可借鉴的概念与案例。','辨析问题边界：哪些属于问题本身，哪些只是表象。'],links:['b','c']},
+{id:'b',name:'概念与定义',desc:'为关键概念划定边界，避免不同语境中的含义漂移。',pos:[-.6,1.1,.9],time:'形成阶段',period:'问题意识 → 概念界定 → 分析框架',q:['概念从何种语境、经验或理论中产生？','定义会如何影响后续判断与实践？','与近义概念、相关学科建立联系。','比较不同定义的范围、假设与适用条件。'],links:['a','d','e']},
+{id:'c',name:'证据与材料',desc:'收集可检验的信息，让判断建立在材料而非直觉之上。',pos:[1.4,.5,-1.1],time:'研究阶段',period:'提出问题 → 收集材料 → 验证判断',q:['证据来自哪里？形成过程是否可靠？','新证据可能改变哪些既有结论？','联系其他来源，寻找交叉验证。','辨析事实、解释、推测与立场。'],links:['a','d']},
+{id:'d',name:'结构与机制',desc:'把分散因素组织起来，解释它们如何相互作用。',pos:[.4,-.8,1.3],time:'分析阶段',period:'材料积累 → 结构识别 → 机制解释',q:['结构形成前有哪些历史条件与驱动因素？','机制持续运行会产生哪些连锁结果？','与其他系统或模型比较其共同结构。','区分关键变量、约束条件和偶然因素。'],links:['b','c','e']},
+{id:'e',name:'结论与应用',desc:'把分析转化为可说明、可检验、可迁移的认识。',pos:[1.8,-.9,-.3],time:'输出阶段',period:'机制解释 → 形成结论 → 应用与修正',q:['结论依赖哪些前提与证据？','应用后可能出现哪些长期影响？','可以迁移到哪些场景或领域？','与替代方案比较，识别局限和边界。'],links:['b','d']}
+];
+let nodes=JSON.parse(localStorage.getItem('nebula3d')||'null')||initial,selected=null,rotX=-.28,rotY=.48,zoom=6.5,pan=[0,0],pointer=null,hitNodes=[],stars=[];
+const vs=`attribute vec3 aPosition;attribute float aSize;uniform mat4 uMVP;uniform float uPixelRatio;varying float vDepth;void main(){vec4 p=uMVP*vec4(aPosition,1.0);gl_Position=p;gl_PointSize=clamp(aSize*uPixelRatio*(2.0/max(.2,p.w)),2.0,42.0);vDepth=p.w;}`;
+const fs=`precision mediump float;uniform vec3 uColor;uniform float uGlow;varying float vDepth;void main(){vec2 p=gl_PointCoord-.5;float d=length(p);if(d>.5)discard;float core=smoothstep(.19,.02,d);float halo=exp(-d*13.0)*.42;gl_FragColor=vec4(uColor,core+halo);}`;
+function shader(type,src){let s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(s);return s}
+let program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,vs));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,fs));gl.linkProgram(program);gl.useProgram(program);
+const posLoc=gl.getAttribLocation(program,'aPosition'),sizeLoc=gl.getAttribLocation(program,'aSize'),mvpLoc=gl.getUniformLocation(program,'uMVP'),colorLoc=gl.getUniformLocation(program,'uColor'),pixelLoc=gl.getUniformLocation(program,'uPixelRatio');
+let vb=gl.createBuffer(),sb=gl.createBuffer(),lineB=gl.createBuffer();
+function mul(a,b){let o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++)o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];return o}
+function perspective(fov,aspect,near,far){let f=1/Math.tan(fov/2),nf=1/(near-far);return new Float32Array([f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,2*far*near*nf,0])}
+function viewMatrix(){let cx=Math.cos(rotX),sx=Math.sin(rotX),cy=Math.cos(rotY),sy=Math.sin(rotY);let rY=new Float32Array([cy,0,-sy,0,0,1,0,0,sy,0,cy,0,0,0,0,1]);let rX=new Float32Array([1,0,0,0,0,cx,sx,0,0,-sx,cx,0,0,0,0,1]);let t=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,pan[0],pan[1],-zoom,1]);return mul(t,mul(rX,rY))}
+function mvp(){return mul(perspective( Math.PI/3,canvas.width/canvas.height,.1,100),viewMatrix())}
+function transform(m,p){let x=p[0],y=p[1],z=p[2],w=m[3]*x+m[7]*y+m[11]*z+m[15];return {x:(m[0]*x+m[4]*y+m[8]*z+m[12])/w,y:(m[1]*x+m[5]*y+m[9]*z+m[13])/w,w}}
+function project(p){let v=transform(mvp(),p);return {x:(v.x+1)*canvas.clientWidth/2,y:(1-v.y)*canvas.clientHeight/2,w:v.w}}
+function uploadAttrib(buffer,loc,data,size){gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,size,gl.FLOAT,false,0,0)}
+function draw(){
+ let d=devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;if(canvas.width!==Math.round(w*d)||canvas.height!==Math.round(h*d)){canvas.width=Math.round(w*d);canvas.height=Math.round(h*d)}
+ gl.viewport(0,0,canvas.width,canvas.height);gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE);gl.clearColor(.012,.02,.045,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniformMatrix4fv(mvpLoc,false,mvp());gl.uniform1f(pixelLoc,d);
+ // faint 3D reference axes
+ let axes=[-2.7,0,0,2.7,0,0,0,-2.1,0,0,2.1,0,0,0,-2.2,0,0,2.2];uploadAttrib(lineB,posLoc,axes,3);gl.uniform3f(colorLoc,.18,.35,.55);gl.drawArrays(gl.LINES,0,6);
+ // constellation edges, genuinely 3D line segments
+ let lines=[],seen=new Set();nodes.forEach(n=>(n.links||[]).forEach(id=>{let b=nodes.find(x=>x.id===id);if(!b)return;let k=[n.id,id].sort().join('|');if(seen.has(k))return;seen.add(k);lines.push(...n.pos,...b.pos)}));
+ uploadAttrib(lineB,posLoc,lines,3);gl.uniform3f(colorLoc,.22,.53,.78);gl.drawArrays(gl.LINES,0,lines.length/3);
+ let sorted=[...nodes].sort((a,b)=>b.pos[2]-a.pos[2]);let p=[],s=[];hitNodes=[];
+ sorted.forEach(n=>{p.push(...n.pos);s.push(n.id===selected?24:17);let q=project(n.pos);hitNodes.push({n,x:q.x,y:q.y,depth:q.w})});
+ uploadAttrib(vb,posLoc,p,3);uploadAttrib(sb,sizeLoc,s,1);gl.uniform3f(colorLoc,.53,.82,1);gl.drawArrays(gl.POINTS,0,nodes.length);
+ // selected star overlay
+ if(selected){let n=nodes.find(x=>x.id===selected);if(n){uploadAttrib(vb,posLoc,n.pos,3);uploadAttrib(sb,sizeLoc,[31],1);gl.uniform3f(colorLoc,.8,.94,1);gl.drawArrays(gl.POINTS,0,1)}}
+ drawLabels();
+}
+function drawLabels(){let old=document.getElementById('labels3d');if(old)old.remove();let layer=document.createElement('div');layer.id='labels3d';layer.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden';hitNodes.forEach(({n,x,y,depth})=>{if(depth<=0)return;let l=document.createElement('div');l.textContent=n.name;l.style.cssText=`position:absolute;left:${x}px;top:${y+13}px;transform:translateX(-50%);font:11px system-ui;color:${n.id===selected?'#e9f8ff':'#a5bad7'};text-shadow:0 0 9px #5abaff;white-space:nowrap`;layer.append(l)});document.body.append(layer)}
+function save(){localStorage.setItem('nebula3d',JSON.stringify(nodes))}
+function current(){return nodes.find(n=>n.id===selected)}
+function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',1700)}
+function openNode(n){selected=n.id;$('float').style.display='block';$('ftitle').textContent=n.name;$('fdesc').textContent=n.desc||'尚未添加说明';let titles=['↑ 前 · 瞻前','↓ 后 · 顾后','← 左 · 左顾','→ 右 · 右盼'];$('quads').innerHTML=n.q.map((v,i)=>`<div class="quad"><h3>${titles[i]}</h3><p>${esc(v||'编辑节点以补充这一方向的思考。')}</p></div>`).join('');$('meta').innerHTML=`<span class="chip">时间：${esc(n.time||'未设置')}</span><span class="chip">时间链：${esc(n.period||'待补充')}</span><span class="chip">三维坐标：${n.pos.map(v=>v.toFixed(1)).join(' / ')}</span>`;let p=project(n.pos);$('float').style.left=Math.max(300,Math.min(innerWidth-300,p.x))+'px';$('float').style.top=Math.max(220,Math.min(innerHeight-170,p.y))+'px';draw();timeline()}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function timeline(){let sorted=[...nodes];$('track').innerHTML=sorted.map((n,i)=>`<i class="tick ${n.id===selected?'active':''}" style="left:${sorted.length===1?50:i/(sorted.length-1)*100}%" data-id="${n.id}"></i>`).join('');$('labels').innerHTML=sorted.map(n=>`<span>${esc(n.time||n.name)}</span>`).join('');$('track').querySelectorAll('.tick').forEach(t=>t.onclick=()=>openNode(nodes.find(n=>n.id===t.dataset.id)));$('timeCaption').textContent=current()?.time||'点击星点查看时间位置'}
+function edit(){let n=current();if(!n)return;$('editor').style.display='block';$('ename').value=n.name;$('edesc').value=n.desc;$('etime').value=n.time||'';$('eperiod').value=n.period||'';$('elinks').value=(n.links||[]).map(id=>nodes.find(x=>x.id===id)?.name).filter(Boolean).join(', ');$('epos').value=n.pos.join(', ');$('qedit').innerHTML=n.q.map((v,i)=>`<div class="field"><label>${['前·瞻前','后·顾后','左·左顾','右·右盼'][i]}</label><textarea data-q="${i}">${esc(v)}</textarea></div>`).join('')}
+$('save').onclick=()=>{let n=current();if(!n)return;n.name=$('ename').value.trim()||n.name;n.desc=$('edesc').value;n.time=$('etime').value;n.period=$('eperiod').value;n.q=[...$('qedit').querySelectorAll('textarea')].map(x=>x.value);let p=$('epos').value.split(',').map(Number);if(p.length===3&&p.every(Number.isFinite))n.pos=p;let names=$('elinks').value.split(',').map(s=>s.trim());n.links=nodes.filter(x=>x.id!==n.id&&names.includes(x.name)).map(x=>x.id);save();$('editor').style.display='none';openNode(n);toast('节点已保存')};
+$('edit').onclick=()=>{if(!selected)return toast('先点击一个星点');edit()};$('cancel').onclick=()=>$('editor').style.display='none';$('close').onclick=()=>$('float').style.display='none';
+$('del').onclick=()=>{if(!selected||!confirm('删除这个知识点？'))return;nodes=nodes.filter(n=>n.id!==selected);nodes.forEach(n=>n.links=n.links.filter(x=>x!==selected));selected=null;$('editor').style.display='none';$('float').style.display='none';save();draw();timeline()};
+$('add').onclick=()=>{let name=prompt('新知识点名称');if(!name?.trim())return;let n={id:Math.random().toString(36).slice(2),name:name.trim(),desc:'',pos:[(Math.random()-.5)*4,(Math.random()-.5)*3,(Math.random()-.5)*4],time:'待定',period:'待补充',q:['','','',''],links:selected?[selected]:[]};if(selected)current().links.push(n.id);nodes.push(n);selected=n.id;save();draw();openNode(n);edit()};
+$('reset').onclick=()=>{rotX=-.28;rotY=.48;zoom=6.5;pan=[0,0];draw()};$('export').onclick=()=>{let a=document.createElement('a'),u=URL.createObjectURL(new Blob([JSON.stringify(nodes,null,2)],{type:'application/json'}));a.href=u;a.download='nebula-3d-knowledge.json';a.click();URL.revokeObjectURL(u)};
+$('import').onclick=()=>$('file').click();$('file').onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d))throw 0;nodes=d;selected=null;save();draw();timeline();toast('导入成功')}catch{toast('文件格式不正确')}};
+function pick(x,y){let best=null,dist=25;hitNodes.forEach(v=>{let d=Math.hypot(v.x-x,v.y-y);if(d<dist&&v.depth>0){dist=d;best=v.n}});if(best)openNode(best);else $('float').style.display='none'}
+canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY,rx:rotX,ry:rotY,moved:false};canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!pointer)return;let dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;if(Math.abs(dx)+Math.abs(dy)>4)pointer.moved=true;if(pointer.moved){rotY=pointer.ry+dx*.006;rotX=Math.max(-1.5,Math.min(1.5,pointer.rx+dy*.006));draw()}});
+canvas.addEventListener('pointerup',e=>{if(pointer&&!pointer.moved)pick(e.clientX,e.clientY);pointer=null});
+canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(3,Math.min(14,zoom+e.deltaY*.008));draw()},{passive:false});
+function resize(){let d=devicePixelRatio||1;canvas.width=Math.round(innerWidth*d);canvas.height=Math.round(innerHeight*d);draw()}
+window.addEventListener('resize',resize);resize();timeline();
+})();
+</script>
+</body></html>
