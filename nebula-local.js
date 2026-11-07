@@ -1192,18 +1192,18 @@ NEBULA_LOCAL.saveReference = async function(file) {
 // Deterministic candidate comparison: suggestions only, never an automatic merge.
 function extractionTokenSet(value) {
   const text=String(value||"").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
-  const tokens=new Set(text.split(/\s+/).filter(x=>x.length>1));
+  const tokens=new Set(text.match(/[a-z0-9]{2,}/g)||[]);
   const compact=text.replace(/\s+/g,"");
   const chars=Array.from(compact);
   for(let i=0;i<chars.length-1;i++) tokens.add(chars[i]+chars[i+1]);
   return tokens;
 }
-function extractionJaccard(a,b) {
+function extractionDice(a,b) {
   if(!a.size&&!b.size) return 1;
   let intersection=0;
   for(const token of a) if(b.has(token)) intersection++;
   const union=a.size+b.size-intersection;
-  return union?intersection/union:0;
+  return union?2*intersection/(a.size+b.size):0;
 }
 Object.assign(NEBULA_LOCAL,{
   async analyzeFilterCaseDuplicates(filterCaseId,options={}) {
@@ -1225,7 +1225,7 @@ Object.assign(NEBULA_LOCAL,{
       if(!textA||!textB) continue;
       const exact=textA===textB;
       const lengthRatio=Math.min(textA.length,textB.length)/Math.max(textA.length,textB.length);
-      const similarity=exact?1:extractionJaccard(tokenCache.get(a.id),tokenCache.get(b.id));
+      const similarity=exact?1:extractionDice(tokenCache.get(a.id),tokenCache.get(b.id));
       if(exact||(Math.min(textA.length,textB.length)>=45&&lengthRatio>=0.65&&similarity>=threshold)) {
         pairs.push({
           itemIds:[a.id,b.id],score:Number(similarity.toFixed(4)),
