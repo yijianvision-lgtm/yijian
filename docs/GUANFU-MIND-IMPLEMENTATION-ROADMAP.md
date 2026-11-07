@@ -7,11 +7,12 @@
 ## 一、当前真实基线（仓库检查）
 
 - V3-A 是当前视觉候选页；保留深黑三维宇宙方向，不能把预览页当成正式产品已完成。
-- 最近提交 `7833653` 已将聚焦核心文字居中、保持四向无框；对应 Jekyll、NEBULA backend checks 和 Pages build/deployment 三项 Actions 均成功。该成功只证明仓库工作流通过，不代表浏览器端到端验收。
-- 本地数据层为 IndexedDB `nebula_local_v2`，`DB_VERSION = 5`，当前 22 个 object stores。原始资料和提取队列已有基础结构。
-- 已有 `knowledgeRelations`、`relationEvidence`、`reviewProposals`、`knowledgeVersions`、`frameworks`、`frameworkVersions`、`nodePositions` 等记录能力，但并不等于模型已完整实现。
-- `getFrameworkTree()` 仍通过知识节点的单一 `parentId` 构建树；`getSpatialProjection()` 的默认语义坐标仍由树深、`knowledgeTime/date` 和 `domain/domainPath` 派生。四维空间投影目前仍是简化版本。
-- 当前数据层没有独立的 `ExplorationPath`、`FrameworkMembership/Placement` 或等价上下文记录。路径历史与知识对象身份、多框架归属尚未完整分离。
+- V3-A `ui-preview-v3-a-cosmos.html` 是用户当前认可的视觉基线；版本记录为 `V3-A-APPROVED-2026-11-08`。视觉概念冻结，不接正式后台、不覆盖 `index.html`，直到用户明确验收。
+- 当前 `main` 基线提交：`659942e2b6135532387c38acffe0734e4a06d060`。本轮路径根节点分支与时间关系映射修正已提交；NEBULA backend checks 已成功，Jekyll CI 与 Pages 部署在本次记录更新时仍待完成。
+- 本地数据层为 IndexedDB `nebula_local_v2`，`DB_VERSION = 6`；新增 `frameworkPlacements`、`explorationPaths`、`explorationSteps`，不再是“没有独立路径与框架上下文记录”。
+- 框架 placement、路径创建/追加/分叉/快照、path-aware mind context、多路径同一 nodeId 复用等 API 已进入数据层；旧 `parentId` 仍保留兼容用途，不能视为已经彻底替代。
+- 关系类型与状态已有基础校验和证据约束；空间投影仍属简化实现，谱系、时间、空间／世界、横向关联的语义完整度仍需继续验收。
+- 当前自动化检查不能代替真实浏览器 E2E；连续深层探索、跨路径回访、镜头与路径一致性仍未获得真实浏览器验收证据。
 - `saveKnowledgeRelation()` 主要验证两端节点存在和非自环；关系类型、方向、上下文、证据状态与端点语义的一致性约束仍不足。
 - `saveNodeVersion()` 的比较字段不完整，部分属性变化可能无法形成版本快照。
 - 资料导入已有 PDF、DOCX、DOC、EMMX、XMind 的初步处理，但 DOC 仅保留原文件并提示另存；PDF 扫描件 OCR、EMMX 层级/图片/关系保真、DOCX 图片和定位、批量预览/冲突处理均需进一步验收。
@@ -30,7 +31,7 @@
 
 ## 三、阶段计划与完成定义
 
-### P0｜基线冻结与模型规格（约 3–5 个工作日）
+### P0｜基线冻结与模型规格（规格已形成，仍需逐项审阅）
 
 - 把 V1.1 纲领拆成实体、关系、路径、上下文、证据和投影的字段级规格。
 - 标记 V2.0 旧架构中与 V1.1 冲突的单一 parentId 约束，保留其历史文档身份，不再把它当最终本体。
@@ -39,7 +40,7 @@
 
 **验收：** 数据字典、关系语义表、迁移矩阵和测试案例全部经审阅；不触碰真实数据。
 
-### P1｜知识身份、框架上下文与探索路径（约 1–2 周）
+### P1｜知识身份、框架上下文与探索路径（基础实现已进入仓库，验收未全部完成）
 
 - 引入稳定知识对象与框架位置的分离表达；同一对象可加入多个框架或多个上下文。
 - 引入可分叉的 ExplorationPath / PathStep；每一步保存 source focus、target object、direction、relationId、evidence refs、context、createdAt。
@@ -49,7 +50,7 @@
 
 **验收：** 自动化测试证明 A→B→C 与 A→D→C 最终指向同一个 C 对象，且两条路径均完整保存；同一对象可在两个框架拥有不同位置；迁移前后记录数、附件哈希和关系引用可核对。
 
-### P2｜四向递归与三维聚焦体验（约 1–2 周）
+### P2｜四向递归与三维聚焦体验（当前推进中，浏览器 E2E 尚缺）
 
 - 四向探索支持每个方向 0..N 个候选目标，且每个目标必须指向稳定对象或明确标记的待确认候选。
 - 任意目标进入后成为新焦点，重新拥有完整四向能力；允许返回、分叉、切换历史路径。
@@ -100,7 +101,7 @@
 
 ## 五、当前优先级与禁止抢跑
 
-**下一项实际工程任务：P0 数据模型规格 + 现有代码差异清单。** 先把 KnowledgeObject、FrameworkPlacement、ExplorationPath、RelationAssertion、EvidenceSpan、SpatialProjection 的边界定义清楚，再编写迁移和测试；不得先改数据库 schema 再补设计。
+**当前实际工程任务：P2 路径状态可靠性与真实交互验证。** P0 的纲领与核心实体边界已形成文档；P1 的 schema v6、FrameworkPlacement 与 ExplorationPath 基础 API 已实施并有自动化测试，但 P1 的迁移预览/回滚、跨路径同一对象完整验收仍未全部完成。当前推进 P2：路径返回、分叉、根节点分支、稳定对象复用与路径快照恢复；随后补充可运行的浏览器 E2E 证据。
 
 在用户确认 P0 规格前：
 - 不对真实 IndexedDB 做破坏性迁移；
