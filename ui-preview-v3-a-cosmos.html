@@ -1139,9 +1139,29 @@ function createExplorationNode(direction,choiceIndex,customTitle=''){
  continuationMeta[target]={virtual:true,parent,direction,choiceIndex,identity:'demo:'+parent+':'+direction+':'+choiceIndex+':'+target};
  document.getElementById('continuumChoicePanel').hidden=true;selectNode(target,true);
 }
+function openFormalDirectionTargets(direction,targets){
+ const panel=document.getElementById('continuumChoicePanel'),list=document.getElementById('continuumChoiceList');
+ list.replaceChildren();
+ document.getElementById('choiceDirectionLabel').textContent=directionNames[direction]+' · 选择一个已记录的关系目标';
+ targets.forEach(targetIndex=>{
+  const node=localGraphNodes[targetIndex];if(!node)return;
+  const button=document.createElement('button');button.className='continuum-choice';
+  const title=document.createElement('strong');title.textContent=node.name||node.coreWord||'未命名知识';
+  const desc=document.createElement('small');desc.textContent=(node.desc||'暂无说明')+' · 稳定知识对象';
+  button.append(title,desc);
+  button.addEventListener('click',()=>{panel.hidden=true;selectNode(targetIndex,true);});
+  list.append(button);
+ });
+ panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 function navigateContinuum(direction){
  if(!['forward','backward','left','right'].includes(direction))return;
- if(!isDemoUniverse){const links=directionalMap[selected]||{},value=links[direction];const targets=Array.isArray(value)?value:(Number.isInteger(value)?[value]:[]);if(targets.length===1&&nodes[targets[0]]){selectNode(targets[0],true);return;}if(targets.length>1){toast('该方向存在多个关系目标；请在关系列表中选择具体对象。');return;}toast('这个方向暂时没有已确认的知识关系；不会自动补造正式知识。');return;}
+ const links=directionalMap[selected]||{},value=links[direction],targets=(Array.isArray(value)?value:(Number.isInteger(value)?[value]:[])).filter(index=>Number.isInteger(index)&&nodes[index]);
+ if(!isDemoUniverse){
+  if(targets.length===1){selectNode(targets[0],true);return;}
+  if(targets.length>1){openFormalDirectionTargets(direction,targets);return;}
+  toast('这个方向暂时没有已记录的关系目标；不会自动补造正式知识。');return;
+ }
  openContinuumChoices(direction);
 }
 document.querySelectorAll('[data-continuum]').forEach(b=>b.addEventListener('click',()=>navigateContinuum(b.dataset.continuum)));
