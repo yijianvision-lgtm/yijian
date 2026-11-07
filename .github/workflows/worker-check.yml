@@ -46,15 +46,15 @@ jobs:
           html = Path("index.html").read_text(encoding="utf-8")
           worker = Path("deepseek-worker.js").read_text(encoding="utf-8")
           required_local = [
-              'DB_VERSION = 5', 'lectureSources', 'aiConversations',
+              'DB_VERSION = 6', 'lectureSources', 'aiConversations',
               'extractionBatches', 'extractionItems', 'filterCases', 'filterDecisions',
-              'frameworks', 'frameworkVersions', 'nodePositions', 'relationEvidence',
+              'frameworks', 'frameworkVersions', 'nodePositions', 'relationEvidence', 'frameworkPlacements', 'explorationPaths', 'explorationSteps',
               'createExtractionFromParsedSource',
               'knowledgeRelations', 'nodeSourceLinks', 'knowledgeVersions',
               'reviewProposals', 'learningRecords', 'researchSessions',
               'exportFullBackup', 'previewFullBackup', 'restoreFullBackup',
               'findDuplicateCandidates', 'getCognitiveDashboard',
-              'applyProposal', 'getNodeEvidence'
+              'applyProposal', 'getNodeEvidence', 'createFrameworkPlacement', 'createExplorationPath', 'appendExplorationStep', 'forkExplorationPath'
           ]
           missing = [item for item in required_local if item not in local]
           if missing:
