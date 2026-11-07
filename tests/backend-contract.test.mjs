@@ -129,7 +129,7 @@ assert.ok(mindArchitecture.includes("唯一主要 parentId"), "The legacy V2 arc
 assert.ok(charter.includes("旧 V2.0 文档作为历史方案"), "The current charter must explicitly supersede conflicting legacy V2 constraints.");
 
 assert.ok(local.includes('schemaVersion:6'), "Full backups must include the new path and placement stores.");
-assert.ok(local.includes('"relationType"') || local.includes('relationType,status'), "Knowledge relations must carry an explicit semantic type.");
+assert.ok(local.includes("const relationType=relationTypes.has(suppliedType)?suppliedType:\"unclassified\""), "Unknown legacy relation labels must not become invented semantic types.");
 assert.ok(local.includes('legacyRelationType'), "Legacy free-form relation labels must be preserved without being promoted to verified semantics.");
 assert.ok(local.includes('const comparable=x=>JSON.stringify(x??null)'), "Node version comparison must include every persisted semantic field.");
 assert.ok(local.includes('parentPlacementId'), "Framework membership must be modeled independently from node parentId.");
