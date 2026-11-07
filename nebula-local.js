@@ -1473,6 +1473,12 @@ Object.assign(NEBULA_LOCAL,{
         rationale:reviewerNote||proposal.reasoning
       });
     }
+    if(proposal.filterCaseId) await this.appendFilterDecision({
+      filterCaseId:proposal.filterCaseId,decisionType:"relate",actor:"user",
+      before:{proposalId,sourceNodeId:proposal.sourceNodeId,targetNodeId:proposal.relatedNodeId},
+      after:{decision:"accept",relationId:relation?.id||null},
+      rationale:reviewerNote||"用户确认横向关系提案。",evidenceIds:proposal.evidenceSourceIds||[]
+    });
     return {...result,relation:relation||null};
   }
 });
@@ -1683,8 +1689,11 @@ Object.assign(NEBULA_LOCAL,{
     if(!items.length) throw new Error("当前过滤任务没有可供分析的候选内容。");
     const graph=await this.loadGraph(),allNodes=graph?.nodes||[];
     const locationIds=[...new Set((filterCase.locationSuggestions||[]).map(x=>x.targetNodeId).filter(Boolean))];
+    const candidateTokens=mindTextTokens(items.map(x=>[x.title,x.content,x.excerpt].join(" ")).join(" "));
+    const rankedContext=allNodes.map(node=>({node,score:mindDice(candidateTokens,mindTextTokens([node.name,node.coreWord,node.desc].join(" ")))}))
+      .sort((a,b)=>b.score-a.score).filter(x=>x.score>0).slice(0,30).map(x=>x.node);
     const selectedNodes=allNodes.filter(n=>locationIds.includes(n.id));
-    const contextNodes=(selectedNodes.length?selectedNodes:allNodes.slice(0,20)).slice(0,30);
+    const contextNodes=(selectedNodes.length?selectedNodes:rankedContext).slice(0,30);
     const sourceIds=[...new Set(items.map(x=>x.sourceId).filter(Boolean))];
     const payloadText=[
       "任务：只依据以下候选内容，提出可审核的知识节点与关系；区分事实、推论和不确定项。",
