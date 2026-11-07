@@ -46,7 +46,10 @@ jobs:
           html = Path("index.html").read_text(encoding="utf-8")
           worker = Path("deepseek-worker.js").read_text(encoding="utf-8")
           required_local = [
-              'DB_VERSION = 4', 'lectureSources', 'aiConversations',
+              'DB_VERSION = 5', 'lectureSources', 'aiConversations',
+              'extractionBatches', 'extractionItems', 'filterCases', 'filterDecisions',
+              'frameworks', 'frameworkVersions', 'nodePositions', 'relationEvidence',
+              'createExtractionFromParsedSource',
               'knowledgeRelations', 'nodeSourceLinks', 'knowledgeVersions',
               'reviewProposals', 'learningRecords', 'researchSessions',
               'exportFullBackup', 'previewFullBackup', 'restoreFullBackup',
