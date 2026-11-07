@@ -20,5 +20,7 @@ assert.ok(!html.includes('targets(["precedes","influences"]'), "Influence relati
 assert.ok(html.includes("根节点分支"), "Returning to the root must support a new exploration branch.");
 assert.ok(html.includes("focusExplorationTrail[focusCursor]={pathId:activeExplorationPathId"), "The root history cursor must be bound to its persisted exploration path.");
 assert.ok(html.includes("snapshot.steps[snapshot.steps.length-1]"), "Path-tail lookup must not depend on Array.prototype.at.");
+assert.ok(html.includes("quadrants-retracting"), "Entering a directional knowledge branch must retract the four-direction controls.");
+assert.ok(html.includes("classList.remove('quadrants-retracting')"), "Closing the choice panel or entering a new core must restore directional controls.");
 
 console.log("Checked " + scripts.length + " inline scripts and V3-A exploration contracts.");
