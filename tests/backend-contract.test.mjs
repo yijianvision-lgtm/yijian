@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 const local = await readFile(new URL("../nebula-local.js", import.meta.url), "utf8");
 const worker = await readFile(new URL("../deepseek-worker.js", import.meta.url), "utf8");
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+const preview = await readFile(new URL("../ui-preview-v1.html", import.meta.url), "utf8");
 
 for (const store of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence"]) {
   assert.match(local, new RegExp('"'+store+'"'), "Missing IndexedDB store: "+store);
@@ -32,6 +33,21 @@ for (const match of inlineScripts) {
   const checked = spawnSync(process.execPath, args, { input: match[1], encoding: "utf8" });
   assert.equal(checked.status, 0, "Inline script syntax error: " + checked.stderr);
 }
+
+
+const previewScripts = [...preview.matchAll(/<script(?:\s+type="module")?>([\s\S]*?)<\/script>/g)];
+assert.ok(previewScripts.length >= 5, "Expected preview interaction and module scripts.");
+for (const match of previewScripts) {
+  const isModule = match[0].startsWith('<script type="module">');
+  const args = isModule ? ["--input-type=module", "--check"] : ["--check"];
+  const checked = spawnSync(process.execPath, args, { input: match[1], encoding: "utf8" });
+  assert.equal(checked.status, 0, "Preview inline script syntax error: " + checked.stderr);
+}
+for (const marker of ['id="filter-workbench"','id="filterCaseList"','id="runDedupe"','id="runLocate"','id="createLocationProposal"','id="finalizeFilter"',"import { NEBULA_LOCAL } from './nebula-local.js'"]) {
+  assert.ok(preview.includes(marker), "Missing Guanfu Mind preview feature: "+marker);
+}
+assert.match(preview, /#continuumFocus \\.continuum-quadrant\\{[^}]*opacity:\\.17/);
+assert.match(preview, /#continuumFocus \\.continuum-core\\{[^}]*background:transparent/);
 
 console.log("NEBULA backend contract checks passed.");
 
