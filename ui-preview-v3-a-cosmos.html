@@ -1077,7 +1077,15 @@ const lineMat=new THREE.LineBasicMaterial({color:0x83919a,transparent:true,opaci
 function seededField(seed){let x=seed>>>0;return()=>{x=(x*1664525+1013904223)>>>0;return x/4294967296}}
 function addStarLayer(count,width,height,depth,size,opacity,color,seed){const rand=seededField(seed),pts=[];for(let i=0;i<count;i++){pts.push((rand()-.5)*width,(rand()-.5)*height,(rand()-.5)*depth)}const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));const material=new THREE.PointsMaterial({color,size,transparent:true,opacity,depthWrite:false,sizeAttenuation:true});const layer=new THREE.Points(geo,material);layer.renderOrder=-2;scene.add(layer);return layer}
 const starLayers=[addStarLayer(210,112,72,92,.018,.075,0x879db1,22),addStarLayer(132,78,50,62,.026,.105,0xa8bac9,41),addStarLayer(58,42,28,34,.038,.13,0xc6d6e1,73)];
-const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;let focusActive=false;let focusGoal=null;const focusRotationGoal=new THREE.Euler(0,0,0,'XYZ');let focusRollGoal=0;let focusHistory=[];let focusCursor=-1;const continuationDescriptions={};const continuationMeta={};let idToIndex=new Map();let isDemoUniverse=true;const focusDefinition=i=>continuationDescriptions[i]||(localGraphNodes[i]?.desc||localGraphNodes[i]?.coreWord|| (isDemoUniverse?'此处为视觉与交互示例，不是已确认的正式知识。':nodes[i]?.[0]+' 尚未补充定义。'));const directionNames={forward:'瞻前',backward:'顾后',left:'向内',right:'向外'};let directionalMap={};function updateFocusTrail(){const box=document.getElementById('continuumTrail');box.innerHTML='';focusHistory.forEach((idx,k)=>{if(k){const sep=document.createElement('span');sep.textContent='›';box.appendChild(sep)}const b=document.createElement('button');b.textContent=nodes[idx][0];b.classList.toggle('current',k===focusCursor);b.onclick=()=>{focusCursor=k;selectNode(idx,false)};box.appendChild(b)});document.getElementById('continuumTrailCount').textContent=(focusCursor+1)+' / '+focusHistory.length+' 个位置';document.getElementById('continuumBack').disabled=focusCursor<=0;document.getElementById('continuumForward').disabled=focusCursor>=focusHistory.length-1;document.getElementById('continuumPath').textContent='知识宇宙 / '+focusHistory.slice(0,focusCursor+1).map(i=>nodes[i][0]).join(' / ')}function renderContinuum(){const i=selected,formal=!isDemoUniverse&&!!localGraphNodes[i],path=formal?localNodePath(localGraphNodes[i].id).map(n=>n.name||n.coreWord||'未命名知识'):[],lineage=document.getElementById('positionLineage'),timePosition=document.getElementById('positionTime'),world=document.getElementById('positionWorld'),relations=document.getElementById('positionRelations');
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;let focusActive=false;let focusGoal=null;const focusRotationGoal=new THREE.Euler(0,0,0,'XYZ');let focusRollGoal=0;let focusHistory=[];let focusCursor=-1;const continuationDescriptions={};const continuationMeta={};let idToIndex=new Map();let isDemoUniverse=true;const focusDefinition=i=>continuationDescriptions[i]||(localGraphNodes[i]?.desc||localGraphNodes[i]?.coreWord|| (isDemoUniverse?'此处为视觉与交互示例，不是已确认的正式知识。':nodes[i]?.[0]+' 尚未补充定义。'));const directionNames={forward:'瞻前',backward:'顾后',left:'向内',right:'向外'};let directionalMap={};let activeExplorationPathId=null;let activeExplorationStepId=null;async function recordFormalExploration(targetIndex,direction){
+ const from=localGraphNodes[selected],to=localGraphNodes[targetIndex];if(!from||!to)return;
+ if(!activeExplorationPathId){const path=await NEBULA_LOCAL.createExplorationPath({title:(from.name||from.coreWord||'知识探索')+' · 探索路径',frameworkId:localFramework?.id||null,rootNodeId:from.id});activeExplorationPathId=path.id;activeExplorationStepId=null;}
+ const directionName={forward:'瞻前',backward:'顾后',left:'向内',right:'向外'}[direction];
+ const relation=localGraphRelations.find(r=>r.status==='confirmed'&&((String(r.sourceNodeId)===String(from.id)&&String(r.targetNodeId)===String(to.id))||(String(r.sourceNodeId)===String(to.id)&&String(r.targetNodeId)===String(from.id)))&&((directionalMap[selected]?.[direction]||[]).includes(targetIndex)));
+ const step=await NEBULA_LOCAL.appendExplorationStep({pathId:activeExplorationPathId,parentStepId:activeExplorationStepId||undefined,fromNodeId:from.id,toNodeId:to.id,direction:directionName,relationId:relation?.id||undefined,context:{source:'v3-a-cosmos',directionKey:direction,frameworkId:localFramework?.id||null}});
+ activeExplorationStepId=step.id;
+}
+function updateFocusTrail(){const box=document.getElementById('continuumTrail');box.innerHTML='';focusHistory.forEach((idx,k)=>{if(k){const sep=document.createElement('span');sep.textContent='›';box.appendChild(sep)}const b=document.createElement('button');b.textContent=nodes[idx][0];b.classList.toggle('current',k===focusCursor);b.onclick=()=>{focusCursor=k;selectNode(idx,false)};box.appendChild(b)});document.getElementById('continuumTrailCount').textContent=(focusCursor+1)+' / '+focusHistory.length+' 个位置';document.getElementById('continuumBack').disabled=focusCursor<=0;document.getElementById('continuumForward').disabled=focusCursor>=focusHistory.length-1;document.getElementById('continuumPath').textContent='知识宇宙 / '+focusHistory.slice(0,focusCursor+1).map(i=>nodes[i][0]).join(' / ')}function renderContinuum(){const i=selected,formal=!isDemoUniverse&&!!localGraphNodes[i],path=formal?localNodePath(localGraphNodes[i].id).map(n=>n.name||n.coreWord||'未命名知识'):[],lineage=document.getElementById('positionLineage'),timePosition=document.getElementById('positionTime'),world=document.getElementById('positionWorld'),relations=document.getElementById('positionRelations');
 if(lineage)lineage.textContent=formal?(path.join(' / ')||'根节点'):'演示路径 · '+Math.max(1,focusCursor+1)+' 层';
 if(timePosition)timePosition.textContent=formal&&localGraphNodes[i].knowledgeTime?String(localGraphNodes[i].knowledgeTime):'待证据定位';
 if(world)world.textContent='待证据定位';
@@ -1149,7 +1157,7 @@ function openFormalDirectionTargets(direction,targets){
   const title=document.createElement('strong');title.textContent=node.name||node.coreWord||'未命名知识';
   const desc=document.createElement('small');desc.textContent=(node.desc||'暂无说明')+' · 稳定知识对象';
   button.append(title,desc);
-  button.addEventListener('click',()=>{panel.hidden=true;selectNode(targetIndex,true);});
+  button.addEventListener('click',async()=>{try{await recordFormalExploration(targetIndex,direction);panel.hidden=true;selectNode(targetIndex,true);}catch(error){toast('探索路径未能保存：'+error.message);}});
   list.append(button);
  });
  panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -1158,7 +1166,7 @@ function navigateContinuum(direction){
  if(!['forward','backward','left','right'].includes(direction))return;
  const links=directionalMap[selected]||{},value=links[direction],targets=(Array.isArray(value)?value:(Number.isInteger(value)?[value]:[])).filter(index=>Number.isInteger(index)&&nodes[index]);
  if(!isDemoUniverse){
-  if(targets.length===1){selectNode(targets[0],true);return;}
+  if(targets.length===1){recordFormalExploration(targets[0],direction).then(()=>selectNode(targets[0],true)).catch(error=>toast('探索路径未能保存：'+error.message));return;}
   if(targets.length>1){openFormalDirectionTargets(direction,targets);return;}
   toast('这个方向暂时没有已记录的关系目标；不会自动补造正式知识。');return;
  }
@@ -1366,7 +1374,7 @@ async function connectLocalKnowledgeUniverse(){
   // Four exploration directions are derived only from explicitly typed relations.
   // Framework parentId is deliberately excluded: it is contextual placement, not time or ontology proof.
   ordered.forEach((node,i)=>{
-   const incident=localGraphRelations.filter(r=>String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id));
+   const incident=localGraphRelations.filter(r=>r.status==='confirmed'&&(String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id)));
    const targets=(types,orientation="either")=>incident.filter(r=>{
      const type=String(r.relationType||"unclassified");
      if(!types.includes(type))return false;
