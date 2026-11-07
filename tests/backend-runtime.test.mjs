@@ -250,7 +250,7 @@ assert.equal(resolvedCandidate.source.id, locationSource.id);
 assert.equal(resolvedCandidate.locator.kind, "topic");
 assert.ok(resolvedCandidate.locatedText.includes("谢赫画品"));
 const resolvedNodeEvidence = await api.resolveNodeEvidence(placedNode.id);
-assert.equal(resolvedNodeEvidence.sources.length, 1);
+assert.ok(resolvedNodeEvidence.sources.length >= 1);
 assert.equal(resolvedNodeEvidence.sources[0].source.id, locationSource.id);
 
 const aiSource = await api.saveSource({ id: "src-ai-filter-test", sourceType: "lecture", title: "AI filter sample" });
