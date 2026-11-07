@@ -18,8 +18,8 @@ A persistent, interactive 3D personal knowledge system.
 
 ## Open the product and UI preview
 
-- **Formal page:** [index.html](index.html) — existing production entry, not changed during the V17 preview work.
-- **Latest independent UI preview V17:** [Open 观复 Mind preview](https://yijianvision-lgtm.github.io/yijian/ui-preview-v1.html).
+- **Formal page:** [index.html](index.html) — legacy production entry; it has not yet been migrated to the newer Mind workspace.
+- **Independent UI preview:** [Open 观复 Mind preview](https://yijianvision-lgtm.github.io/yijian/ui-preview-v1.html) — latest committed preview source; confirm Pages deployment before treating it as the live release.
 - **Design charter:** [观复 Mind｜最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md).
 - **Implementation blueprint:** [产品结构与后台实施蓝图](docs/GUANFU-MIND-IMPLEMENTATION-BLUEPRINT.md).
 
@@ -40,9 +40,9 @@ The preview uses Three.js / WebGL for the spatial scene. When a local IndexedDB 
 ## Current validation and limitations
 
 - GitHub Actions validates JavaScript syntax, backend API contracts, IndexedDB runtime workflows, migration, source locators, four-dimensional suggestions, proposal-only AI handling, review finalization, and UI preview inline scripts.
-- The V17 preview has not yet passed manual browser visual/interaction acceptance. Automated checks do not prove every real PDF/Word/EMMX/XMind file parses perfectly.
+- The current preview has not yet passed manual browser visual/interaction acceptance. The latest recorded CI run (#200) passed backend syntax, contract, IndexedDB runtime and preview-script checks; this does not replace real-browser acceptance. Automated checks do not prove every real PDF/Word/EMMX/XMind file parses perfectly.
 - The Worker is optional. If it is not deployed/configured, AI analysis reports an explicit configuration error; local rule-based filtering still works.
-- The formal index.html has not been replaced by V17. The preview is the place to inspect and refine the new information architecture and visual language before any production migration.
+- The formal index.html has not been replaced by the independent preview. The preview is the place to inspect and refine the new information architecture and visual language before any production migration. The latest Jekyll site CI run (#288) passed, but that result alone does not confirm that the newest preview has been deployed to GitHub Pages.
 - No automatic cloud sync, login requirement, or whole-library AI upload is introduced.
 
 ## Product direction
