@@ -246,7 +246,7 @@ Mind、Framework、Source、Review 等视图都从同一状态读取/更新。�
 
 ## 11. P1 第一批后台实现记录（schema v5）
 
-**状态：代码已提交；尚未完成真实浏览器端到端验收。**
+**状态：代码已提交；GitHub Actions 后台语法、接口契约与 IndexedDB 运行测试已通过（commit `d362f4388ea6be76502740564f8a683983e5bed0`）；尚未完成真实浏览器端到端验收。**
 
 本批在不删除或重建旧对象库的前提下，将 IndexedDB 从 v4 增量升级至 v5，新增：
 - extractionBatches：一次来源提取任务及解析器版本、统计、警告和状态。
