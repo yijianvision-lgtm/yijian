@@ -44,7 +44,7 @@ assert.ok(html.includes("var(--core-minimap-dx,0px)") && html.includes("var(--co
 assert.ok(html.includes("corePoint.style.setProperty('--core-minimap-dx'") && html.includes("corePoint.style.setProperty('--core-minimap-dy'"), "The core-to-minimap movement must use measured on-screen positions.");
 assert.ok(html.includes("async function openKnowledgeArchive(){"), "Both archive entry points must share a single archive-opening flow.");
 
-assert.ok(html.includes("await retractFocusToMinimap();\n archive.classList.add('open');"), "The archive must appear after the core and four directions finish retracting, not be hidden behind the transition.");
+assert.ok(/await retractFocusToMinimap\(\);\s*document\.querySelectorAll\('\.overlay\.open'\)\.forEach\(panel=>\{if\(panel!==archive\)panel\.classList\.remove\('open'\)\}\);\s*archive\.classList\.add\('open'\);/.test(html), "The archive must appear after the core and four directions finish retracting, with competing overlays cleared.");
 assert.ok(html.includes("renderContinuum();\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
 assert.ok(/(?:^|})#nodeDetail\\{z-index:40\\}/.test(html), "The archive must have a valid standalone #nodeDetail CSS rule, not merely matching text.");
 assert.ok(!html.includes(".#nodeDetail{z-index:40}"), "The archive z-index rule must not be prefixed with an invalid class selector.");
