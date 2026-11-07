@@ -875,6 +875,15 @@ Object.assign(NEBULA_LOCAL,{
     if(!String(text||"").trim())throw new Error("待分析对话不能为空。");
     return callNebulaWorker(endpoint,token,"/analyze",{body:{text:String(text).slice(0,90000),existingNodes:existingNodes.slice(0,300)}});
   },
+  async chatLearningCoach(endpoint,token,payload={}) {
+    const messages=Array.isArray(payload.messages)?payload.messages.slice(-22):[];
+    if(!messages.length)throw new Error("学习对话不能为空。");
+    return callNebulaWorker(endpoint,token,"/chat",{body:{
+      mode:payload.mode||"all",
+      context:String(payload.context||"").slice(0,9000),
+      messages:messages.map(item=>({role:item.role==="assistant"?"assistant":"user",content:String(item.content||"").slice(0,12000)}))
+    }});
+  },
   async coachKnowledge(endpoint,token,payload) {
     return callNebulaWorker(endpoint,token,"/coach",{body:payload||{}});
   },
