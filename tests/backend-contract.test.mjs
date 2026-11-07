@@ -10,10 +10,10 @@ const preview = await readFile(new URL("../ui-preview-v1.html", import.meta.url)
 for (const store of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence"]) {
   assert.match(local, new RegExp('"'+store+'"'), "Missing IndexedDB store: "+store);
 }
-for (const api of ["exportFullBackup","previewFullBackup","restoreFullBackup","saveSource","linkNodeSource","createProposal","applyProposal","saveNodeVersion","saveLearningRecord","saveResearchSession","saveKnowledgeRelation","analyzeConversation","coachKnowledge","checkMnemonic","proposeCoachReview","proposeMnemonicReview","detectKnowledgeGaps","buildLearningQueue","searchResearch","fetchDeepSeekShare","createExtractionBatch","createExtractionItem","createExtractionFromParsedSource","analyzeFilterCaseDuplicates","recordFilterDuplicateDecision","suggestFilterCaseLocations","createFilterSuggestionProposal","applyFilterCaseProposal","createKnowledgeRelationProposal","createFilterRelationProposal","applyKnowledgeRelationProposal","recordFilterItemDisposition","finalizeFilterCase","createFrameworkFromCurrentGraph","syncFrameworkFromGraph","getFrameworkTree","getSpatialProjection","getMindContext","resolveExtractionEvidence","resolveNodeEvidence","resolveEvidenceLocator","analyzeFilterCaseWithAI","getFilterWorkbenchSnapshot","buildKnowledgeBrief","exportFrameworkMarkdown","createFilterCase","appendFilterDecision","createFramework","saveFrameworkVersion","saveNodePosition","createRelationEvidence"]) {
+for (const api of ["exportFullBackup","previewFullBackup","restoreFullBackup","saveSource","linkNodeSource","createProposal","applyProposal","saveNodeVersion","saveLearningRecord","saveResearchSession","saveKnowledgeRelation","analyzeConversation","chatLearningCoach","coachKnowledge","checkMnemonic","proposeCoachReview","proposeMnemonicReview","detectKnowledgeGaps","buildLearningQueue","searchResearch","fetchDeepSeekShare","createExtractionBatch","createExtractionItem","createExtractionFromParsedSource","analyzeFilterCaseDuplicates","recordFilterDuplicateDecision","suggestFilterCaseLocations","createFilterSuggestionProposal","applyFilterCaseProposal","createKnowledgeRelationProposal","createFilterRelationProposal","applyKnowledgeRelationProposal","recordFilterItemDisposition","finalizeFilterCase","createFrameworkFromCurrentGraph","syncFrameworkFromGraph","getFrameworkTree","getSpatialProjection","getMindContext","resolveExtractionEvidence","resolveNodeEvidence","resolveEvidenceLocator","analyzeFilterCaseWithAI","getFilterWorkbenchSnapshot","buildKnowledgeBrief","exportFrameworkMarkdown","createFilterCase","appendFilterDecision","createFramework","saveFrameworkVersion","saveNodePosition","createRelationEvidence"]) {
   assert.ok(local.includes(api), "Missing local API: "+api);
 }
-for (const route of ["/health","/analyze","/coach","/mnemonic","/research","/share"]) {
+for (const route of ["/health","/analyze","/coach","/mnemonic","/research","/share","/chat"]) {
   assert.ok(worker.includes('"'+route+'"') || worker.includes("'"+route+"'"), "Missing Worker route: "+route);
 }
 assert.match(local, /NEBULA_FULL_BACKUP/);
@@ -23,7 +23,7 @@ assert.match(local, /getAllStoresSnapshot/);
 assert.match(local, /protocol!==\"https:\"/);
 assert.match(local, /BACKUP_LOCAL_STORAGE_KEYS/);
 assert.match(worker, /DEEPSEEK_API_KEY/);
-assert.match(worker, /NEBULA_SYNC_TOKEN/);
+assert.match(worker, /NEBULA_SYNC_TOKEN/);\nassert.match(worker, /url\\.pathname === "\\/chat"/);\nassert.match(worker, /Unauthorized: invalid NEBULA access token/);
 
 const inlineScripts = [...html.matchAll(/<script(?:\s+type="module")?>([\s\S]*?)<\/script>/g)];
 assert.ok(inlineScripts.length >= 2, "Expected the app bootstrap and main module scripts.");
@@ -49,7 +49,22 @@ for (const marker of ['id="filter-workbench"','id="filterCaseList"','id="runDedu
 assert.ok(preview.includes("opacity:.17"), "Ghost quadrants should remain highly transparent.");
 assert.ok(preview.includes("background:transparent!important"), "Focus core should not render as a heavy card.");
 
-console.log("NEBULA backend contract checks passed.");
+
+const learningPreview = await readFile(new URL("../ui-preview-v7-a-learning.html", import.meta.url), "utf8");
+assert.ok(learningPreview.includes('id="learningChatTranscript"'), "Learning page must provide a direct AI conversation surface.");
+assert.ok(learningPreview.includes('data-learning-mode="forward"') && learningPreview.includes('data-learning-mode="backward"') && learningPreview.includes('data-learning-mode="left"') && learningPreview.includes('data-learning-mode="right"'), "Learning chat must expose distinct four-direction learning modes.");
+assert.ok(learningPreview.includes("chatLearningCoach"), "Learning chat must call the authenticated Worker chat API.");
+assert.ok(learningPreview.includes("learningChatWorkerToken"), "Learning chat must provide an explicit Worker connection control.");
+assert.ok(learningPreview.includes("axisFlow"), "Four-direction paths must progress continuously without moving the text labels.");
+assert.ok(learningPreview.includes("grid-template-columns:minmax(0,1fr) minmax(280px,340px)"), "Four-direction labels must be grouped in a non-overlapping upper-right lane.");
+const learningPreviewScripts = [...learningPreview.matchAll(/<script(?:\\s+type="module")?>([\\s\\S]*?)<\\/script>/g)];
+assert.ok(learningPreviewScripts.length >= 6, "Learning preview must include its dedicated chat module.");
+for (const match of learningPreviewScripts) {
+  const isModule = match[0].startsWith('<script type="module">');
+  const checked = spawnSync(process.execPath, isModule ? ["--input-type=module", "--check"] : ["--check"], { input: match[1], encoding: "utf8" });
+  assert.equal(checked.status, 0, "Learning preview script syntax error: " + checked.stderr);
+}
+\nconsole.log("NEBULA backend contract checks passed.");
 
 assert.match(local, /DB_VERSION = 5/);
 assert.match(local, /FILTER_TRANSITIONS/);
