@@ -535,6 +535,19 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
 }
 
 
+
+.universe-state{display:block;font-size:7px;letter-spacing:.08em;color:#71808a;margin-top:3px}
+#continuumFocus.arriving .continuum-core{animation:coreTextReveal .72s .08s both}
+#continuumFocus.arriving .continuum-quadrant{opacity:0;animation:quadrantReveal .78s .82s both,guanfuGhost 13s 1.7s ease-in-out infinite}
+#continuumFocus.arriving .q-backward{animation-delay:1.02s,1.9s}
+#continuumFocus.arriving .q-left{animation-delay:1.12s,2s}
+#continuumFocus.arriving .q-right{animation-delay:1.22s,2.1s}
+#continuumFocus.arriving .continuum-routes{opacity:0;animation:routeReveal .7s 1.52s both}
+#continuumFocus .continuum-quadrant{backdrop-filter:blur(1px)!important}
+@keyframes coreTextReveal{from{opacity:0;translate:0 5px}to{opacity:1;translate:0 0}}
+@keyframes quadrantReveal{from{opacity:0;translate:0 4px}to{opacity:.17;translate:0 0}}
+@keyframes routeReveal{from{opacity:0}to{opacity:.26}}
+
 /* V17 · Guanfu Mind: quiet spatial workspace, framework-first hierarchy */
 :root{--bg:#05070a;--surface:rgba(12,15,19,.72);--surface2:rgba(17,21,26,.64);--line:rgba(218,228,235,.075);--line2:rgba(218,228,235,.13);--text:#e6eaed;--muted:#87919a;--dim:#59636c;--ice:#d5dfe4;--warm:#aaa18f;--green:#a8b9a8}
 body{background:#05070a}#space{background:radial-gradient(ellipse at 52% 46%,#151a1f 0,#090c10 40%,#05070a 82%)}.grain{opacity:.055}
@@ -626,7 +639,7 @@ body{background:#05070a}#space{background:radial-gradient(ellipse at 52% 46%,#15
 <div id="space"></div><div class="grain"></div>
 <div id="entry-screen"><div class="entry-content"><div class="entry-kicker">A PERSONAL KNOWLEDGE UNIVERSE</div><div class="entry-wordmark">观复 <span>Mind</span></div><div class="entry-rule"></div><div class="entry-subtitle">聚焦一点，仍知全局</div><div class="entry-copy">定其位 · 联其缘 · 生其相 · 归其一<br>一切为了框架建立。</div><button class="entry-button" id="enterNebula">进入知识宇宙&nbsp; ↗</button><div class="entry-foot">PRIVATE KNOWLEDGE SPACE · EST. 2026</div></div></div>
 <header class="topbar">
- <div class="brand"><div class="mark"></div><div><div class="brand-name">观复 Mind</div><div class="brand-sub">PERSONAL KNOWLEDGE UNIVERSE</div></div></div>
+ <div class="brand"><div class="mark"></div><div><div class="brand-name">观复 Mind</div><div class="brand-sub">PERSONAL KNOWLEDGE UNIVERSE</div><span class="universe-state" id="universeState">示例空间 · 等待本地数据</span></div></div>
  <nav class="top-center"><button class="nav active" data-view="universe">Mind</button><button class="nav" data-view="hierarchy">框架</button><button class="nav" data-view="sources">资料</button><button class="nav" data-view="filter">过滤</button><button class="nav" data-view="lab">研究</button><button class="nav" data-view="learning">学习</button></nav>
  <div class="top-actions"><input class="search" id="search" placeholder="搜索知识 / 来源…"><button class="iconbtn" id="reviewBtn" title="AI 审核中心">审核</button><button class="iconbtn" id="overviewBtn" title="全局概览">⌘</button><button class="quietbtn" id="importBtn">导入资料 ＋</button><button class="quietbtn" id="profileBtn">本机空间　↗</button></div>
 </header>
@@ -784,6 +797,7 @@ body{background:#05070a}#space{background:radial-gradient(ellipse at 52% 46%,#15
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+import { NEBULA_LOCAL } from './nebula-local.js';
 const host=document.getElementById('space');const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x080b10,.027);
 const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,500);camera.position.set(0,1.8,18);
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x000000,0);host.appendChild(renderer.domElement);
@@ -830,8 +844,88 @@ const logicStack=['系统思维'];
 const logicData=layerData;
 function logicFallback(name){return {desc:'继续探索该概念的定义、组成、机制、证据与应用。',children:[['核心定义','概念边界与关键特征'],['形成机制','产生与运行的内在机制'],['关键组成','构成要素与相互作用'],['实际应用','案例、场景与迁移']]}};
 function renderLogic(){const name=logicStack[logicStack.length-1],data=logicData[name]||logicFallback(name);document.getElementById('logicPath').textContent='我的知识宇宙 / '+logicStack.join(' / ');document.getElementById('logicCurrent').textContent=name;document.getElementById('logicCaption').textContent=data.desc;document.getElementById('logicDepth').textContent='LEVEL '+String(logicStack.length).padStart(2,'0');const box=document.getElementById('logicChildren');box.innerHTML='';data.children.forEach(([title,desc])=>{const b=document.createElement('button');b.className='logic-child';const st=document.createElement('strong');st.textContent=title;const sm=document.createElement('small');sm.textContent=desc;const em=document.createElement('em');em.textContent=(logicData[title]||logicFallback(title)).children.length+' 个下级方向 · 进入下一层 ↗';b.append(st,sm,em);b.onclick=()=>{const nodeIndex=nodes.findIndex(n=>n[0]===title);if(nodeIndex>=0){selectNode(nodeIndex);document.getElementById('hierarchy').classList.remove('open');}else{logicStack.push(title);renderLogic()}};if(nodes.some(n=>n[0]===title)){b.classList.add('is-live-node');const badge=document.createElement('em');badge.textContent='与3D宇宙同一节点 · 点击聚焦';b.appendChild(badge)}box.appendChild(b)});document.getElementById('logicUp').disabled=logicStack.length===1;document.getElementById('logicUp').style.opacity=logicStack.length===1?'.35':'1';document.getElementById('logicRelations').innerHTML='';['反馈控制','复杂适应系统','因果推断'].filter(x=>x!==name).forEach(x=>{const s=document.createElement('span');s.className='status';s.textContent=x;s.title='横向关联，不属于当前父子层级';document.getElementById('logicRelations').appendChild(s)})}
-document.getElementById('logicUp').onclick=()=>{if(logicStack.length>1){logicStack.pop();renderLogic()}};document.getElementById('logicRoot').onclick=()=>{logicStack.splice(0,logicStack.length,'系统思维');renderLogic()};renderLogic();
+document.getElementById('logicUp').onclick=()=>{if(logicStack.length>1){logicStack.pop();renderLogic()}};document.getElementById('logicRoot').onclick=()=>{logicStack.splice(0,logicStack.length,'系统思维');renderLogic()};
+renderLogic();
 
+// Load the user's actual local graph when one exists; otherwise retain clearly-labelled preview nodes.
+let localGraphNodes=[];
+async function connectLocalKnowledgeUniverse(){
+ try{
+  const graph=await NEBULA_LOCAL.loadGraph();
+  if(!graph||!Array.isArray(graph.nodes)||!graph.nodes.length){
+   const state=document.getElementById("universeState");if(state)state.textContent="示例空间 · 尚无本地正式节点";
+   return;
+  }
+  const records=graph.nodes.slice(0,220),recordById=new Map(records.map(n=>[String(n.id),n]));
+  const childMap=new Map(records.map(n=>[String(n.id),[]]));
+  records.forEach(n=>{if(n.parentId&&childMap.has(String(n.parentId)))childMap.get(String(n.parentId)).push(n);});
+  const roots=records.filter(n=>!n.parentId||!recordById.has(String(n.parentId)));
+  const posById=new Map();
+  function place(node,depth,parentPos,index,count){
+   const saved=[node.x,node.y,node.z].every(v=>Number.isFinite(Number(v)))&&
+     Math.abs(Number(node.x)||0)+Math.abs(Number(node.y)||0)+Math.abs(Number(node.z)||0)>.001;
+   let pos;
+   if(saved)pos=new THREE.Vector3(Number(node.x)||0,Number(node.y)||0,Number(node.z)||0);
+   else if(!parentPos){const angle=2*Math.PI*index/Math.max(1,count);pos=new THREE.Vector3(Math.cos(angle)*10,0,Math.sin(angle)*10);}
+   else{const angle=2*Math.PI*index/Math.max(1,count)+depth*.31,radius=depth===2?6.2:4.4;pos=new THREE.Vector3(parentPos.x+Math.cos(angle)*radius,parentPos.y+((index%2)?2.1:-2.1),parentPos.z+Math.sin(angle)*radius);}
+   posById.set(String(node.id),pos);
+   const kids=childMap.get(String(node.id))||[];kids.forEach((child,i)=>place(child,depth+1,pos,i,kids.length));
+  }
+  roots.forEach((root,i)=>place(root,1,null,i,roots.length));
+  records.forEach((node,i)=>{if(!posById.has(String(node.id)))place(node,1,null,i,records.length);});
+  const idToIndex=new Map(records.map((n,i)=>[String(n.id),i]));
+  const nextNodes=records.map((n,i)=>{const p=posById.get(String(n.id));return [String(n.name||n.coreWord||"未命名知识"),p.x,p.y,p.z,i===0?.34:(Number(n.level)||1)===1?.24:.13];});
+  const nextEdges=[],edgeSet=new Set();
+  function addEdge(a,b){if(a===undefined||b===undefined||a===b)return;const key=[Math.min(a,b),Math.max(a,b)].join(":");if(edgeSet.has(key))return;edgeSet.add(key);nextEdges.push([a,b]);}
+  records.forEach(n=>{if(n.parentId&&idToIndex.has(String(n.parentId)))addEdge(idToIndex.get(String(n.id)),idToIndex.get(String(n.parentId)));});
+  (graph.links||[]).forEach(link=>addEdge(idToIndex.get(String(link.source??link.sourceNodeId)),idToIndex.get(String(link.target??link.targetNodeId))));
+  const relations=await NEBULA_LOCAL.listKnowledgeRelations();
+  relations.forEach(link=>addEdge(idToIndex.get(String(link.sourceNodeId)),idToIndex.get(String(link.targetNodeId))));
+  nodes.splice(0,nodes.length,...nextNodes);
+  positions.splice(0,positions.length,...records.map(n=>posById.get(String(n.id)).clone()));
+  localGraphNodes=records;
+  edges.splice(0,edges.length,...nextEdges);
+  Object.keys(directionalMap).forEach(k=>delete directionalMap[k]);
+  Object.keys(continuationDescriptions).forEach(k=>delete continuationDescriptions[k]);
+  Object.keys(continuationMeta).forEach(k=>delete continuationMeta[k]);
+  records.forEach((node,i)=>{
+   const kids=childMap.get(String(node.id))||[];
+   const related=relations.filter(r=>String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id))
+    .map(r=>String(r.sourceNodeId)===String(node.id)?r.targetNodeId:r.sourceNodeId).map(id=>idToIndex.get(String(id))).filter(x=>Number.isInteger(x)&&x!==i);
+   directionalMap[i]={
+    forward:node.parentId&&idToIndex.has(String(node.parentId))?idToIndex.get(String(node.parentId)):null,
+    backward:kids.length?idToIndex.get(String(kids[0].id)):null,
+    left:related[0]??null,right:related[1]??null
+   };
+   continuationDescriptions[i]=String(node.desc||node.coreWord||node.name||"");
+   layerData[node.name||node.coreWord||String(node.id)]={desc:node.desc||"",children:[]};
+  });
+  records.forEach(node=>{
+   const parent=recordById.get(String(node.parentId));
+   if(parent){const key=parent.name||parent.coreWord||String(parent.id),child=node.name||node.coreWord||String(node.id);layerData[key]?.children.push([child,node.desc||""]);}
+  });
+  const rootName=roots[0]?.name||roots[0]?.coreWord||records[0].name||"知识框架";
+  logicStack.splice(0,logicStack.length,rootName);layerStack.splice(0,layerStack.length,rootName);
+  core.clear();spheres.splice(0,spheres.length);
+  const liveLineMat=new THREE.LineBasicMaterial({color:0x9aa8b1,transparent:true,opacity:.15});
+  nodes.forEach((n,i)=>{
+   const size=n[4]||.13;
+   const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(size*.72,1),new THREE.MeshStandardMaterial({
+    color:i===0?0xd5dde2:0x9aa8b1,roughness:.44,metalness:.18,
+    emissive:i===0?0x626d75:0x303a42,emissiveIntensity:i===0?.17:.1
+   }));
+   mesh.position.copy(positions[i]);mesh.userData.index=i;core.add(mesh);spheres.push(mesh);
+   const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(size,1),new THREE.MeshBasicMaterial({color:0xe0e9ef,transparent:true,opacity:.026,side:THREE.BackSide}));mesh.add(halo);
+  });
+  edges.forEach(([a,b])=>core.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([positions[a],positions[b]]),liveLineMat)));
+  selected=0;focusActive=false;focusGoal=null;focusHistory=[];focusCursor=-1;
+  spheres.forEach((s,i)=>{s.userData.targetOpacity=i===0?1:.7;s.userData.targetScale=1;s.userData.targetGlow=i===0?.16:.02;s.material.transparent=true;});
+  controls.autoRotate=true;controls.target.copy(positions[0]);camera.position.copy(positions[0]).add(new THREE.Vector3(0,2,19));controls.update();
+  renderContinuum();renderLogic();drawMini();
+  const state=document.getElementById("universeState");if(state)state.textContent="本地知识宇宙 · "+records.length+" 个节点";
+ }catch(error){console.warn("Guanfu Mind local graph preview could not load:",error);const state=document.getElementById("universeState");if(state)state.textContent="示例空间 · 本地数据读取失败";}
+}
+connectLocalKnowledgeUniverse();
 
 document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=e.target.value.trim();const i=nodes.findIndex(n=>n[0].includes(q));if(i>=0)selectNode(i);else toast(q?'没有找到匹配节点':'请输入搜索内容')}});
 </script>
