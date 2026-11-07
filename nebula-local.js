@@ -1226,7 +1226,7 @@ Object.assign(NEBULA_LOCAL,{
       const exact=textA===textB;
       const lengthRatio=Math.min(textA.length,textB.length)/Math.max(textA.length,textB.length);
       const similarity=exact?1:extractionDice(tokenCache.get(a.id),tokenCache.get(b.id));
-      if(exact||(Math.min(textA.length,textB.length)>=45&&lengthRatio>=0.65&&similarity>=threshold)) {
+      if(exact||(Math.min(textA.length,textB.length)>=30&&lengthRatio>=0.65&&similarity>=threshold)) {
         pairs.push({
           itemIds:[a.id,b.id],score:Number(similarity.toFixed(4)),
           matchType:exact?"exact":"near_duplicate",
