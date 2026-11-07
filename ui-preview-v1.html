@@ -1153,7 +1153,7 @@ async function connectLocalKnowledgeUniverse(){
   controls.autoRotate=true;controls.target.copy(positions[selected]);camera.position.copy(positions[selected]).add(new THREE.Vector3(0,2,19));controls.update();
   renderContinuum();renderLogic();drawMini();
   const state=document.getElementById("universeState");if(state)state.textContent="本地正式框架 · "+ordered.length+" 个节点";
- }catch(error){console.warn("Guanfu Mind local graph preview could not load:",error);const state=document.getElementById("universeState");if(state)state.textContent="本地框架读取失败 · "+error.message;}
+ }catch(error){console.warn("Guanfu Mind local graph preview could not load:",error);localGraphNodes=[];localGraphRelations=[];localFramework=null;logicStack=[];isDemoUniverse=true;window.__guanfuSelectedNodeId=null;renderLogic();renderContinuum();const state=document.getElementById("universeState");if(state)state.textContent="本地框架读取失败 · "+error.message+" · 当前仅显示非正式演示空间";}
 }
 connectLocalKnowledgeUniverse();
 
