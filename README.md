@@ -64,3 +64,13 @@ The preview uses Three.js / WebGL for the spatial scene. When a local IndexedDB 
 ## Project specification
 
 See [NEBULA Skill 1.0](docs/NEBULA-SKILL.md) for detailed product and implementation requirements.
+
+
+### V4 三套新一轮结构方案（A > B > C）
+
+本轮按用户确定的优先级推进：A 为主视觉与主体验，B 提供按需操作效率，C 提供纵向谱系阅读。三者仍为独立预览，不替换正式入口。
+
+- **V4-A｜深空沉浸：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v4-a-deep-universe.html) · [源文件](ui-preview-v4-a-deep-universe.html) — 收起常驻侧栏与模块导航，三维空间成为主画面，保留轻量顶部命令与底部时间/定位控制。
+- **V4-B｜轨道工作台：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v4-b-orbit-workbench.html) · [源文件](ui-preview-v4-b-orbit-workbench.html) — 三维视口占据主体，左侧导航折叠为窄轨道，右侧检查器按需查看，操作围绕空间展开。
+- **V4-C｜谱系透镜：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v4-c-lineage-lens.html) · [源文件](ui-preview-v4-c-lineage-lens.html) — 纵向知识树作为阅读主面，右上保留小型三维全局定位窗，兼顾局部结构与整体位置。
+
