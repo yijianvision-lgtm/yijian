@@ -146,6 +146,9 @@ const mergeFramework = await api.createFramework({ title: "Merge placement fixtu
 const sourcePlacement = await api.createFrameworkPlacement({ frameworkId: mergeFramework.id, nodeId: "source", role: "source-context" });
 const mergePath = await api.createExplorationPath({ title: "Merge path fixture", frameworkId: mergeFramework.id, rootNodeId: "source" });
 const mergeStep = await api.appendExplorationStep({ pathId: mergePath.id, toNodeId: "child", direction: "向内" });
+const collapsingRelation = await api.saveKnowledgeRelation({ sourceNodeId: "source", targetNodeId: "target", type: "supports" });
+const collapsePath = await api.createExplorationPath({ title: "Collapsed relation path", frameworkId: mergeFramework.id, rootNodeId: "source" });
+const collapseStep = await api.appendExplorationStep({ pathId: collapsePath.id, toNodeId: "target", direction: "向外", relationId: collapsingRelation.id });
 await api.saveKnowledgeRelation({ sourceNodeId: "source", targetNodeId: "child", type: "supports" });
 const merge = await api.createProposal({
   proposalType: "merge",
@@ -167,6 +170,10 @@ assert.equal(remappedPath.path.rootNodeId, "target");
 assert.equal(remappedPath.path.originalRootNodeId, "source");
 assert.equal(remappedPath.steps[0].fromNodeId, "target");
 assert.equal(remappedPath.steps[0].originalFromNodeId, "source", "Merge must remap active path references while preserving traversal provenance.");
+const collapsedPathSnapshot = await api.getExplorationPathSnapshot(collapsePath.id);
+assert.equal(collapsedPathSnapshot.steps[0].relationId, null, "A self-collapsed relation must not remain as a dangling path reference.");
+assert.equal(collapsedPathSnapshot.steps[0].originalRelationId, collapsingRelation.id, "The removed relation identity must remain in the path audit trail.");
+assert.equal(collapsedPathSnapshot.steps[0].relationInvalidatedByMerge, "merged_endpoints_collapsed");
 
 const split = await api.createProposal({
   proposalType: "split",
