@@ -1098,7 +1098,7 @@ Object.assign(NEBULA_LOCAL,{
     const changes=cleanRecord(patch),current=await readRecord("filterCases",id);
     if(!current) throw new Error("找不到过滤任务。");
     const nextStatus=changes.status||current.status;delete changes.status;
-    const allowed=["currentStage","inputItemIds","candidateNodeId","proposedNodeIds","duplicateCandidates","locationSuggestions","relationSuggestions","evidenceGaps","conflicts","summary","reviewProposalId","lastError"];
+    const allowed=["currentStage","inputItemIds","candidateNodeId","proposedNodeIds","duplicateCandidates","locationSuggestions","relationSuggestions","evidenceGaps","conflicts","summary","reviewProposalId","lastError","dedupeAnalyzedAt","dedupeThreshold"];
     for(const key of Object.keys(changes)) if(!allowed.includes(key)) throw new Error("不允许更新过滤任务字段："+key);
     if(changes.inputItemIds) {
       changes.inputItemIds=[...new Set(changes.inputItemIds.map(x=>requireId(x,"提取候选")))];
