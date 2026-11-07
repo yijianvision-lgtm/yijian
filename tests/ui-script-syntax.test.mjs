@@ -46,7 +46,7 @@ assert.ok(html.includes("async function openKnowledgeArchive(){"), "Both archive
 
 assert.ok(/await retractFocusToMinimap\(\);\s*document\.querySelectorAll\('\.overlay\.open'\)\.forEach\(panel=>\{if\(panel!==archive\)panel\.classList\.remove\('open'\)\}\);\s*archive\.classList\.add\('open'\);/.test(html), "The archive must appear after the core and four directions finish retracting, with competing overlays cleared.");
 assert.ok(html.includes("renderContinuum();\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
-assert.ok(/(?:^|})#nodeDetail\\{z-index:40\\}/.test(html), "The archive must have a valid standalone #nodeDetail CSS rule, not merely matching text.");
+assert.ok(html.includes(".overlay.open{display:block}#nodeDetail{z-index:40}.overlay-head{"), "The archive must have a valid standalone #nodeDetail CSS rule between the overlay and header selectors.");
 assert.ok(!html.includes(".#nodeDetail{z-index:40}"), "The archive z-index rule must not be prefixed with an invalid class selector.");
 assert.ok(html.includes(".overlay-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:22px}"), "The archive header class must have a valid class selector.");
 assert.ok(html.includes("document.querySelectorAll('.overlay.open').forEach(panel=>{if(panel!==archive)panel.classList.remove('open')});"), "Opening the archive must close any previously open overlay so it cannot cover the archive.");
