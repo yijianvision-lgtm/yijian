@@ -927,6 +927,82 @@ async function transitionFilterRecord(store,id,nextStatus,patch={}) {
   await putRecord(store,next);
   return next;
 }
+function splitExtractionText(value,maxLength=1100) {
+  const normalized=String(value||"").replace(/\r/g,"\n").replace(/[ \t]+/g," ").trim();
+  if(!normalized) return [];
+  const paragraphs=normalized.split(/\n{2,}/).map(x=>x.trim()).filter(Boolean);
+  const units=paragraphs.flatMap(paragraph=>{
+    if(paragraph.length<=maxLength) return [paragraph];
+    const sentences=paragraph.split(/(?<=[。！？.!?])\s*/).filter(Boolean);
+    const chunks=[];let current="";
+    for(const sentence of sentences.length?sentences:[paragraph]) {
+      if(current && (current.length+sentence.length+1)>maxLength) {chunks.push(current);current=sentence;}
+      else current+=(current?" ":"")+sentence;
+    }
+    if(current) chunks.push(current);
+    return chunks;
+  });
+  const out=[];let current="";
+  for(const unit of units) {
+    if(current && (current.length+unit.length+2)>maxLength) {out.push(current);current=unit;}
+    else current+=(current?"\n\n":"")+unit;
+  }
+  if(current) out.push(current);
+  return out;
+}
+function buildReferenceExtractionCandidates(reference) {
+  const candidates=[];
+  const tree=Array.isArray(reference.tree)?reference.tree:[];
+  if(tree.length) {
+    for(let i=0;i<tree.length;i++) {
+      const node=tree[i]||{},title=String(node.title||"").trim(),note=String(node.note||"").trim();
+      const content=[title,note].filter(Boolean).join("\n");
+      if(!content) continue;
+      candidates.push({title:title||"思维导图主题 "+(i+1),content,excerpt:content.slice(0,700),candidateType:"topic",
+        locator:{kind:"topic",topicIndex:i,topicPath:[node.parent,title].filter(Boolean),sourcePart:node.sourcePart||null},
+        parserMetadata:{structure:"mindmap",sourcePart:node.sourcePart||null}});
+    }
+    return candidates;
+  }
+  const pages=Array.isArray(reference.pages)?reference.pages:[];
+  if(pages.length) {
+    for(const page of pages) {
+      const pageNo=Number(page.page)||null;
+      const chunks=splitExtractionText(page.text);
+      chunks.forEach((content,index)=>candidates.push({
+        title:"第 "+(pageNo||"?")+" 页 · 片段 "+(index+1),content,excerpt:content.slice(0,700),candidateType:"page_chunk",
+        locator:{kind:"pdf_page",page:pageNo,chunk:index+1},parserMetadata:{structure:"pdf_page"}
+      }));
+    }
+    return candidates;
+  }
+  let structured=[];
+  if(reference.html && typeof DOMParser!=="undefined") {
+    const doc=new DOMParser().parseFromString(reference.html,"text/html");
+    structured=[...doc.body.querySelectorAll("h1,h2,h3,h4,p,li")].map((el,index)=>({
+      title:/^h[1-4]$/i.test(el.tagName)?el.textContent.trim():"段落 "+(index+1),
+      content:(el.textContent||"").trim(),kind:/^h[1-4]$/i.test(el.tagName)?"heading":"paragraph",index
+    })).filter(x=>x.content);
+  }
+  if(structured.length) {
+    structured.forEach(item=>{
+      const chunks=splitExtractionText(item.content);
+      chunks.forEach((content,index)=>candidates.push({
+        title:item.title+(chunks.length>1?" · "+(index+1):""),content,excerpt:content.slice(0,700),candidateType:item.kind,
+        locator:{kind:"document_block",blockIndex:item.index,blockType:item.kind,chunk:index+1},
+        parserMetadata:{structure:"docx_html"}
+      }));
+    });
+    return candidates;
+  }
+  const chunks=splitExtractionText(reference.text);
+  chunks.forEach((content,index)=>candidates.push({
+    title:"正文片段 "+(index+1),content,excerpt:content.slice(0,700),candidateType:"text_chunk",
+    locator:{kind:"text_offset",chunk:index+1},parserMetadata:{structure:"plain_text"}
+  }));
+  return candidates;
+}
+
 Object.assign(NEBULA_LOCAL,{
   async createExtractionBatch(record) {
     const item=cleanRecord(record);
@@ -934,6 +1010,49 @@ Object.assign(NEBULA_LOCAL,{
     item.status=item.status||"received";
     if(!FILTER_STATUSES.has(item.status)) throw new Error("提取批次状态无效。");
     return createManagedRecord("extractionBatches",{...item,stats:item.stats||{total:0,completed:0,failed:0},warnings:Array.isArray(item.warnings)?item.warnings:[]},"extract",[]);
+  },
+  async createExtractionFromParsedSource(input) {
+    const data=cleanRecord(input);
+    const sourceId=requireId(data.sourceId,"来源");
+    const referenceId=requireId(data.referenceId,"原始资料");
+    if(!(await this.getSource(sourceId))) throw new Error("提取来源记录不存在。");
+    const reference={name:data.name||"未命名资料",text:data.text||"",html:data.html||"",tree:data.tree||[],pages:data.pages||[],warnings:data.warnings||[]};
+    const candidates=buildReferenceExtractionCandidates(reference);
+    const seen=new Set(),unique=[];
+    for(const candidate of candidates) {
+      const normalized=String(candidate.content).toLowerCase().replace(/\s+/g," ").trim();
+      if(!normalized||seen.has(normalized)) continue;
+      seen.add(normalized);unique.push(candidate);
+    }
+    const batch=await this.createExtractionBatch({
+      sourceId,referenceId,sourceName:reference.name,parserVersion:"nebula-extract-v1",
+      status:"received",startedAt:Date.now(),warnings:[...reference.warnings],
+      stats:{total:unique.length,completed:0,failed:0}
+    });
+    await this.updateExtractionBatch(batch.id,{status:"extracting"});
+    try {
+      const items=[];
+      for(const candidate of unique) {
+        items.push(await this.createExtractionItem({
+          ...candidate,batchId:batch.id,sourceId,referenceId,
+          quality:{status:"unreviewed",characterCount:candidate.content.length},
+          status:"extracted"
+        }));
+      }
+      let filterCase=null;
+      if(items.length) filterCase=await this.createFilterCase({
+        inputItemIds:items.map(x=>x.id),sourceId,batchId:batch.id,
+        currentStage:"dedupe",status:"extracted",summary:"由资料接入流程自动生成，等待辨异与定位"
+      });
+      const completed=await this.updateExtractionBatch(batch.id,{
+        status:"extracted",completedAt:Date.now(),stats:{total:unique.length,completed:items.length,failed:0},
+        extractionItemIds:items.map(x=>x.id),filterCaseId:filterCase?.id||null
+      });
+      return {...completed,items,filterCase};
+    } catch(error) {
+      await this.updateExtractionBatch(batch.id,{status:"failed",completedAt:Date.now(),lastError:error.message,stats:{total:unique.length,completed:0,failed:unique.length}});
+      throw error;
+    }
   },
   async getExtractionBatch(id){return readRecord("extractionBatches",id);},
   async listExtractionBatches(sourceId){return (await request("extractionBatches","readonly",s=>s.getAll())).filter(x=>!sourceId||String(x.sourceId)===String(sourceId)).sort((a,b)=>b.createdAt-a.createdAt);},
@@ -1054,3 +1173,23 @@ Object.assign(NEBULA_LOCAL,{
   },
   async listRelationEvidence(relationId) {return (await request("relationEvidence","readonly",s=>s.getAll())).filter(x=>!relationId||String(x.relationId)===String(relationId)).sort((a,b)=>a.createdAt-b.createdAt);}
 });
+
+
+// Automatically route newly saved original materials into the extraction queue.
+// The original binary remains untouched in lectureSources; extracted records are separate candidates.
+const saveReferenceBeforeExtraction = NEBULA_LOCAL.saveReference.bind(NEBULA_LOCAL);
+NEBULA_LOCAL.saveReference = async function(file) {
+  const saved=await saveReferenceBeforeExtraction(file);
+  if(saved.duplicate) return saved;
+  const sourceId="src_"+saved.id;
+  try {
+    const pipeline=await this.createExtractionFromParsedSource({
+      sourceId,referenceId:saved.id,name:saved.name,text:saved.text,html:saved.html,
+      tree:saved.tree,pages:saved.pages,warnings:saved.warnings
+    });
+    return {...saved,extractionBatchId:pipeline.id,extractionItemCount:pipeline.items.length,filterCaseId:pipeline.filterCase?.id||null,
+      extractionStatus:pipeline.status};
+  } catch(error) {
+    return {...saved,extractionStatus:"failed",extractionError:error.message};
+  }
+};
