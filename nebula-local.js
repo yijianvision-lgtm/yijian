@@ -1456,30 +1456,54 @@ Object.assign(NEBULA_LOCAL,{
       proposalType:"relation",sourceNodeId:source.id,relatedNodeId:target.id,
       proposedSnapshot:{type:record.type||"related",label:record.label||"待确认的横向关联"},
       reasoning:String(record.reasoning||"用户发起的关系审核提案。"),
-      evidenceSourceIds,evidence:record.evidence||null
+      evidenceSourceIds,evidence:record.evidence||null,
+      filterCaseId:record.filterCaseId||null,extractionItemId:record.extractionItemId||null
+    });
+  },
+  async createFilterRelationProposal(filterCaseId,suggestionIndex) {
+    const filterCase=await this.getFilterCase(filterCaseId);
+    if(!filterCase) throw new Error("找不到过滤任务。");
+    const suggestion=filterCase.locationSuggestions?.[Number(suggestionIndex)];
+    if(!suggestion||suggestion.dimension!=="horizontal"||suggestion.kind!=="related_concept"||!suggestion.targetNodeId)
+      throw new Error("请选择一条有明确目标节点的横向关联建议。");
+    const decisions=await this.listFilterDecisions(filterCaseId);
+    const placement=decisions.filter(d=>d.actor==="user"&&d.before?.itemId===suggestion.itemId&&d.after?.action==="placed"&&d.after?.nodeId)
+      .sort((a,b)=>b.createdAt-a.createdAt)[0];
+    if(!placement) throw new Error("请先审核并确认该候选的谱系位置，再建立横向关系。");
+    if(String(placement.after.nodeId)===String(suggestion.targetNodeId)) throw new Error("候选节点与目标节点相同，无需建立自关联。");
+    const item=await this.getExtractionItem(suggestion.itemId);
+    if(!item) throw new Error("提取候选已不存在。");
+    return this.createKnowledgeRelationProposal(placement.after.nodeId,suggestion.targetNodeId,{
+      type:"related",label:"待确认的横向知识关联",
+      reasoning:(suggestion.reasoning||"候选与目标节点存在主题关联线索。")+" "+(suggestion.uncertainty||"关系类型仍需人工确认。"),
+      evidenceSourceIds:[item.sourceId].filter(Boolean),evidence:suggestion.evidence||null,
+      filterCaseId,extractionItemId:item.id
     });
   },
   async applyKnowledgeRelationProposal(proposalId,decision,reviewerNote="") {
     const proposal=(await this.listProposals("pending")).find(x=>String(x.id)===String(proposalId));
     if(!proposal||proposal.proposalType!=="relation") throw new Error("找不到待审核的关系提案。");
+    if(!["accept","reject","defer"].includes(decision)) throw new Error("关系审核决定无效。");
     const result=await this.applyProposal(proposalId,decision,reviewerNote);
-    if(decision!=="accept") return result;
-    const relations=await this.listKnowledgeRelations(proposal.sourceNodeId);
-    const relation=relations.filter(x=>String(x.targetNodeId)===String(proposal.relatedNodeId)).sort((a,b)=>b.createdAt-a.createdAt)[0];
-    if(relation) for(const sourceId of proposal.evidenceSourceIds||[]) {
-      await this.createRelationEvidence({
-        relationId:relation.id,sourceId,excerpt:proposal.evidence?.excerpt||"",
-        locator:proposal.evidence?.locator||null,reviewStatus:"confirmed",
-        rationale:reviewerNote||proposal.reasoning
-      });
+    let relation=null;
+    if(decision==="accept") {
+      const relations=await this.listKnowledgeRelations(proposal.sourceNodeId);
+      relation=relations.filter(x=>String(x.targetNodeId)===String(proposal.relatedNodeId)).sort((a,b)=>b.createdAt-a.createdAt)[0]||null;
+      if(relation) for(const sourceId of proposal.evidenceSourceIds||[]) {
+        await this.createRelationEvidence({
+          relationId:relation.id,sourceId,excerpt:proposal.evidence?.excerpt||"",
+          locator:proposal.evidence?.locator||null,reviewStatus:"confirmed",
+          rationale:reviewerNote||proposal.reasoning
+        });
+      }
     }
     if(proposal.filterCaseId) await this.appendFilterDecision({
-      filterCaseId:proposal.filterCaseId,decisionType:"relate",actor:"user",
-      before:{proposalId,sourceNodeId:proposal.sourceNodeId,targetNodeId:proposal.relatedNodeId},
-      after:{decision:"accept",relationId:relation?.id||null},
-      rationale:reviewerNote||"用户确认横向关系提案。",evidenceIds:proposal.evidenceSourceIds||[]
+      filterCaseId:proposal.filterCaseId,decisionType:decision==="accept"?"relate":decision==="reject"?"reject":"defer",actor:"user",
+      before:{proposalId,sourceNodeId:proposal.sourceNodeId,targetNodeId:proposal.relatedNodeId,extractionItemId:proposal.extractionItemId||null},
+      after:{decision,relationId:relation?.id||null,action:decision==="accept"?"related":decision==="defer"?"deferred":"rejected"},
+      rationale:reviewerNote||"用户处理横向关系提案。",evidenceIds:proposal.evidenceSourceIds||[]
     });
-    return {...result,relation:relation||null};
+    return {...result,relation};
   }
 });
 
