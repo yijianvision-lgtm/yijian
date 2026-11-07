@@ -326,6 +326,8 @@ assert.equal((await api.listRelationEvidence(relationApplied.relation.id)).lengt
 const frameworkProjection = await api.createFrameworkFromCurrentGraph("绘画史框架", "四维空间联动测试");
 const frameworkTree = await api.getFrameworkTree(frameworkProjection.id);
 assert.ok(frameworkTree.nodeCount >= 4);
+assert.equal(frameworkTree.modelMode, "framework-placement", "New frameworks must begin with independent contextual placements.");
+assert.ok((await api.listFrameworkPlacements(frameworkProjection.id)).every(x => x.needsReview), "Legacy parentId projection must be explicitly reviewable rather than silently treated as final ontology.");
 const mindContext = await api.getMindContext(placedNode.id, { frameworkId: frameworkProjection.id, activeDimension: "time", focusMode: "focus" });
 assert.equal(mindContext.currentNodeId, placedNode.id);
 assert.ok(mindContext.ancestorPath.some(x => x.id === "art-root"));
