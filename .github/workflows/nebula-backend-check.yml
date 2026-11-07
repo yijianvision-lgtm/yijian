@@ -21,6 +21,8 @@ jobs:
           node --input-type=module --check < deepseek-worker.js
       - name: Install IndexedDB test shim
         run: npm install --no-save fake-indexeddb@6.2.4
+      - name: Check inline preview JavaScript syntax
+        run: node tests/ui-script-syntax.test.mjs
       - name: Check backend contracts
         run: node tests/backend-contract.test.mjs
       - name: Test local database workflows
