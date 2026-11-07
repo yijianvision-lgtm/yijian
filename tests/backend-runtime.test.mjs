@@ -234,6 +234,66 @@ const relationApplied = await api.applyKnowledgeRelationProposal(relationProposa
 assert.ok(relationApplied.relation?.id);
 assert.equal((await api.listRelationEvidence(relationApplied.relation.id)).length, 1, "accepted relation must retain its evidence locator");
 
+
+const frameworkProjection = await api.createFrameworkFromCurrentGraph("绘画史框架", "四维空间联动测试");
+const frameworkTree = await api.getFrameworkTree(frameworkProjection.id);
+assert.ok(frameworkTree.nodeCount >= 4);
+const mindContext = await api.getMindContext(placedNode.id, { frameworkId: frameworkProjection.id, activeDimension: "time", focusMode: "focus" });
+assert.equal(mindContext.currentNodeId, placedNode.id);
+assert.ok(mindContext.ancestorPath.some(x => x.id === "art-root"));
+assert.equal(mindContext.activeDimension, "time");
+const spatialProjection = await api.getSpatialProjection(frameworkProjection.id);
+assert.ok(spatialProjection.nodes.some(x => x.id === placedNode.id));
+assert.deepEqual(spatialProjection.dimensions, ["lineage", "time", "space", "horizontal"]);
+const resolvedCandidate = await api.resolveExtractionEvidence(locationIngestion.items[0].id);
+assert.equal(resolvedCandidate.source.id, locationSource.id);
+assert.equal(resolvedCandidate.locator.kind, "topic");
+assert.ok(resolvedCandidate.locatedText.includes("谢赫画品"));
+const resolvedNodeEvidence = await api.resolveNodeEvidence(placedNode.id);
+assert.equal(resolvedNodeEvidence.sources.length, 1);
+assert.equal(resolvedNodeEvidence.sources[0].source.id, locationSource.id);
+
+const aiSource = await api.saveSource({ id: "src-ai-filter-test", sourceType: "lecture", title: "AI filter sample" });
+const aiIngestion = await api.createExtractionFromParsedSource({
+  sourceId: aiSource.id, referenceId: "ref-ai-filter-test", name: "AI filter sample",
+  pages: [{ page: 1, text: "魏晋南北朝时期的绘画品评与艺术理论，涉及谢赫及其画品体系。" }]
+});
+await api.analyzeFilterCaseDuplicates(aiIngestion.filterCase.id);
+await api.suggestFilterCaseLocations(aiIngestion.filterCase.id);
+const originalFetch = globalThis.fetch;
+let capturedAiPayload = null;
+globalThis.fetch = async (url, init) => {
+  capturedAiPayload = JSON.parse(init.body);
+  return {
+    ok: true,
+    json: async () => ({ ok: true, result: {
+      nodes: [{ id: "ai-new", name: "谢赫画品体系", coreWord: "画品体系", desc: "魏晋南北朝时期绘画品评理论。", parentId: "art-root", before: "承接早期人物画品评。", after: "影响后世绘画品评。", left: "关联人物画与绘画史。", right: "具体著作内容需核对原文。", date: "魏晋南北朝", needsReview: true }],
+      links: [{ source: "ai-new", target: "art-southern", type: "historical_context", label: "画论与绘画实践的时代关联" }],
+      mergeSuggestions: [],
+      uncertain: ["具体文本内容需要原文逐条核对。"]
+    } })
+  };
+};
+let aiResult;
+try {
+  aiResult = await api.analyzeFilterCaseWithAI("https://worker.example", "test-token", aiIngestion.filterCase.id);
+} finally {
+  globalThis.fetch = originalFetch;
+}
+assert.equal(capturedAiPayload.existingNodes.length <= 30, true);
+assert.ok(capturedAiPayload.text.includes("谢赫"));
+assert.equal(aiResult.proposals.length, 1);
+assert.equal(aiResult.relationProposals.length, 1);
+assert.equal(aiResult.filterCase.aiProvider, "configured-worker");
+assert.equal((await api.loadGraph()).nodes.some(x => x.name === "谢赫画品体系"), false, "AI analysis must remain proposal-only");
+const aiNodeProposal = aiResult.proposals[0];
+await api.applyFilterCaseProposal(aiNodeProposal.id, "accept", "核对材料后接受");
+const aiRelationProposal = aiResult.relationProposals[0];
+const aiRelationResult = await api.applyKnowledgeRelationProposal(aiRelationProposal.id, "accept", "确认时代关联");
+assert.ok(aiRelationResult.relation?.id);
+assert.equal((await api.listRelationEvidence(aiRelationResult.relation.id)).length, 1);
+assert.equal((await api.finalizeFilterCase(aiIngestion.filterCase.id)).status, "approved");
+
 const v5Backup = await api.exportFullBackup();
 assert.equal((await api.previewFullBackup(v5Backup.blob)).schemaVersion, 5);
 
