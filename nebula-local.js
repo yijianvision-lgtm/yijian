@@ -959,7 +959,12 @@ Object.assign(NEBULA_LOCAL,{
   async listExtractionItems(batchId){return (await request("extractionItems","readonly",s=>s.getAll())).filter(x=>!batchId||String(x.batchId)===String(batchId)).sort((a,b)=>a.createdAt-b.createdAt);},
   async updateExtractionItem(id,patch={}) {
     const allowed=["title","content","normalizedContent","excerpt","locator","candidateType","quality","parserMetadata","warnings","sourceId"];
-    return updateManagedRecord("extractionItems",id,patch,allowed);
+    const changes=cleanRecord(patch),current=await readRecord("extractionItems",id);
+    if(!current) throw new Error("找不到提取候选。");
+    const nextStatus=changes.status||current.status;delete changes.status;
+    for(const key of Object.keys(changes)) if(!allowed.includes(key)) throw new Error("不允许更新提取候选字段："+key);
+    if(changes.sourceId && !(await this.getSource(changes.sourceId))) throw new Error("提取候选引用的来源不存在。");
+    return transitionFilterRecord("extractionItems",id,nextStatus,changes);
   },
   async createFilterCase(record) {
     const item=cleanRecord(record);
@@ -1014,8 +1019,10 @@ Object.assign(NEBULA_LOCAL,{
   async updateFramework(id,patch={}) {
     const allowed=["title","description","rootNodeIds","status","metadata"];
     const next=await updateManagedRecord("frameworks",id,patch,allowed);
-    await this.saveFrameworkVersion({frameworkId:next.id,snapshot:{...next},changeSummary:"更新框架",createdBy:"user"});
-    return next;
+    const version=await this.saveFrameworkVersion({frameworkId:next.id,snapshot:{...next},changeSummary:"更新框架",createdBy:"user"});
+    const saved={...next,versionId:version.id,updatedAt:Date.now()};
+    await putRecord("frameworks",saved);
+    return saved;
   },
   async saveFrameworkVersion(record) {
     const item=cleanRecord(record);
@@ -1030,7 +1037,7 @@ Object.assign(NEBULA_LOCAL,{
     item.nodeId=requireId(item.nodeId,"知识节点");
     item.frameworkId=requireId(item.frameworkId,"框架");
     if(!(await this.getFramework(item.frameworkId))) throw new Error("节点位置引用的框架不存在。");
-    return putRecord("nodePositions",{...item,id:item.id||item.frameworkId+"::"+item.nodeId,updatedAt:Date.now()});
+    return putRecord("nodePositions",{...item,id:item.frameworkId+"::"+item.nodeId,updatedAt:Date.now()});
   },
   async getNodePosition(frameworkId,nodeId){return readRecord("nodePositions",String(frameworkId)+"::"+String(nodeId));},
   async listNodePositions(frameworkId){return (await request("nodePositions","readonly",s=>s.getAll())).filter(x=>!frameworkId||String(x.frameworkId)===String(frameworkId));},
