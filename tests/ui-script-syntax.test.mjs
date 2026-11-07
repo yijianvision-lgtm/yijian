@@ -46,7 +46,10 @@ assert.ok(html.includes("async function openKnowledgeArchive(){"), "Both archive
 
 assert.ok(html.includes("await retractFocusToMinimap();\n archive.classList.add('open');"), "The archive must appear after the core and four directions finish retracting, not be hidden behind the transition.");
 assert.ok(html.includes("renderContinuum();\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
-assert.ok(html.includes("#nodeDetail{z-index:40}"), "The full knowledge archive must render above the 3D exploration layer.");
+assert.ok(/(?:^|})#nodeDetail\\{z-index:40\\}/.test(html), "The archive must have a valid standalone #nodeDetail CSS rule, not merely matching text.");
+assert.ok(!html.includes(".#nodeDetail{z-index:40}"), "The archive z-index rule must not be prefixed with an invalid class selector.");
+assert.ok(html.includes(".overlay-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:22px}"), "The archive header class must have a valid class selector.");
+assert.ok(html.includes("document.querySelectorAll('.overlay.open').forEach(panel=>{if(panel!==archive)panel.classList.remove('open')});"), "Opening the archive must close any previously open overlay so it cannot cover the archive.");
 assert.ok(html.includes("host.append(safeText('p','正在读取关联来源…'));"), "The archive must show a visible loading state while original sources are resolved.");
 assert.ok(html.includes("corePoint.addEventListener('transitionend',onTransitionEnd);"), "The archive-opening flow must wait for the core-to-minimap transition.");
 
