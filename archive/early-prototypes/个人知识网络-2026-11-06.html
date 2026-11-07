@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>个人知识网络</title>
+<style>
+:root{--bg:#f5f6f8;--panel:#fff;--ink:#202532;--muted:#737b8a;--line:#e4e7ed;--accent:#5369d9;--soft:#edf0ff;--shadow:0 8px 28px #1d2b4410}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,textarea,select{font:inherit}button{cursor:pointer;border:1px solid var(--line);background:white;color:var(--ink);border-radius:9px;padding:8px 11px}button.primary{background:var(--accent);border-color:var(--accent);color:white}button.danger{color:#b43d46}button:disabled{opacity:.4;cursor:not-allowed}
+header{height:64px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 22px;gap:12px;position:sticky;top:0;z-index:5}
+.brand{font-weight:750;font-size:18px}.brand span{color:var(--accent)}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+main{max-width:1500px;margin:auto;padding:18px;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,.9fr);gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow);min-width:0}.cardhead{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}.cardhead h2{font-size:15px;margin:0}.sub{font-size:12px;color:var(--muted)}
+#graphWrap{position:relative;height:min(72vh,730px);min-height:470px;overflow:hidden;background:radial-gradient(#e9ebf2 1px,transparent 1px);background-size:22px 22px;border-radius:0 0 15px 15px}
+#graph{width:100%;height:100%;display:block;touch-action:none}
+.edge{stroke:#aeb6c8;stroke-width:1.8;cursor:pointer}.edge:hover{stroke:var(--accent);stroke-width:3}
+.node{cursor:pointer}.node circle{fill:#fff;stroke:#aeb6c8;stroke-width:1.7}.node text{font-size:12px;fill:#30394a;text-anchor:middle;pointer-events:none}.node.selected circle{fill:#e9edff;stroke:var(--accent);stroke-width:3}.node.root circle{fill:#5369d9;stroke:#5369d9}.node.root text{fill:white;font-weight:700}
+.graphtools{display:flex;gap:7px;align-items:center}.graphtools button{padding:5px 9px;font-size:12px}
+.right{display:flex;flex-direction:column;gap:16px;min-width:0}.detail{padding:16px}.detail h2{margin:0 0 5px;font-size:19px}.detail p{margin:0;color:var(--muted);font-size:13px}
+.quads{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}
+.quad{border:1px solid var(--line);border-radius:12px;padding:12px;min-height:150px;background:#fff}
+.quad h3{margin:0 0 9px;font-size:14px}.quad:nth-child(1){border-top:3px solid #6b83d9}.quad:nth-child(2){border-top:3px solid #54a47b}.quad:nth-child(3){border-top:3px solid #d49a4d}.quad:nth-child(4){border-top:3px solid #a47acb}
+.quad textarea{width:100%;min-height:90px;border:0;resize:vertical;outline:0;color:var(--ink);font-size:13px;line-height:1.6}
+.form{padding:15px;display:grid;gap:9px}.form label{font-size:12px;color:var(--muted);display:grid;gap:5px}.form input,.form textarea,.form select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:#fff;color:var(--ink)}.form textarea{min-height:65px;resize:vertical}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+.links{padding:0 15px 15px;display:flex;gap:7px;flex-wrap:wrap}.linkchip{font-size:12px;background:#f1f3fa;border-radius:30px;padding:6px 10px;border:0}
+.search{width:210px;max-width:35vw;border:1px solid var(--line);padding:8px 10px;border-radius:9px}
+.status{font-size:12px;color:var(--muted);padding:0 15px 13px}
+@media(max-width:900px){main{grid-template-columns:1fr}.right{display:grid;grid-template-columns:1fr}.quads{padding:10px}#graphWrap{height:55vh;min-height:400px}}
+@media(max-width:520px){header{height:auto;padding:12px;align-items:flex-start;flex-direction:column}.toolbar{width:100%}.search{flex:1;max-width:none}.quads{grid-template-columns:1fr 1fr}.quad{min-height:130px;padding:9px}}
+</style></head>
+<body>
+<header>
+ <div class="brand">◈ <span>我的</span>知识网络</div>
+ <div class="toolbar">
+  <input class="search" id="search" placeholder="搜索知识点…">
+  <button id="addNode" class="primary">＋ 新建知识点</button>
+  <button id="export">导出</button><button id="importBtn">导入</button><input id="importFile" type="file" accept="application/json" hidden>
+ </div>
+</header>
+<main>
+ <section class="card">
+  <div class="cardhead"><div><h2>知识关系图谱</h2><div class="sub">点击节点查看四象限；拖动节点调整位置；连接知识点建立网状关系</div></div>
+   <div class="graphtools"><button id="zoomIn">＋</button><button id="zoomOut">－</button><button id="fit">适配</button></div>
+  </div>
+  <div id="graphWrap"><svg id="graph" viewBox="0 0 900 650" role="img" aria-label="知识关系网络"></svg></div>
+  <div class="status" id="graphStatus">示例知识库已载入。数据自动保存在当前浏览器。</div>
+ </section>
+ <div class="right">
+  <section class="card">
+   <div class="cardhead"><div><h2>四向思考</h2><div class="sub">每个知识点都有自己的四维展开</div></div><span class="sub" id="nodeCount"></span></div>
+   <div class="detail"><h2 id="selectedTitle">张彦远《历代名画记》</h2><p id="selectedDesc">第一部体例完备、史论结合、内容丰富的绘画史论著作</p></div>
+   <div class="quads">
+    <div class="quad"><h3>↑ 前 · 瞻前</h3><textarea id="q0" placeholder="背景、来源、前置条件…"></textarea></div>
+    <div class="quad"><h3>↓ 后 · 顾后</h3><textarea id="q1" placeholder="影响、结果、后续发展…"></textarea></div>
+    <div class="quad"><h3>← 左 · 左顾</h3><textarea id="q2" placeholder="横向联系、相关知识…"></textarea></div>
+    <div class="quad"><h3>→ 右 · 右盼</h3><textarea id="q3" placeholder="比较、辨析、相互印证…"></textarea></div>
+   </div>
+   <div class="status">四象限内容在编辑后自动保存。可在任一知识点下继续建立关联节点。</div>
+  </section>
+  <section class="card">
+   <div class="cardhead"><h2>节点管理</h2><span class="sub">当前选中节点</span></div>
+   <div class="form">
+    <label>知识点名称<input id="titleInput" placeholder="输入知识点名称"></label>
+    <label>简要说明<textarea id="descInput" placeholder="这个知识点是什么？"></textarea></label>
+    <div class="row"><button class="primary" id="saveNode">保存节点</button><button id="deleteNode" class="danger">删除节点</button></div>
+    <label>与另一个知识点建立关联<select id="connectTarget"></select></label>
+    <button id="connect">＋ 建立双向关联</button>
+    <div class="sub">关联不受层级限制：两个知识点可以跨分支相连。</div>
+   </div>
+   <div class="cardhead"><h2>已关联知识点</h2></div><div class="links" id="links"></div>
+  </section>
+ </div>
+</main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const keys=['前','后','左','右'];let selected='n3',scale=1,offset={x:0,y:0},drag=null;
+const id=()=>Math.random().toString(36).slice(2,10);
+const seed=[
+{id:'n1',title:'裴孝源《贞观公私画录》',desc:'唐代绘画著录，最早著录。',x:170,y:160,q:['早期绘画著录传统','为后世绘画史料整理提供线索','与唐代其他画录比较','与后续绘画史论著作互证'],links:['n2']},
+{id:'n2',title:'朱景玄《唐朝名画录》',desc:'断代史；以神、妙、能、逸四品记录画家。',x:440,y:160,q:['承接前代绘画著录','建立断代绘画史评价体系','与通史类著作形成对照','比较四品分类与其他品评体系'],links:['n1','n3']},
+{id:'n3',title:'张彦远《历代名画记》',desc:'第一部体例完备、史论结合、内容丰富的绘画史论著作。',x:440,y:350,q:['魏晋顾恺之传神论、谢赫六法；唐代绘画繁荣，需要理论总结。','开创中国绘画史学新体例；影响后世研究与五代两宋史论编写。','断代史与通史；书画同源；疏密二体；五等品评。','与朱景玄断代史比较；理论与前代画迹互证。'],links:['n1','n2','n4','n5']},
+{id:'n4',title:'谢赫六法',desc:'中国古代绘画品评的重要理论。',x:170,y:440,q:['南齐绘画品评传统','影响后世绘画理论与批评','与顾恺之传神论联系','与后世画论的评价标准比较'],links:['n3']},
+{id:'n5',title:'书画同源',desc:'张彦远提出的重要理论命题。',x:700,y:440,q:['书法与绘画的历史渊源','影响文人画及艺术观念','与诗画关系等命题联系','比较书法用笔与绘画用笔'],links:['n3']}
+];
+let nodes=JSON.parse(localStorage.getItem('knowledgeGraphV1')||'null')||seed;
+function save(){localStorage.setItem('knowledgeGraphV1',JSON.stringify(nodes))}
+function current(){return nodes.find(n=>n.id===selected)}
+function draw(){
+const svg=$('graph');svg.innerHTML='';const ns=nodes;
+let g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('transform',`translate(${offset.x} ${offset.y}) scale(${scale})`);svg.append(g);
+const byId=x=>ns.find(n=>n.id===x);
+const seen=new Set();
+ns.forEach(n=>(n.links||[]).forEach(t=>{let other=byId(t);if(!other)return;let k=[n.id,t].sort().join('|');if(seen.has(k))return;seen.add(k);let l=document.createElementNS(svg.namespaceURI,'line');l.setAttribute('x1',n.x);l.setAttribute('y1',n.y);l.setAttribute('x2',other.x);l.setAttribute('y2',other.y);l.setAttribute('class','edge');g.append(l)}));
+ns.forEach(n=>{let el=document.createElementNS(svg.namespaceURI,'g');el.setAttribute('class','node '+(n.id===selected?'selected ':'')+(n.id==='n3'?'root':''));el.setAttribute('transform',`translate(${n.x},${n.y})`);
+let c=document.createElementNS(svg.namespaceURI,'circle');c.setAttribute('r',n.id===selected?43:35);el.append(c);
+let t=document.createElementNS(svg.namespaceURI,'text');let label=n.title.length>12?n.title.slice(0,11)+'…':n.title;t.textContent=label;t.setAttribute('y',4);el.append(t);
+el.addEventListener('pointerdown',e=>{if(e.button!==0)return;drag={node:n,sx:e.clientX,sy:e.clientY,moved:false};el.setPointerCapture(e.pointerId)});
+el.addEventListener('pointermove',e=>{if(!drag||drag.node!==n)return;let dx=(e.clientX-drag.sx)*900/svg.clientWidth/scale,dy=(e.clientY-drag.sy)*650/svg.clientHeight/scale;if(Math.abs(dx)+Math.abs(dy)>2)drag.moved=true;n.x+=dx;n.y+=dy;drag.sx=e.clientX;drag.sy=e.clientY;draw()});
+el.addEventListener('pointerup',()=>{if(drag){if(!drag.moved){selected=n.id;render()}else save();drag=null}});
+g.append(el)});
+$('nodeCount').textContent=ns.length+' 个节点';
+}
+function render(){
+let n=current();if(!n)return;
+$('selectedTitle').textContent=n.title;$('selectedDesc').textContent=n.desc||'暂无说明';
+$('titleInput').value=n.title;$('descInput').value=n.desc||'';
+keys.forEach((k,i)=>{$('q'+i).value=n.q?.[i]||''});
+$('links').innerHTML='';(n.links||[]).forEach(k=>{let target=nodes.find(x=>x.id===k);if(!target)return;let b=document.createElement('button');b.className='linkchip';b.textContent=target.title;b.onclick=()=>{selected=k;render()};$('links').append(b)});
+$('connectTarget').innerHTML=nodes.filter(x=>x.id!==selected).map(x=>`<option value="${x.id}">${x.title}</option>`).join('');
+draw();
+}
+keys.forEach((k,i)=>$('q'+i).addEventListener('input',()=>{current().q[i]=$('q'+i).value;save()}));
+$('saveNode').onclick=()=>{let n=current();n.title=$('titleInput').value.trim()||n.title;n.desc=$('descInput').value;save();render()};
+$('addNode').onclick=()=>{let name=prompt('新知识点名称？');if(!name?.trim())return;let n={id:id(),title:name.trim(),desc:'',x:440+Math.random()*250-125,y:330+Math.random()*220-110,q:['','','',''],links:[selected]};nodes.push(n);current().links.push(n.id);selected=n.id;save();render()};
+$('connect').onclick=()=>{let a=current(),b=nodes.find(n=>n.id===$('connectTarget').value);if(!b)return;a.links||=[];b.links||=[];if(!a.links.includes(b.id))a.links.push(b.id);if(!b.links.includes(a.id))b.links.push(a.id);save();render()};
+$('deleteNode').onclick=()=>{if(nodes.length<2)return alert('至少保留一个知识点');if(!confirm('确定删除这个知识点及其关联？'))return;nodes=nodes.filter(n=>n.id!==selected);nodes.forEach(n=>n.links=n.links.filter(x=>x!==selected));selected=nodes[0].id;save();render()};
+$('zoomIn').onclick=()=>{scale=Math.min(2.2,scale*1.2);draw()};$('zoomOut').onclick=()=>{scale=Math.max(.5,scale/1.2);draw()};$('fit').onclick=()=>{scale=1;offset={x:0,y:0};draw()};
+$('search').oninput=()=>{let v=$('search').value.trim().toLowerCase();let n=nodes.find(n=>n.title.toLowerCase().includes(v));if(v&&n){selected=n.id;render()}};
+$('export').onclick=()=>{let blob=new Blob([JSON.stringify(nodes,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='我的知识网络.json';a.click();URL.revokeObjectURL(a.href)};
+$('importBtn').onclick=()=>$('importFile').click();
+$('importFile').onchange=async e=>{try{let data=JSON.parse(await e.target.files[0].text());if(!Array.isArray(data)||!data.length)throw Error();nodes=data;selected=nodes[0].id;save();render()}catch{alert('文件格式不正确')}};
+render();
+})();
+</script>
+</body></html>
