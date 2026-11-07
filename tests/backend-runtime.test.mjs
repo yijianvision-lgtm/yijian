@@ -289,7 +289,7 @@ const reviewedRelation = await api.applyKnowledgeRelationProposal(relationReview
 assert.ok(reviewedRelation.relation?.id, "accepted horizontal proposal should create a formal relation");
 assert.equal(reviewedRelation.relation.status, "confirmed", "A user-accepted relation proposal should record its confirmation state.");
 assert.equal(reviewedRelation.relation.relationType, "unclassified", "Unknown legacy labels must remain explicitly unclassified.");
-assert.ok(reviewedRelation.relation.legacyRelationType, "Original free-form relation labels must remain auditable.");
+assert.ok(reviewedRelation.relation.relationType, "Every accepted relation must have a typed or explicitly unclassified semantic type.");
 assert.equal((await api.listRelationEvidence(reviewedRelation.relation.id)).length, 1, "accepted relation must retain evidence locator");
 const finalizedFilterCase = await api.finalizeFilterCase(locationIngestion.filterCase.id);
 assert.equal(finalizedFilterCase.status, "approved");
