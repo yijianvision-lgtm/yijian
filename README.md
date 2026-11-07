@@ -66,6 +66,14 @@ The preview uses Three.js / WebGL for the spatial scene. When a local IndexedDB 
 See [NEBULA Skill 1.0](docs/NEBULA-SKILL.md) for detailed product and implementation requirements.
 
 
+### V6 三套完整交互预览（本轮修订）
+
+V6 根据验收意见重新处理地图默认状态与面板可发现性：小地图首次进入默认停靠角落，仍可选择关闭、侧边或展开；导航与知识详情始终有清晰入口。A 采用画布优先与可见边缘入口，B 采用完整可读的轨道工作台，C 采用纵向谱系导航与知识详情并置。三版为独立预览，不替换正式入口或接入正式后台。
+
+- **V6-A｜深空主画布：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v6-a-deep-cosmos.html) · [源文件](ui-preview-v6-a-deep-cosmos.html) — 三维画布优先，左右面板按需展开，但顶部与屏幕边缘均有明确入口。
+- **V6-B｜轨道操作台：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v6-b-orbit-workbench.html) · [源文件](ui-preview-v6-b-orbit-workbench.html) — 导航恢复完整文字标签，右侧检查器信息更完整，适合高频操作。
+- **V6-C｜谱系导航层：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v6-c-lineage-navigation.html) · [源文件](ui-preview-v6-c-lineage-navigation.html) — 左侧纵向谱系成为明确导航骨架，右侧知识详情保持可见。
+
 ### V5 三套重新设计方案（默认不显示小地图）
 
 V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版均把小地图移出常驻信息面板，首次进入默认关闭。顶部“地图”选择器可切换关闭、角落、侧边或展开；关闭按钮可随时收起。小地图仅在用户主动选择后出现。
