@@ -888,6 +888,7 @@ async function connectLocalKnowledgeUniverse(){
   Object.keys(directionalMap).forEach(k=>delete directionalMap[k]);
   Object.keys(continuationDescriptions).forEach(k=>delete continuationDescriptions[k]);
   Object.keys(continuationMeta).forEach(k=>delete continuationMeta[k]);
+  Object.keys(layerData).forEach(k=>delete layerData[k]);
   records.forEach((node,i)=>{
    const kids=childMap.get(String(node.id))||[];
    const related=relations.filter(r=>String(r.sourceNodeId)===String(node.id)||String(r.targetNodeId)===String(node.id))
