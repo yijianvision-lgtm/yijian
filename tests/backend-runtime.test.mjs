@@ -9,7 +9,7 @@ globalThis.localStorage = {
 };
 globalThis.window = { dispatchEvent() {} };
 
-// Seed a v4 database before loading the v5 module to verify non-destructive upgrade.
+// Seed a v4 database before loading the v6 module to verify additive, non-destructive upgrade.
 const legacyDb = await new Promise((resolve, reject) => {
   const req = indexedDB.open("nebula_local_v2", 4);
   req.onupgradeneeded = () => {
@@ -38,8 +38,8 @@ await import("../nebula-local.js");
 const api = globalThis.NEBULA_LOCAL;
 assert.ok(api, "NEBULA_LOCAL should be exposed after module load.");
 const migratedGraph = await api.loadGraph();
-assert.ok(migratedGraph.nodes.some(node => node.id === "legacy-v4"), "v4 graph data must survive the v5 upgrade.");
-assert.equal((await api.getSource("legacy-v4-source")).title, "Preserved v4 source", "v4 source records must survive the v5 upgrade.");
+assert.ok(migratedGraph.nodes.some(node => node.id === "legacy-v4"), "v4 graph data must survive the v6 upgrade.");
+assert.equal((await api.getSource("legacy-v4-source")).title, "Preserved v4 source", "v4 source records must survive the v6 upgrade.");
 
 const deepseekMappingFixture = JSON.stringify({
   mapping: {
@@ -312,7 +312,44 @@ assert.ok(mindContext.ancestorPath.some(x => x.id === "art-root"));
 assert.equal(mindContext.activeDimension, "time");
 const spatialProjection = await api.getSpatialProjection(frameworkProjection.id);
 assert.ok(spatialProjection.nodes.some(x => x.id === placedNode.id));
+
 assert.deepEqual(spatialProjection.dimensions, ["lineage", "time", "space", "horizontal"]);
+const projectedPlacedNode = spatialProjection.nodes.find(x => x.id === placedNode.id);
+assert.ok(projectedPlacedNode.semanticCoordinates.lineage[0].legacyProjection || projectedPlacedNode.semanticCoordinates.lineage.length > 0);
+assert.equal(projectedPlacedNode.semanticCoordinates.space.value, null, "A domain label must not be misrepresented as physical/world location.");
+assert.ok(Array.isArray(projectedPlacedNode.semanticCoordinates.horizontalRelationIds));
+
+const originalParentId = placedNode.parentId;
+const placementA = await api.createFrameworkPlacement({
+  frameworkId: frameworkProjection.id, nodeId: placedNode.id, role: "main-topic",
+  context: { view: "art-history", note: "第一条框架路径中的语境" }, needsReview: false
+});
+const placementB = await api.createFrameworkPlacement({
+  frameworkId: frameworkProjection.id, nodeId: placedNode.id, role: "comparison",
+  context: { view: "comparative-theory", note: "另一条框架路径中的语境" }, needsReview: false
+});
+assert.notEqual(placementA.id, placementB.id, "One knowledge identity may have multiple contextual placements.");
+assert.equal((await api.listFrameworkPlacements(frameworkProjection.id, placedNode.id)).length, 2);
+assert.equal((await api.loadGraph()).nodes.find(x => x.id === placedNode.id).parentId, originalParentId, "Creating framework placements must not rewrite the knowledge object's legacy parentId.");
+
+const pathA = await api.createExplorationPath({ title: "从绘画史进入", frameworkId: frameworkProjection.id, rootNodeId: "art-root", context: { userIntent: "追踪绘画史脉络" } });
+const pathB = await api.createExplorationPath({ title: "从时代背景进入", frameworkId: frameworkProjection.id, rootNodeId: "art-southern", context: { userIntent: "比较时代语境" } });
+const stepA = await api.appendExplorationStep({ pathId: pathA.id, toNodeId: placedNode.id, direction: "向内", context: { question: "核心理论是什么" } });
+const stepB = await api.appendExplorationStep({ pathId: pathB.id, toNodeId: placedNode.id, direction: "向外", context: { question: "与同时代实践如何关联" } });
+assert.equal(stepA.toNodeId, stepB.toNodeId, "Different exploration paths must be able to reach the same stable knowledge object.");
+assert.notEqual(stepA.id, stepB.id, "Each traversal must retain its own path-step identity.");
+assert.equal((await api.loadGraph()).nodes.filter(x => x.id === placedNode.id).length, 1, "Revisiting an object through another path must not duplicate the knowledge object.");
+const forkedPath = await api.forkExplorationPath(pathA.id, stepA.id, { title: "从谢赫画品继续分支" });
+assert.equal(forkedPath.rootNodeId, placedNode.id);
+assert.equal(forkedPath.parentPathId, pathA.id);
+const pathSnapshot = await api.getExplorationPathSnapshot(pathA.id);
+assert.equal(pathSnapshot.steps.length, 1);
+assert.equal(pathSnapshot.branchPoints[0].canFork, true);
+
+const versionBaseline = await api.saveNodeVersion({ ...placedNode, customSemanticField: "before" }, "版本完整性基线");
+const versionChanged = await api.saveNodeVersion({ ...placedNode, customSemanticField: "after" }, "测试完整语义字段版本");
+assert.ok(versionChanged.versionNumber > versionBaseline.versionNumber, "Changes outside the former narrow allow-list must create a version.");
+
 const resolvedCandidate = await api.resolveExtractionEvidence(locationIngestion.items[0].id);
 assert.equal(resolvedCandidate.source.id, locationSource.id);
 assert.equal(resolvedCandidate.locator.kind, "topic");
@@ -375,6 +412,6 @@ assert.ok(frameworkMarkdown.includes("# 绘画史框架"));
 assert.ok(frameworkMarkdown.includes("谢赫画品"));
 
 const v5Backup = await api.exportFullBackup();
-assert.equal((await api.previewFullBackup(v5Backup.blob)).schemaVersion, 5);
+assert.equal((await api.previewFullBackup(v5Backup.blob)).schemaVersion, 6);
 
 console.log("NEBULA IndexedDB runtime tests passed.");
