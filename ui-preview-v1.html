@@ -1055,10 +1055,15 @@ async function connectLocalKnowledgeUniverse(){
    await NEBULA_LOCAL.syncFrameworkFromGraph(framework.id,{reason:"正式知识图谱更新后同步框架"});
    framework=await NEBULA_LOCAL.getFramework(framework.id);
   }
-  const [tree,projection]=await Promise.all([
+  let [tree,projection]=await Promise.all([
    NEBULA_LOCAL.getFrameworkTree(framework.id),
    NEBULA_LOCAL.getSpatialProjection(framework.id)
   ]);
+  if(!(tree.roots||[]).length&&graph.nodes.length){
+   await NEBULA_LOCAL.syncFrameworkFromGraph(framework.id,{reason:"正式图谱存在节点但框架根节点为空，恢复框架投影"});
+   framework=await NEBULA_LOCAL.getFramework(framework.id);
+   [tree,projection]=await Promise.all([NEBULA_LOCAL.getFrameworkTree(framework.id),NEBULA_LOCAL.getSpatialProjection(framework.id)]);
+  }
   const treeNodes=[];
   const walkTree=(items)=>items.forEach(node=>{treeNodes.push(node);walkTree(node.children||[]);});
   walkTree(tree.roots||[]);
