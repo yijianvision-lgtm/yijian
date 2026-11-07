@@ -1778,3 +1778,67 @@ Object.assign(NEBULA_LOCAL,{
   }
 });
 function idMapHasValue(map,value) { for(const mapped of map.values()) if(String(mapped)===String(value))return true;return false; }
+
+
+// P5 and UI-facing read models: concise, source-backed knowledge retrieval and workbench snapshots.
+Object.assign(NEBULA_LOCAL,{
+  async getFilterWorkbenchSnapshot() {
+    const [batches,cases,pending,allItems]=await Promise.all([
+      request("extractionBatches","readonly",s=>s.getAll()),
+      this.listFilterCases(),this.listProposals("pending"),
+      request("extractionItems","readonly",s=>s.getAll())
+    ]);
+    const itemMap=new Map(allItems.map(x=>[String(x.id),x]));
+    const rows=[];
+    for(const filterCase of cases) {
+      const items=(filterCase.inputItemIds||[]).map(id=>itemMap.get(String(id))).filter(Boolean);
+      rows.push({...filterCase,items,pendingProposalCount:pending.filter(p=>p.filterCaseId===filterCase.id).length});
+    }
+    const statusCounts={};for(const item of cases)statusCounts[item.status]=(statusCounts[item.status]||0)+1;
+    return {batches:batches.sort((a,b)=>b.createdAt-a.createdAt),cases:rows,pendingProposals:pending,
+      stats:{batchCount:batches.length,caseCount:cases.length,candidateCount:allItems.length,pendingReviewCount:pending.length,statusCounts}};
+  },
+  async buildKnowledgeBrief(nodeId,options={}) {
+    const graph=await this.loadGraph(),nodes=graph?.nodes||[];
+    const root=nodes.find(n=>String(n.id)===String(nodeId));
+    if(!root) throw new Error("找不到要调用的知识节点。");
+    const descendants=mindDescendantIds([root.id],nodes);
+    const selected=nodes.filter(n=>descendants.has(String(n.id)));
+    const relations=(await this.listKnowledgeRelations()).filter(r=>descendants.has(String(r.sourceNodeId))||descendants.has(String(r.targetNodeId)));
+    const evidence=await Promise.all(selected.map(n=>this.resolveNodeEvidence(n.id)));
+    const gaps=await this.detectKnowledgeGaps(root.id);
+    const learning=await this.listLearningRecords(root.id);
+    const includeChildren=options.includeChildren!==false;
+    return {
+      title:root.name||root.coreWord,rootNodeId:root.id,
+      frameworkPath:mindNodeAncestors(root.id,nodes).map(n=>({id:n.id,name:n.name})),
+      nodes:includeChildren?selected:[root],
+      relations,evidence:includeChildren?evidence:evidence.slice(0,1),gaps,learning,
+      generatedAt:Date.now(),
+      limitations:["只汇总当前已保存的知识与证据，不自动补写缺失事实。","缺少来源或定位的内容会保留缺口标记。"]
+    };
+  },
+  async exportFrameworkMarkdown(frameworkId) {
+    const tree=await this.getFrameworkTree(frameworkId);
+    const lines=["# "+tree.framework.title,"",tree.framework.description||"","",
+      "> 观复 Mind：定其位 → 联其缘 → 生其相 → 归其一","",
+      "## 框架结构",""];
+    const walk=(node,depth=0)=>{
+      lines.push("  ".repeat(depth)+"- **"+String(node.name||node.coreWord||"未命名知识").replace(/\n/g," ")+"**");
+      if(node.desc)lines.push("  ".repeat(depth+1)+String(node.desc).replace(/\n/g," "));
+      const dimensions=[["瞻前",node.before],["顾后",node.after],["左顾",node.left],["右盼",node.right]];
+      for(const [label,value] of dimensions)if(value)lines.push("  ".repeat(depth+1)+label+"："+String(value).replace(/\n/g," "));
+      node.children.forEach(child=>walk(child,depth+1));
+    };
+    tree.roots.forEach(root=>walk(root));
+    lines.push("","## 横向关系","");
+    for(const relation of tree.relations) {
+      const source=(await this.loadGraph()).nodes.find(n=>String(n.id)===String(relation.sourceNodeId));
+      const target=(await this.loadGraph()).nodes.find(n=>String(n.id)===String(relation.targetNodeId));
+      lines.push("- "+(source?.name||relation.sourceNodeId)+" — "+(relation.label||relation.type||"关联")+" → "+(target?.name||relation.targetNodeId));
+      if(relation.rationale)lines.push("  - 依据："+relation.rationale);
+    }
+    lines.push("","---","导出时间："+new Date().toISOString());
+    return lines.join("\n");
+  }
+});
