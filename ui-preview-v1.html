@@ -798,7 +798,7 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
  <div class="source-import-state" id="sourceImportState" aria-live="polite">尚未选择新文件。支持 PDF、DOC/DOCX、EMMX、XMind、图片、TXT 与 MD。</div>
  <div class="action-row"><button class="action-btn" id="sourceInspect" disabled>检查文件结构</button><button class="action-btn" id="sourcePreviewBtn" disabled>查看提取预览</button><button class="action-btn primary" id="sourceReviewBtn" disabled>生成审核建议</button><button class="action-btn" data-go="review">前往审核中心</button></div>
  </div></section>
-<section class="overlay" id="overview"><div class="overlay-head"><div><div class="eyebrow">UNIVERSE OVERVIEW</div><div class="overlay-title">知识宇宙 · 全局层级</div><div class="overlay-sub">缩小视图查看整体结构，选择任意层级进入具体知识区域</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="tree"><div class="tree-root">NEBULA · 我的知识宇宙</div><div class="tree-stem"></div><div class="tree-branches"><div class="tree-col"><button class="tree-node">认知与思维<small>一级领域 · 18 个节点</small></button><button class="tree-node">学习方法<small>二级层级 · 12 个节点</small></button></div><div class="tree-col"><button class="tree-node">科学与技术<small>一级领域 · 26 个节点</small></button><button class="tree-node">复杂系统<small>二级层级 · 9 个节点</small></button></div><div class="tree-col"><button class="tree-node">社会与经济<small>一级领域 · 14 个节点</small></button><button class="tree-node">组织行为<small>二级层级 · 7 个节点</small></button></div></div></div></section>
+<section class="overlay" id="overview"><div class="overlay-head"><div><div class="eyebrow">UNIVERSE OVERVIEW</div><div class="overlay-title">知识宇宙 · 全局层级</div><div class="overlay-sub">缩小视图查看整体结构，选择任意层级进入具体知识区域</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="tree" id="overviewTree"><div class="filter-empty">正在读取本地正式框架…</div></div></section>
 
 <section class="layer-page" id="layerPage" aria-live="polite">
  <div class="layer-top"><div class="layer-crumb" id="layerCrumb">知识宇宙 / 系统思维</div><button class="close" id="layerBack">← 返回上一级</button></div>
@@ -811,14 +811,14 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
 
 <section class="overlay" id="dashboard"><div class="overlay-head"><div><div class="eyebrow">COGNITIVE DASHBOARD</div><div class="overlay-title">Mind 概览</div><div class="overlay-sub">先看认知状态，再处理关键问题，最后决定下一步行动。</div></div><span class="workspace-badge">LOCAL-FIRST · 本机空间</span></div>
 <div class="panel-grid">
- <div class="metric-card"><div class="metric-label">KNOWLEDGE NODES · 知识节点</div><div class="metric-value">248</div><div class="metric-note">正式知识对象 · 演示数据</div></div>
+ <div class="metric-card"><div class="metric-label">KNOWLEDGE NODES · 知识节点</div><div class="metric-value" id="overviewNodeCount">—</div><div class="metric-note">本机正式知识节点</div></div>
  <div class="metric-card"><div class="metric-label">SOURCE RECORDS · 资料来源</div><div class="metric-value">36</div><div class="metric-note">原始文件与对话来源 · 演示数据</div></div>
  <div class="metric-card"><div class="metric-label">KNOWLEDGE RELATIONS · 知识关系</div><div class="metric-value">612</div><div class="metric-note">父子层级与横向关系分开管理</div></div>
  </div>
  <div class="section-label">需要关注 · ATTENTION</div><div class="panel-grid">
- <div class="task-card"><h3>待审核 AI 建议 <span class="status pending">4 项待处理</span></h3><p>新知识、关系建立、内容修订与相似节点合并建议。</p></div>
- <div class="task-card"><h3>认知缺口 <span class="status pending">3 个主题</span></h3><p>部分主题缺少前置知识、证据来源或反向观点。</p></div>
- <div class="task-card"><h3>到期复习 <span class="status">6 项</span></h3><p>根据实际回忆与应用表现安排，而不是按阅读次数判断。</p></div>
+ <div class="task-card"><h3>待审核 AI 建议 <span class="status pending" id="overviewPendingCount">读取中</span></h3><p>新知识、关系建立、内容修订与相似节点合并建议。</p></div>
+ <div class="task-card"><h3>认知缺口 <span class="status pending">待接入真实缺口统计</span></h3><p>部分主题缺少前置知识、证据来源或反向观点。</p></div>
+ <div class="task-card"><h3>到期复习 <span class="status">待接入真实复习统计</span></h3><p>根据实际回忆与应用表现安排，而不是按阅读次数判断。</p></div>
  </div>
  <div class="section-label">建议的下一步 · NEXT BEST ACTION</div><div class="panel-grid">
  <div class="work-card"><h3>补齐系统思维的反例</h3><p>当前节点已有定义与机制说明，但右盼方向的边界条件仍不充分。</p><div class="action-row"><button class="action-btn" data-go="lab">进入知识实验室 ↗</button></div></div>
@@ -841,7 +841,7 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
  <div class="action-row"><button class="action-btn primary" id="researchDraft">生成研究草稿</button><button class="action-btn" data-go="review">查看待审核建议</button></div>
 </section>
 <section class="overlay" id="learning"><div class="overlay-head"><div><div class="eyebrow">ACTIVE LEARNING</div><div class="overlay-title">主动学习</div><div class="overlay-sub">不以阅读次数代表掌握程度；通过回忆、解释、应用与迁移验证理解。</div></div><button class="close" data-close>返回</button></div>
-<div class="panel-grid"><div class="metric-card"><div class="metric-label">DUE TODAY · 今日待复习</div><div class="metric-value">6</div><div class="metric-note">基于上次表现安排</div></div><div class="metric-card"><div class="metric-label">MASTERY TREND · 掌握趋势</div><div class="metric-value">+8%</div><div class="metric-note">演示数据 · 综合多维表现</div></div><div class="metric-card"><div class="metric-label">WEAK AREAS · 薄弱环节</div><div class="metric-value">3</div><div class="metric-note">待加强的知识方向</div></div></div>
+<div class="panel-grid"><div class="metric-card"><div class="metric-label">DUE TODAY · 今日待复习</div><div class="metric-value">—</div><div class="metric-note">真实复习队列尚未接入此概览</div></div><div class="metric-card"><div class="metric-label">MASTERY TREND · 掌握趋势</div><div class="metric-value">—</div><div class="metric-note">掌握趋势尚无真实统计</div></div><div class="metric-card"><div class="metric-label">WEAK AREAS · 薄弱环节</div><div class="metric-value">—</div><div class="metric-note">薄弱项统计尚未接入</div></div></div>
  <div class="section-label">今日训练 · TODAY'S SESSION</div><div class="work-card"><span class="status">当前知识：反馈机制</span><h3 style="margin-top:12px">请先不看资料，解释什么是负反馈？它如何帮助系统维持稳定？</h3><p>尝试说明：定义、运行过程、一个真实案例，以及它与正反馈的区别。</p><textarea id="recallAnswer" placeholder="在这里写下你的独立回忆……" style="width:100%;min-height:110px;margin-top:14px;background:#080c11;border:1px solid var(--line);border-radius:7px;color:var(--text);padding:12px;font:inherit;font-size:10px;resize:vertical"></textarea><div class="action-row"><button class="action-btn primary" id="submitRecall">提交本次回忆</button><button class="action-btn" id="showHint">显示提示</button></div><p id="recallFeedback" class="source-state">评估维度：准确性 · 完整性 · 独立表达 · 应用能力</p></div>
  <div class="section-label">训练方式</div><div class="panel-grid"><div class="task-card"><h3>主动回忆</h3><p>隐藏答案，独立提取核心知识。</p></div><div class="task-card"><h3>口头复述</h3><p>语音或文字解释，识别遗漏与错误。</p></div><div class="task-card"><h3>知识应用</h3><p>在新案例中运用概念，检验迁移能力。</p></div><div class="task-card"><h3>知识测验</h3><p>选择、判断、填空、问答、找错与反向推理。</p></div><div class="task-card"><h3>口诀学习</h3><p>保留原始口诀，AI 只提供校验与优化建议。</p></div><div class="task-card"><h3>间隔复习</h3><p>根据实际表现动态安排下一次复习。</p></div></div>
 </section>
@@ -856,14 +856,14 @@ body.focus-active .right-panel .rail-card:nth-child(2) .mini-map{height:104px!im
 </section>
 <section class="overlay" id="backup"><div class="overlay-head"><div><div class="eyebrow">BACKUP & RESTORE</div><div class="overlay-title">备份与恢复</div><div class="overlay-sub">本地知识资产由用户掌控；导出前明确展示包含内容与文件范围。</div></div><button class="close" data-close>返回</button></div>
 <div class="backup-layout">
- <div class="backup-card"><div class="backup-card-head"><div><span class="source-tag">EXPORT · 本地导出</span><h3>创建完整备份</h3></div><span class="status">用户主动触发</span></div><p>备份应覆盖知识结构与认知历史。原始附件可选择打包；不打包时保留来源索引，并在恢复后标记附件缺失。</p><div class="backup-checks"><label><input type="checkbox" checked disabled> 知识节点、定义与状态</label><label><input type="checkbox" checked disabled> 父子层级与横向关系</label><label><input type="checkbox" checked disabled> 来源索引、页码与节点关联</label><label><input type="checkbox" checked disabled> 版本、审核、研究与学习记录</label><label class="backup-optional"><input type="checkbox" id="includeAttachments"> 将原始文件与图片附件一并打包</label></div><div class="backup-format">格式：NEBULA Backup Package · .nebula.json（附件打包需正式版本支持）</div><div class="action-row"><button class="action-btn primary" id="exportBackup">检查备份范围</button></div></div>
- <div class="backup-card"><div class="backup-card-head"><div><span class="source-tag">RESTORE · 恢复到本机</span><h3>从备份恢复</h3></div><span class="status pending">先预览，不直接覆盖</span></div><p>选择备份后先校验版本、完整性与冲突。恢复操作需展示新增、更新、冲突和缺失附件，确认后才执行。</p><input id="backupFileInput" type="file" accept=".json,.nebula,.zip" hidden><div class="restore-drop" id="restoreDrop"><b>选择 NEBULA 备份文件</b><small>支持正式备份包；此原型仅展示选择文件与检查流程</small><button class="action-btn" id="restoreBackup">选择备份文件</button></div><div class="restore-preview" id="restorePreview">尚未选择备份文件。</div><div class="action-row"><button class="action-btn" id="restoreCheck" disabled>检查备份完整性</button><button class="action-btn primary" id="restoreConfirm" disabled>确认恢复</button></div></div>
+ <div class="backup-card"><div class="backup-card-head"><div><span class="source-tag">EXPORT · 本地导出</span><h3>创建完整备份</h3></div><span class="status">用户主动触发</span></div><p>备份应覆盖知识结构与认知历史。原始附件可选择打包；不打包时保留来源索引，并在恢复后标记附件缺失。</p><div class="backup-checks"><label><input type="checkbox" checked disabled> 知识节点、定义与状态</label><label><input type="checkbox" checked disabled> 父子层级与横向关系</label><label><input type="checkbox" checked disabled> 来源索引、页码与节点关联</label><label><input type="checkbox" checked disabled> 版本、审核、研究与学习记录</label><label class="backup-optional"><input type="checkbox" id="includeAttachments" checked disabled> 原始文件与图片附件（完整备份默认包含）</label></div><div class="backup-format">格式：NEBULA Backup Package · .nebula.json（附件打包需正式版本支持）</div><div class="action-row"><button class="action-btn primary" id="exportBackup">检查备份范围</button></div></div>
+ <div class="backup-card"><div class="backup-card-head"><div><span class="source-tag">RESTORE · 恢复到本机</span><h3>从备份恢复</h3></div><span class="status pending">先预览，不直接覆盖</span></div><p>选择备份后先校验版本、完整性与冲突。恢复操作需展示新增、更新、冲突和缺失附件，确认后才执行。</p><input id="backupFileInput" type="file" accept=".json,.nebula,.zip" hidden><div class="restore-drop" id="restoreDrop"><b>选择 NEBULA 备份文件</b><small>支持带 SHA-256 校验的 NEBULA 完整备份文件</small><button class="action-btn" id="restoreBackup">选择备份文件</button></div><div class="restore-preview" id="restorePreview">尚未选择备份文件。</div><div class="action-row"><button class="action-btn" id="restoreCheck" disabled>检查备份完整性</button><button class="action-btn primary" id="restoreConfirm" disabled>确认恢复</button></div></div>
  <div class="backup-card"><div class="backup-card-head"><div><span class="source-tag">DATA OWNERSHIP</span><h3>本地数据与权限</h3></div></div><p>默认保存在本机浏览器的本地数据库。不会后台上传整个知识库，也不默认开启云同步。</p><ul class="backup-points"><li>导出文件由用户自行保存与管理。</li><li>恢复前保留当前数据快照，避免误覆盖。</li><li>如果浏览器未保留文件夹授权，恢复后需重新选择原始资料文件夹。</li><li>跨设备同步需另行设计并经用户明确授权，不属于当前能力。</li></ul></div>
  </div>
  <div class="backup-status" id="backupStatus">安全原则：备份可携带走，恢复可预览，覆盖必须二次确认。</div>
  <div class="section-label">备份内容清单</div><div class="evidence-line">KnowledgeNode · KnowledgeRelation · SourceRecord · NodeSourceLink</div><div class="evidence-line">KnowledgeVersion · ReviewProposal · LearningRecord · ResearchSession · TimelineEvent</div><div class="evidence-line">原始文件附件：可选纳入；不纳入时保留来源索引与缺失提示</div>
 </section>
-<section class="overlay" id="globalSearch"><div class="overlay-head"><div><div class="eyebrow">GLOBAL SEARCH</div><div class="overlay-title">全局搜索</div><div class="overlay-sub">跨知识节点、原始讲义、AI 对话、论文、研究与学习记录检索。</div></div><button class="close" data-close>关闭</button></div><input id="globalSearchInput" class="search" style="width:min(680px,100%);padding:14px" placeholder="输入概念、来源、作者或关键词……"><div class="search-results"><div class="result-item"><b>反馈机制</b><small>正式知识节点 · 知识宇宙</small></div><div class="result-item"><b>复杂系统讲义.pdf</b><small>原始资料 · 第 12 页</small></div><div class="result-item"><b>DeepSeek 对话：系统动力学</b><small>AI 对话来源 · 2026.11.02</small></div><div class="result-item"><b>系统思维的边界条件</b><small>研究记录 · 待验证</small></div></div>
+<section class="overlay" id="globalSearch"><div class="overlay-head"><div><div class="eyebrow">GLOBAL SEARCH</div><div class="overlay-title">全局搜索</div><div class="overlay-sub">跨知识节点、原始讲义、AI 对话、论文、研究与学习记录检索。</div></div><button class="close" data-close>关闭</button></div><input id="globalSearchInput" class="search" style="width:min(680px,100%);padding:14px" placeholder="输入概念、来源、作者或关键词……"><div class="search-results" id="globalSearchResults"><div class="filter-empty">输入关键词，搜索本机正式知识与来源。</div></div>
 </section>
 
 <section class="overlay" id="nodeDetail"><div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE OBJECT · NODE PROFILE</div><div class="overlay-title" id="detailTitle">系统思维</div><div class="overlay-sub">知识对象详情 · 正式知识、来源记录与认知状态分层呈现</div></div><button class="close" data-close>返回知识宇宙</button></div>
@@ -957,6 +957,7 @@ const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let selected=0;let foc
   if(resolved.relations.length){host.append(safeText('small','已关联 '+resolved.relations.length+' 条横向关系；关系证据由独立记录管理。'));}
  }catch(error){host.append(safeText('p','来源回溯失败：'+error.message));}
 }
+window.__guanfuSelectNode=(nodeId)=>{const index=localGraphNodes.findIndex(n=>String(n.id)===String(nodeId));if(index<0)return false;selectNode(index);return true;};
 renderer.domElement.addEventListener('pointerdown',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(spheres);if(hit.length)selectNode(hit[0].object.userData.index)});
 const mini=document.getElementById('miniMap'),ctx=mini.getContext('2d');let mapCenterX=0,mapCenterY=0,mapScale=8,mapPulse=0;
 mini.style.cursor='crosshair';mini.addEventListener('click',e=>{const rect=mini.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;let best=-1,dist=Infinity;positions.forEach((p,i)=>{const px=rect.width/2+(p.x+p.z*.34-mapCenterX)*mapScale,py=rect.height/2-(p.y-p.z*.22-mapCenterY)*mapScale,d=Math.hypot(px-x,py-y);if(d<dist){dist=d;best=i}});if(best>=0&&dist<22)selectNode(best)});function drawMini(){const d=mini.getBoundingClientRect(),ww=d.width,hh=d.height;if(!ww||!hh)return;const ratio=Math.min(devicePixelRatio||1,2),w=Math.round(ww*ratio),h=Math.round(hh*ratio);if(mini.width!==w||mini.height!==h){mini.width=w;mini.height=h}ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,ww,hh);const xs=positions.map(p=>p.x),ys=positions.map(p=>p.y),zs=positions.map(p=>p.z),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),minZ=Math.min(...zs),maxZ=Math.max(...zs);const targetScale=Math.max(5,Math.min(ww/(maxX-minX+Math.max(0,maxZ-minZ)*.34+5),hh/(maxY-minY+Math.max(0,maxZ-minZ)*.22+5)));mapScale+=(targetScale-mapScale)*.055;const targetX3=positions[selected]?.x||0,targetY3=positions[selected]?.y||0,targetZ3=positions[selected]?.z||0;const targetPX=targetX3+targetZ3*.34,targetPY=targetY3-targetZ3*.22;mapCenterX+=(targetPX-mapCenterX)*.095;mapCenterY+=(targetPY-mapCenterY)*.095;const point=p=>({x:ww/2+(p.x+p.z*.34-mapCenterX)*mapScale,y:hh/2-(p.y-p.z*.22-mapCenterY)*mapScale});ctx.save();ctx.beginPath();ctx.rect(0,0,ww,hh);ctx.clip();ctx.strokeStyle='rgba(185,199,208,.18)';ctx.lineWidth=.8;edges.forEach(([a,b])=>{if(!positions[a]||!positions[b])return;const A=point(positions[a]),B=point(positions[b]);ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke()});if(focusHistory.length>1){ctx.beginPath();focusHistory.slice(0,focusCursor+1).forEach((idx,k)=>{const p=point(positions[idx]);if(k===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y)});ctx.strokeStyle='rgba(215,225,232,.52)';ctx.lineWidth=1.2;ctx.stroke()}positions.forEach((p,i)=>{const q=point(p);if(q.x<-5||q.x>ww+5||q.y<-5||q.y>hh+5)return;ctx.beginPath();ctx.arc(q.x,q.y,i===selected?3.3:1.9,0,Math.PI*2);ctx.fillStyle=i===selected?'rgba(229,237,242,.98)':'rgba(135,149,159,.65)';ctx.fill();if(i===selected){ctx.beginPath();ctx.arc(q.x,q.y,7+Math.sin(mapPulse)*1.5,0,Math.PI*2);ctx.strokeStyle='rgba(218,229,236,.5)';ctx.lineWidth=.8;ctx.stroke()}});const viewW=Math.min(ww*.7,mapScale*5.8),viewH=Math.min(hh*.68,mapScale*4.2);ctx.strokeStyle='rgba(211,224,232,.26)';ctx.lineWidth=.8;ctx.setLineDash([3,3]);ctx.strokeRect(ww/2-viewW/2,hh/2-viewH/2,viewW,viewH);ctx.setLineDash([]);ctx.restore();mapPulse+=.055}
@@ -966,7 +967,7 @@ document.getElementById('enterNebula').addEventListener('click',()=>{document.bo
 function toast(s){const t=document.getElementById('toast');t.textContent=s;t.classList.add('show');clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.classList.remove('show'),1800)}
 function showView(v){document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.view===v));document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'));if(v==='hierarchy')document.getElementById('hierarchy').classList.add('open');if(v==='sources')document.getElementById('sources').classList.add('open')}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'))));
-document.getElementById('overviewBtn').onclick=()=>document.getElementById('overview').classList.add('open');document.getElementById('fourD').onclick=()=>toast('四维思考：前瞻 · 顾后 · 左顾 · 右盼');document.getElementById('profileBtn').onclick=()=>toast('本机知识空间 · 本地优先模式（预览）');
+document.getElementById('overviewBtn').onclick=()=>document.getElementById('overview').classList.add('open');document.getElementById('fourD').onclick=()=>{if(!localGraphNodes.length)toast('当前是示例空间；导入并确认知识后才显示真实四维定位。');else toast('四维定位已按当前正式节点的谱系、时间、领域与横向关系呈现。');};document.getElementById('profileBtn').onclick=()=>toast('本机知识空间 · 本地优先模式（预览）');
 document.getElementById('openNodeDetail').onclick=()=>document.getElementById('nodeDetail').classList.add('open');
 document.querySelectorAll('.direction-row').forEach(b=>b.onclick=()=>{const d=({前瞻:'forward',顾后:'backward',左顾:'left',右盼:'right'})[b.dataset.direction];if(!focusHistory.length)selectNode(selected,true);navigateContinuum(d)});
 document.getElementById('fourD').onclick=()=>{if(!focusHistory.length)selectNode(selected,true);else document.getElementById('continuumFocus').classList.add('open')};
@@ -1158,13 +1159,13 @@ document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Ent
 
 <script>
 (function(){
- const ids=['dashboard','hierarchy','sources','lab','learning','review','backup','globalSearch','overview'];
+ const ids=['dashboard','hierarchy','sources','lab','learning','review','filter-workbench','backup','globalSearch','overview'];
  function closeAll(){ids.forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open')});}
  function open(id){closeAll();const el=document.getElementById(id);if(el)el.classList.add('open');document.querySelectorAll('.nav,.rail-item[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===id || (id==='universe'&&b.dataset.view==='universe')));}
  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.view;if(['dashboard','lab','learning','hierarchy','sources'].includes(v))open(v);else if(v==='universe'){closeAll();document.querySelectorAll('.nav,.rail-item[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view==='universe'));}}));
  document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>open(b.dataset.go)));
- document.getElementById('reviewBtn').addEventListener('click',()=>open('review'));
- document.getElementById('railReview').addEventListener('click',()=>open('review'));
+ document.getElementById('reviewBtn').addEventListener('click',()=>open('filter-workbench'));
+ document.getElementById('railReview').addEventListener('click',()=>open('filter-workbench'));
  document.getElementById('importBtn').addEventListener('click',()=>open('sources'));
  document.getElementById('overviewBtn').addEventListener('click',()=>open('overview'));
  document.getElementById('search').addEventListener('focus',()=>open('globalSearch'));
@@ -1439,8 +1440,93 @@ document.addEventListener("change",async event=>{
 },true);
 document.querySelectorAll("#filter-workbench [data-close]").forEach(button=>button.addEventListener("click",()=>$("filter-workbench").classList.remove("open")));
 window.addEventListener("keydown",event=>{if(event.key==="Escape")$("filter-workbench").classList.remove("open");});
+async function refreshMindOverview(){
+ try{
+  const [graph,refs,relations,proposals,filterSnapshot]=await Promise.all([
+   NEBULA_LOCAL.loadGraph(),NEBULA_LOCAL.listReferences(),NEBULA_LOCAL.listKnowledgeRelations(),NEBULA_LOCAL.listProposals("pending"),NEBULA_LOCAL.getFilterWorkbenchSnapshot()
+  ]);
+  const nodes=graph?.nodes||[];
+  $("overviewNodeCount").textContent=nodes.length;
+  $("overviewSourceCount").textContent=refs.length;
+  $("overviewRelationCount").textContent=relations.length;
+  $("overviewPendingCount").textContent=(proposals.length+filterSnapshot.stats.pendingReviewCount)+" 项待审核";
+  const host=$("overviewTree");host.replaceChildren();
+  if(!nodes.length){host.append(safeText("div","尚无正式知识节点。导入资料并完成过滤审核后，框架会从已确认知识生长。","filter-empty"));return;}
+  const byId=new Map(nodes.map(n=>[String(n.id),{...n,children:[]}]));
+  const roots=[];
+  nodes.forEach(n=>{const row=byId.get(String(n.id)),parent=byId.get(String(n.parentId));if(parent)parent.children.push(row);else roots.push(row);});
+  const treeRoot=safeText("div","观复 Mind · 本机正式框架","tree-root");host.append(treeRoot);
+  const branch=safeText("div","","tree-branches");host.append(branch);
+  roots.forEach(root=>{
+   const col=safeText("div","","tree-col");
+   const add=(node,depth=1)=>{const button=safeText("button","", "tree-node");button.append(safeText("small","第 "+depth+" 层 · "+node.children.length+" 个直接下级"));button.prepend(document.createTextNode(node.name||node.coreWord||"未命名知识"));button.addEventListener("click",()=>{window.__guanfuSelectNode?.(node.id);document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));});col.append(button);node.children.forEach(child=>add(child,depth+1));};
+   add(root);branch.append(col);
+  });
+ }catch(error){$("overviewTree").replaceChildren(safeText("div","读取本地框架失败："+error.message,"filter-empty"));}
+}
+async function runLocalSearch(){
+ const query=$("globalSearchInput").value.trim().toLocaleLowerCase();
+ const host=$("globalSearchResults");host.replaceChildren();
+ if(!query){host.append(safeText("div","输入关键词，搜索本机正式知识与来源。","filter-empty"));return;}
+ try{
+  const [graph,refs,conversations,sources]=await Promise.all([
+   NEBULA_LOCAL.loadGraph(),NEBULA_LOCAL.listReferences(),NEBULA_LOCAL.listConversations(),NEBULA_LOCAL.listSources()
+  ]);
+  const matches=[];
+  (graph?.nodes||[]).forEach(node=>{const hay=[node.name,node.coreWord,node.desc].join(" ").toLocaleLowerCase();if(hay.includes(query))matches.push({kind:"正式知识",title:node.name||node.coreWord||"未命名知识",detail:node.desc||"本机正式知识节点",nodeId:node.id});});
+  refs.forEach(ref=>{if([ref.name,ref.text].join(" ").toLocaleLowerCase().includes(query))matches.push({kind:"原始资料",title:ref.name,detail:(ref.extension||"文件").toUpperCase()+" · 本机原件",sourceId:ref.id});});
+  conversations.forEach(item=>{if([item.title,item.transcript].join(" ").toLocaleLowerCase().includes(query))matches.push({kind:"AI 对话来源",title:item.title||"AI 对话",detail:item.source||"本机对话记录"});});
+  sources.filter(source=>source.sourceType!=="lecture"&&source.sourceType!=="ai_conversation").forEach(source=>{if([source.title,source.fileName,source.description].join(" ").toLocaleLowerCase().includes(query))matches.push({kind:"其他来源",title:source.title||source.fileName||"来源记录",detail:source.sourceType||"来源"});});
+  if(!matches.length){host.append(safeText("div","没有找到匹配的本机正式知识或来源。","filter-empty"));return;}
+  matches.slice(0,80).forEach(item=>{
+   const row=safeText("button","","result-item");row.append(safeText("b",item.title),safeText("small",item.kind+" · "+item.detail));
+   row.addEventListener("click",()=>{if(item.nodeId){window.__guanfuSelectNode?.(item.nodeId);document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));}else if(item.sourceId){document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("sources").classList.add("open");}});
+   host.append(row);
+  });
+ }catch(error){host.append(safeText("div","本机搜索失败："+error.message,"filter-empty"));}
+}
+$("globalSearchInput").addEventListener("input",runLocalSearch);
+document.getElementById("search").addEventListener("keydown",event=>{if(event.key==="Enter"){$("globalSearchInput").value=event.target.value;runLocalSearch();$("globalSearch").classList.add("open");}});
+async function runRealBackupAction(button){
+ const status=$("backupStatus");
+ try{
+  if(button.id==="exportBackup"){
+   status.textContent="正在生成包含本机知识、来源原件与附件的完整备份，并计算 SHA-256…";
+   const result=await NEBULA_LOCAL.exportFullBackup();
+   const url=URL.createObjectURL(result.blob),anchor=document.createElement("a");
+   anchor.href=url;anchor.download=result.fileName;anchor.click();URL.revokeObjectURL(url);
+   status.textContent="完整备份已生成："+result.fileName+" · "+(result.bytes/1024/1024).toFixed(2)+" MB。原始文件 Blob 已包含；文件夹授权句柄不会导出，恢复后需重新授权。";
+  }else if(button.id==="restoreCheck"){
+   if(!restoreFile){status.textContent="请先选择备份文件。";return;}
+   const preview=await NEBULA_LOCAL.previewFullBackup(restoreFile);
+   const rows=Object.entries(preview.manifest).map(([name,count])=>name+"："+count).join("\n");
+   $("restorePreview").textContent="校验通过 · schema v"+preview.schemaVersion+" · 导出时间 "+preview.exportedAt+" · "+preview.totalRecords+" 条记录\n"+rows;
+   $("restoreConfirm").disabled=false;
+   status.textContent="SHA-256 与数据结构校验通过。恢复将采用合并模式，不覆盖现有同 ID 记录。";
+  }else if(button.id==="restoreConfirm"){
+   if(!restoreFile)return;
+   if(!window.confirm("将备份数据以合并方式导入本机。已有同 ID 记录优先保留，不执行清空覆盖。继续吗？"))return;
+   status.textContent="正在合并恢复…";
+   const result=await NEBULA_LOCAL.restoreFullBackup(restoreFile,{mode:"merge"});
+   status.textContent="恢复完成：合并 "+Object.values(result.restored).reduce((sum,row)=>sum+row.imported,0)+" 条记录；跳过 "+Object.values(result.restored).reduce((sum,row)=>sum+row.skipped,0)+" 条重复记录。文件夹授权需重新选择。页面即将重新载入。";
+   window.location.reload();
+  }
+ }catch(error){status.textContent="操作未完成："+error.message;$("restoreConfirm").disabled=true;}
+}
+let restoreFile=null;
+document.addEventListener("click",event=>{
+ const button=event.target.closest("button");if(!button||!["exportBackup","restoreCheck","restoreConfirm"].includes(button.id))return;
+ event.preventDefault();event.stopImmediatePropagation();runRealBackupAction(button);
+},true);
+document.addEventListener("change",event=>{
+ if(event.target.id!=="backupFileInput")return;
+ event.stopImmediatePropagation();restoreFile=event.target.files?.[0]||null;
+ $("restoreCheck").disabled=!restoreFile;$("restoreConfirm").disabled=true;
+ if(restoreFile){$("restorePreview").textContent="已选择："+restoreFile.name+" · 等待 SHA-256 与结构校验。";$("backupStatus").textContent="尚未恢复；先检查备份文件。";}
+},true);
 refreshSourceLibrary().catch(error=>{$("sourceImportState").textContent="资料库读取失败："+error.message;});
 refreshFilterWorkbench();
+refreshMindOverview();
 </script>
 
 </body></html>
