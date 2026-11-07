@@ -57,11 +57,13 @@ assert.ok(html.includes("host.append(safeText('p','正在读取关联来源…')
 assert.ok(html.includes("corePoint.addEventListener('transitionend',onTransitionEnd);"), "The archive-opening flow must wait for the core-to-minimap transition.");
 
 
-const animateBody = html.match(/function animate\\(\\)\\{([\\s\\S]*?)\\}animate\\(\\);/);
-assert.ok(animateBody, "Expected to locate the main 3D animation loop.");
-assert.ok(!animateBody[1].includes("drawMini()"), "The 2D minimap must not be redrawn on every WebGL animation frame.");
+const animateStart = html.indexOf("function animate(){");
+const animateEnd = html.indexOf("animate();", animateStart);
+assert.ok(animateStart >= 0 && animateEnd > animateStart, "Expected to locate the main 3D animation loop.");
+const animateBody = html.slice(animateStart, animateEnd);
+assert.ok(!animateBody.includes("drawMini()"), "The 2D minimap must not be redrawn on every WebGL animation frame.");
 assert.ok(html.includes("innerWidth<760?1.2:1.5"), "The WebGL pixel ratio must be capped to reduce high-DPI rendering cost.");
-assert.ok(animateBody[1].includes("camera.position.lerp(desired,.065)") && animateBody[1].includes("controls.target.lerp(targetWorld,.065)"), "Camera follow must respond smoothly without the previous sluggish easing.");
+assert.ok(animateBody.includes("camera.position.lerp(desired,.065)") && animateBody.includes("controls.target.lerp(targetWorld,.065)"), "Camera follow must respond smoothly without the previous sluggish easing.");
 assert.ok(html.includes(".overlay.open{animation:mindViewEnter .42s") && html.includes("#nodeDetail.open{animation:mindArchiveEnter .5s"), "Main views and the knowledge archive must enter with a spatial transition.");
 assert.ok(html.includes("#continuumFocus.open{animation:nebulaFocusIn .72s"), "The four-direction focus view must use a shorter, consistent entrance transition.");
 assert.ok(html.includes("@media(prefers-reduced-motion:reduce)") && html.includes(".overlay.open,#nodeDetail.open,#continuumFocus.open,.layer-page.open{animation:none!important}"), "All added view transitions must respect reduced-motion preferences.");
