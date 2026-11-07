@@ -1509,7 +1509,7 @@ async function runLocalSearch(){
   if(!matches.length){host.append(safeText("div","没有找到匹配的本机正式知识或来源。","filter-empty"));return;}
   matches.slice(0,80).forEach(item=>{
    const row=safeText("button","","result-item");row.append(safeText("b",item.title),safeText("small",item.kind+" · "+item.detail));
-   row.addEventListener("click",async()=>{if(item.nodeId){window.__guanfuSelectNode?.(item.nodeId);document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));}else if(item.sourceId||item.conversationId){activeSourceId=item.sourceId||item.conversationId;document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("sources").classList.add("open");await refreshSourceLibrary();const target=document.querySelector(`.source-file[data-source-id="${CSS.escape(String(activeSourceId))}"]`);target?.click();}});
+   row.addEventListener("click",async()=>{if(item.nodeId){window.__guanfuSelectNode?.(item.nodeId);document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));}else if(item.sourceId||item.conversationId){activeSourceId=item.sourceId||item.conversationId;document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("sources").classList.add("open");await refreshSourceLibrary();document.querySelectorAll(".source-file").forEach(target=>{if(target.dataset.sourceId===String(activeSourceId))target.click();});}else if(item.researchId){document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("lab").classList.add("open");}else if(item.learningId){document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("learning").classList.add("open");}});
    host.append(row);
   });
  }catch(error){host.append(safeText("div","本机搜索失败："+error.message,"filter-empty"));}
@@ -1544,7 +1544,10 @@ async function runRealBackupAction(button){
 }
 let restoreFile=null;
 document.addEventListener("click",event=>{
- const button=event.target.closest("button");if(!button||!["exportBackup","restoreCheck","restoreConfirm"].includes(button.id))return;
+ const button=event.target.closest("button");if(!button)return;
+ if(button.id==="submitRecall"){event.preventDefault();event.stopImmediatePropagation();saveRealLearningRecord();return;}
+ if(button.id==="showHint"){event.preventDefault();event.stopImmediatePropagation();$("recallFeedback").textContent=selectedLearningNode?.desc||"当前正式知识节点尚未补充可用定义提示。";return;}
+ if(!["exportBackup","restoreCheck","restoreConfirm"].includes(button.id))return;
  event.preventDefault();event.stopImmediatePropagation();runRealBackupAction(button);
 },true);
 document.addEventListener("change",event=>{
@@ -1568,7 +1571,44 @@ $("savePastedConversation").addEventListener("click",async()=>{
 });
 refreshSourceLibrary().catch(error=>{$("sourceImportState").textContent="资料库读取失败："+error.message;});
 refreshFilterWorkbench();
+let selectedLearningNode=null;
+async function refreshLearningWorkspace(){
+ try{
+  const [queue,records,dashboard]=await Promise.all([NEBULA_LOCAL.buildLearningQueue(50),NEBULA_LOCAL.listLearningRecords(),NEBULA_LOCAL.getCognitiveDashboard()]);
+  $("learningDueCount").textContent=dashboard.dueReviewCount;
+  $("learningRecordCount").textContent=records.length;
+  $("learningGapCount").textContent=dashboard.knowledgeGapCount;
+  const host=$("learningQueue");host.replaceChildren();
+  if(!queue.length){host.append(safeText("div","当前没有可安排的正式知识复习项。导入资料并完成过滤审核后，知识节点会进入学习队列。","filter-empty"));selectedLearningNode=null;return;}
+  queue.forEach(item=>{
+   if(!item.node)return;
+   const button=safeText("button","","result-item"+(String(selectedLearningNode?.id)===String(item.nodeId)?" active":""));
+   button.append(safeText("b",item.title||item.node.name||"未命名知识"),safeText("small",(item.dueForReview?"已到期复习 · ":"结构缺口 · ")+(item.nextAction||"主动回忆")+(item.missingCount?" · "+item.missingCount+" 项待补齐":"")));
+   button.addEventListener("click",()=>{
+    selectedLearningNode=item.node;
+    $("learningSelectedStatus").textContent="正式知识 · "+(item.node.name||item.node.coreWord||item.node.id);
+    $("recallPrompt").textContent="请不看资料，独立解释「"+(item.node.name||item.node.coreWord||"当前知识")+"」：核心定义、形成机制、前置条件、后续影响、横向联系与适用边界。";
+    $("recallFeedback").textContent="写下你的独立解释，再按实际掌握程度自评。此评分由你提供，不是 AI 自动评分。";
+    host.querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===button));
+   });
+   host.append(button);
+  });
+ }catch(error){$("learningQueue").replaceChildren(safeText("div","读取学习队列失败："+error.message,"filter-empty"));}
+}
+async function saveRealLearningRecord(){
+ const answer=$("recallAnswer").value.trim();
+ if(!selectedLearningNode){$("recallFeedback").textContent="请先选择一个正式知识节点。";return;}
+ if(!answer){$("recallFeedback").textContent="请先写下独立回忆内容。";return;}
+ const quality=Number($("recallQuality").value);
+ try{
+  const record=await NEBULA_LOCAL.saveLearningRecord({nodeId:selectedLearningNode.id,activityType:"recall",answer,quality,score:quality,prompt:$("recallPrompt").textContent,assessmentMode:"self_assessed"});
+  $("recallFeedback").textContent="学习记录已保存。自评 "+quality+"/5 · 下次复习 "+(record.schedule?.nextReviewAt?new Date(record.schedule.nextReviewAt).toLocaleString():"未安排")+".";
+  $("recallAnswer").value="";
+  await refreshLearningWorkspace();await refreshMindOverview();
+ }catch(error){$("recallFeedback").textContent="保存失败："+error.message;}
+}
 refreshMindOverview();
+refreshLearningWorkspace();
 </script>
 
 </body></html>
