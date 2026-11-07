@@ -16,7 +16,7 @@
 
 A persistent, interactive 3D personal knowledge system.
 
-## Open the product and UI preview
+## MIND V2.0 architecture and design deliverables\n\n- **MIND V2.0 architecture:** [Overall architecture and core interaction design](docs/MIND-V2-ARCHITECTURE.md) — information architecture, tree/network/map boundaries, spatial levels and acceptance gates.\n- **Highest design charter:** [观复 Mind｜最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md).\n\n## Open the product and UI preview
 
 - **Formal page:** [index.html](index.html) — legacy production entry; it has not yet been migrated to the newer Mind workspace.
 - **Independent UI preview:** [Open 观复 Mind preview](https://yijianvision-lgtm.github.io/yijian/ui-preview-v1.html) — latest committed preview source; confirm Pages deployment before treating it as the live release.
