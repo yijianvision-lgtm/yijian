@@ -102,3 +102,11 @@ assert.ok(!preview.includes("备份范围确认（演示）"), "The active backu
 
 assert.ok(local.includes("normalizeConversationExport"), "DeepSeek export normalization must live in the tested local data layer.");
 assert.ok(preview.includes("NEBULA_LOCAL.normalizeConversationExport(raw,ext)"), "The file intake UI must use the tested DeepSeek normalizer.");
+
+
+assert.ok(preview.includes("let nodePointerStart=null"), "3D node picking must track a pointer gesture before selection.");
+assert.ok(preview.includes("Math.hypot(e.clientX-start.x,e.clientY-start.y)>6"), "Dragging to orbit must not accidentally select a node.");
+assert.ok(preview.includes("renderer.domElement.addEventListener('pointerup'"), "Node selection must resolve on pointer release.");
+assert.ok(preview.includes("matchMedia('(prefers-reduced-motion: reduce)').matches"), "Automatic camera rotation must respect reduced-motion preferences.");
+assert.ok(preview.includes("pixelRatioForViewport"), "Renderer pixel ratio must adapt to viewport size.");
+assert.ok(preview.includes("renderer.setPixelRatio(pixelRatioForViewport())"), "Renderer resolution must be recalculated on resize.");
