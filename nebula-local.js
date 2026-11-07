@@ -1098,7 +1098,7 @@ Object.assign(NEBULA_LOCAL,{
     const changes=cleanRecord(patch),current=await readRecord("filterCases",id);
     if(!current) throw new Error("找不到过滤任务。");
     const nextStatus=changes.status||current.status;delete changes.status;
-    const allowed=["currentStage","inputItemIds","candidateNodeId","proposedNodeIds","duplicateCandidates","locationSuggestions","relationSuggestions","evidenceGaps","conflicts","summary","reviewProposalId","lastError","dedupeAnalyzedAt","dedupeThreshold","completedAt","completionSummary"];
+    const allowed=["currentStage","inputItemIds","candidateNodeId","proposedNodeIds","duplicateCandidates","locationSuggestions","relationSuggestions","evidenceGaps","conflicts","summary","reviewProposalId","lastError","dedupeAnalyzedAt","dedupeThreshold","completedAt","completionSummary","aiAnalysis","aiProposalIds","aiAnalyzedAt","aiProvider","aiUsage","aiUncertainties"];
     for(const key of Object.keys(changes)) if(!allowed.includes(key)) throw new Error("不允许更新过滤任务字段："+key);
     if(changes.inputItemIds) {
       changes.inputItemIds=[...new Set(changes.inputItemIds.map(x=>requireId(x,"提取候选")))];
@@ -1667,3 +1667,105 @@ Object.assign(NEBULA_LOCAL,{
     return {source:result.source,recordId:record?.id||null,locator,excerpt,available,found:!!excerpt};
   }
 });
+
+
+// P4: explicit, opt-in AI analysis of one selected filter case.
+// Only that case's extracted text and a bounded set of relevant nodes are sent to the configured Worker.
+Object.assign(NEBULA_LOCAL,{
+  async analyzeFilterCaseWithAI(endpoint,token,filterCaseId,options={}) {
+    const filterCase=await this.getFilterCase(filterCaseId);
+    if(!filterCase) throw new Error("找不到过滤任务。");
+    if(!["filtering","needs_review"].includes(filterCase.status)) throw new Error("当前过滤任务状态不允许 AI 分析。");
+    const items=[];
+    for(const id of (filterCase.inputItemIds||[]).slice(0,40)) {
+      const item=await this.getExtractionItem(id);if(item)items.push(item);
+    }
+    if(!items.length) throw new Error("当前过滤任务没有可供分析的候选内容。");
+    const graph=await this.loadGraph(),allNodes=graph?.nodes||[];
+    const locationIds=[...new Set((filterCase.locationSuggestions||[]).map(x=>x.targetNodeId).filter(Boolean))];
+    const selectedNodes=allNodes.filter(n=>locationIds.includes(n.id));
+    const contextNodes=(selectedNodes.length?selectedNodes:allNodes.slice(0,20)).slice(0,30);
+    const sourceIds=[...new Set(items.map(x=>x.sourceId).filter(Boolean))];
+    const payloadText=[
+      "任务：只依据以下候选内容，提出可审核的知识节点与关系；区分事实、推论和不确定项。",
+      "过滤案件："+filterCase.id,
+      "候选内容：",
+      ...items.map((item,index)=>"["+index+"] "+(item.title||"未命名候选")+"\n"+String(item.content||item.excerpt||"").slice(0,6000)+"\n来源定位："+JSON.stringify(item.locator||{})),
+      "请保留原意，不得虚构来源或证据。"
+    ].join("\n\n");
+    const response=await this.analyzeConversation(endpoint,token,payloadText,contextNodes);
+    const analysis=response.result||response;
+    if(!analysis||(!Array.isArray(analysis.nodes)&&!Array.isArray(analysis.links))) throw new Error("AI 返回结构不完整，未生成审核提案。");
+    const rawNodes=Array.isArray(analysis.nodes)?analysis.nodes.slice(0,80):[];
+    const idMap=new Map(),formalIds=new Set(allNodes.map(n=>String(n.id)));
+    rawNodes.forEach((node,index)=>{
+      const oldId=String(node.id||"ai_node_"+index);
+      idMap.set(oldId,makeRecordId("ai_candidate"));
+    });
+    const proposals=[];
+    for(let index=0;index<rawNodes.length;index++) {
+      const node=rawNodes[index]||{},oldId=String(node.id||"ai_node_"+index);
+      const parentRaw=node.parentId==null?null:String(node.parentId);
+      const parentId=parentRaw?(idMap.get(parentRaw)||(formalIds.has(parentRaw)?parentRaw:null)):null;
+      const itemScores=items.map(item=>({item,score:mindDice(mindTextTokens([node.name,node.coreWord,node.desc].join(" ")),mindTextTokens([item.title,item.content,item.excerpt].join(" ")))})).sort((a,b)=>b.score-a.score);
+      const evidenceItem=itemScores[0]?.item||items[0];
+      const snapshot={
+        id:idMap.get(oldId),name:String(node.name||node.coreWord||"待命名知识点").slice(0,240),
+        coreWord:String(node.coreWord||node.name||"").slice(0,120),desc:String(node.desc||"").slice(0,12000),
+        parentId,level:parentId?(Number(allNodes.find(n=>String(n.id)===String(parentId))?.level)||1)+1:1,
+        before:String(node.before||""),after:String(node.after||""),left:String(node.left||""),right:String(node.right||""),
+        date:String(node.date||"未标注"),sourceNote:String(node.sourceNote||""),
+        needsReview:true,status:"needs_review",originType:"ai_filter_proposal"
+      };
+      const proposal=await this.createProposal({
+        proposalType:"create",proposedSnapshot:snapshot,reasoning:"用户主动请求的 AI 四维过滤建议；必须核对原文、层级与来源后再接受。",
+        evidenceSourceIds:evidenceItem?.sourceId?[evidenceItem.sourceId]:sourceIds.slice(0,5),
+        evidence:{itemId:evidenceItem?.id||null,locator:evidenceItem?.locator||null,excerpt:evidenceItem?.excerpt||evidenceItem?.content?.slice(0,500)||""},
+        filterCaseId,extractionItemId:evidenceItem?.id||null,analysis:{needsReview:node.needsReview!==false}
+      });
+      proposals.push(proposal);
+    }
+    const links=Array.isArray(analysis.links)?analysis.links.slice(0,120):[];
+    const relationProposals=[];
+    for(const link of links) {
+      const sourceNodeId=idMap.get(String(link.source))||String(link.source||"");
+      const targetNodeId=idMap.get(String(link.target))||String(link.target||"");
+      if(!sourceNodeId||!targetNodeId||sourceNodeId===targetNodeId)continue;
+      const sourceExists=formalIds.has(sourceNodeId)||idMapHasValue(idMap,sourceNodeId);
+      const targetExists=formalIds.has(targetNodeId)||idMapHasValue(idMap,targetNodeId);
+      if(!sourceExists||!targetExists)continue;
+      const relation=await this.createProposal({
+        proposalType:"relation",sourceNodeId,relatedNodeId:targetNodeId,
+        proposedSnapshot:{type:String(link.type||"related").slice(0,80),label:String(link.label||"待确认关联").slice(0,240)},
+        reasoning:"AI 提出的横向关系候选，需审核关系方向、类型与证据。",
+        evidenceSourceIds:sourceIds.slice(0,5),filterCaseId,
+        evidence:{excerpt:"关联依据来自本次用户选定的提取候选。"}
+      });
+      relationProposals.push(relation);
+    }
+    const mergeProposals=[];
+    for(const merge of (Array.isArray(analysis.mergeSuggestions)?analysis.mergeSuggestions:[]).slice(0,40)) {
+      const targetId=String(merge.targetNodeId||merge.target||"");
+      const sourceIdsForMerge=[...new Set((merge.sourceNodeIds||merge.sources||[]).map(String))];
+      if(!formalIds.has(targetId)||!sourceIdsForMerge.length||sourceIdsForMerge.some(id=>!formalIds.has(id)))continue;
+      mergeProposals.push(await this.createProposal({
+        proposalType:"merge",targetNodeId:targetId,sourceNodeIds:sourceIdsForMerge,
+        proposedSnapshot:{reason:String(merge.reason||"AI 认为这些节点可能重复，等待审核。")},
+        reasoning:String(merge.reason||"AI 提出潜在重复节点合并，必须核对定义、范围和语境。"),
+        evidenceSourceIds:sourceIds.slice(0,5),filterCaseId
+      }));
+    }
+    const allProposals=[...proposals,...relationProposals,...mergeProposals];
+    const updated=await this.updateFilterCase(filterCaseId,{
+      status:"needs_review",currentStage:"ai_review",aiAnalysis:analysis,
+      aiProposalIds:allProposals.map(p=>p.id),aiAnalyzedAt:Date.now(),
+      aiProvider:"configured-worker",aiUsage:response.usage||null,
+      aiUncertainties:Array.isArray(analysis.uncertain)?analysis.uncertain:[]
+    });
+    await this.appendFilterDecision({filterCaseId,decisionType:"classify",actor:"system",
+      before:{candidateCount:items.length},after:{proposalCount:allProposals.length,nodeProposalCount:proposals.length,relationProposalCount:relationProposals.length,mergeProposalCount:mergeProposals.length},
+      rationale:"AI 分析结果已转为审核提案；未写入正式知识图谱。",evidenceIds:sourceIds});
+    return {filterCase:updated,analysis,proposals,relationProposals,mergeProposals,contextNodeCount:contextNodes.length,sentItemCount:items.length};
+  }
+});
+function idMapHasValue(map,value) { for(const mapped of map.values()) if(String(mapped)===String(value))return true;return false; }
