@@ -1365,7 +1365,7 @@ async function connectLocalKnowledgeUniverse(){
   });
   nodes=ordered.map((node,i)=>[node.name||node.coreWord||"未命名知识",0,0,0,.13]);
   positions=ordered.map(node=>posById.get(String(node.id))||new THREE.Vector3());
-  edges=[];directionalMap={};
+  edges=[]; // Preserve the typed multi-target directional map built above.
   const edgeKeys=new Set();
   ordered.forEach((node,i)=>{
    if(node.parentId&&idToIndex.has(String(node.parentId))){const parentIndex=idToIndex.get(String(node.parentId));edges.push([parentIndex,i]);edgeKeys.add([parentIndex,i].sort((a,b)=>a-b).join(":"));}
