@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NEBULA — UI Preview</title>
+<title>观复 Mind — 认知空间预览</title>
 <meta name="description" content="NEBULA 3D Knowledge Universe — visual interface preview">
 <style>
 :root{color-scheme:dark;--bg:#07090d;--surface:rgba(17,20,25,.82);--surface2:rgba(23,27,33,.76);--line:rgba(211,222,235,.105);--line2:rgba(211,222,235,.17);--text:#e8ebef;--muted:#929ba7;--dim:#626d79;--ice:#c8d5df;--warm:#b7a88b;--green:#9db7a8}
@@ -534,31 +534,117 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
  #continuumFocus.arriving .continuum-core *{animation:none!important;opacity:1!important;filter:none!important}
 }
 
+
+/* V17 · Guanfu Mind: quiet spatial workspace, framework-first hierarchy */
+:root{--bg:#05070a;--surface:rgba(12,15,19,.72);--surface2:rgba(17,21,26,.64);--line:rgba(218,228,235,.075);--line2:rgba(218,228,235,.13);--text:#e6eaed;--muted:#87919a;--dim:#59636c;--ice:#d5dfe4;--warm:#aaa18f;--green:#a8b9a8}
+body{background:#05070a}#space{background:radial-gradient(ellipse at 52% 46%,#151a1f 0,#090c10 40%,#05070a 82%)}.grain{opacity:.055}
+.topbar{height:62px;padding:0 22px;background:linear-gradient(180deg,rgba(5,7,10,.94),rgba(5,7,10,.62));border-bottom-color:rgba(218,228,235,.055)}
+.brand{min-width:180px;gap:10px}.brand-name{letter-spacing:.08em;font-size:14px;font-weight:560}.brand-sub{font-size:7px;letter-spacing:.16em;color:#68737c}
+.mark{width:24px;height:24px;border-color:#aeb9c0;box-shadow:inset 0 0 9px #b8c8d310,0 0 10px #b8c8d308}.mark:before{width:4px;height:4px;left:5px;top:5px;box-shadow:0 0 6px #d9e1e544}.mark:after{content:"";position:absolute;width:3px;height:3px;right:3px;bottom:3px;border-radius:50%;background:#9db7a8;box-shadow:0 0 5px #9db7a866}
+.top-center{gap:2px}.nav{font-size:10px;padding:8px 12px;color:#727d86;border-radius:5px}.nav.active,.nav:hover{color:#e9eef0;background:#ffffff07}
+.top-actions{min-width:220px;gap:7px}.search{width:165px;border-color:#ffffff12;background:#ffffff04}.iconbtn,.quietbtn{border-color:#ffffff12;background:#ffffff04;color:#aab4bb;padding:7px 10px}
+.left-rail{left:12px;top:78px;bottom:16px;width:52px;gap:0;transition:width .24s ease}
+.left-rail .rail-card{border:0;border-radius:8px;background:rgba(9,12,15,.42);box-shadow:none;padding:7px 5px;backdrop-filter:blur(14px);overflow:hidden}
+.left-rail .rail-card:nth-child(2),.left-rail .rail-bottom{display:none}
+.left-rail .eyebrow,.left-rail .workspace-title,.left-rail .workspace-meta{opacity:0;max-height:0;overflow:hidden;margin:0;transition:opacity .15s}
+.left-rail .rail-list{margin-top:0;gap:3px}.left-rail .rail-item{width:40px;height:39px;justify-content:center;gap:0;padding:0;font-size:0;border-radius:6px;color:#7c8790}
+.left-rail .rail-item.active{background:#ffffff0b;box-shadow:inset 1px 0 #c3d0d7}.left-rail .rail-glyph{font-size:14px;width:auto;color:#aab5bc}
+.left-rail:hover,.left-rail:focus-within{width:218px}
+.left-rail:hover .rail-card,.left-rail:focus-within .rail-card{padding:13px 12px;background:rgba(10,13,17,.86);border:1px solid rgba(218,228,235,.09)}
+.left-rail:hover .eyebrow,.left-rail:hover .workspace-title,.left-rail:hover .workspace-meta,.left-rail:focus-within .eyebrow,.left-rail:focus-within .workspace-title,.left-rail:focus-within .workspace-meta{opacity:1;max-height:60px}
+.left-rail:hover .rail-list,.left-rail:focus-within .rail-list{margin-top:10px}.left-rail:hover .rail-item,.left-rail:focus-within .rail-item{width:100%;height:auto;min-height:34px;justify-content:flex-start;gap:9px;padding:8px;font-size:10px}.left-rail:hover .rail-glyph,.left-rail:focus-within .rail-glyph{width:14px}
+.right-panel{right:16px;top:76px;bottom:0;width:214px;display:block;pointer-events:none}.right-panel .rail-card{pointer-events:auto;border:1px solid rgba(218,228,235,.075);background:rgba(8,11,14,.48);box-shadow:none;backdrop-filter:blur(12px);padding:11px}
+.right-panel .rail-card:first-child{position:absolute;right:0;top:0;width:214px;opacity:.82}.right-panel .rail-card:nth-child(2){position:fixed;right:16px;bottom:18px;width:196px;padding:9px 10px;background:rgba(8,11,14,.54)}.right-panel .rail-card:nth-child(3){display:none}
+.selected-name{font-size:13px;margin:8px 0 4px}.selected-desc{font-size:9px;line-height:1.6}.chips{margin-top:7px}.chip{font-size:7px;padding:3px 5px;border-color:#ffffff12}.right-panel .action-btn{font-size:9px;padding:7px}.right-panel .kv{padding:6px 0;font-size:8px}
+.mini-map{height:116px;border:0;border-radius:5px;background:radial-gradient(ellipse,#151b20,#090c10 75%);margin-top:5px}.map-caption{font-size:7px;margin-top:5px}
+.bottom-hint{left:78px;bottom:24px;font-size:8px;color:#5e6972}.timeline{bottom:16px;width:min(460px,42vw);padding:7px 11px;border-color:#ffffff0b;border-radius:6px;background:rgba(7,10,13,.5);box-shadow:none}
+.time-top{font-size:7px;margin-bottom:6px}.time-point{font-size:7px;padding-top:10px}.time-point:before{width:5px;height:5px}
+.overlay{inset:62px 0 0;background:rgba(5,7,10,.88);backdrop-filter:blur(20px);padding:28px clamp(22px,5vw,72px) 32px}.overlay-title{font-size:18px;font-weight:480;letter-spacing:.02em}.overlay-sub{font-size:9px;color:#75818a}
+.rail-card,.metric-card,.task-card,.work-card,.detail-card,.backup-card,.source-list,.source-reader{box-shadow:none}
+.entry-content{transform:translateY(-1vh)}.entry-wordmark{font-size:36px;letter-spacing:.08em;font-weight:420}.entry-wordmark span{font-size:.68em;color:#aebbc2;letter-spacing:.03em}
+.entry-kicker{letter-spacing:.22em;color:#84919a}.entry-subtitle{font-size:13px;letter-spacing:.16em;color:#c8d1d6}.entry-copy{font-size:10px;line-height:2.1;color:#79858e}
+.entry-button{border-color:#aebbc22b;background:#ffffff06;color:#dce4e8}.entry-foot{font-size:7px;letter-spacing:.2em;color:#59656e}
+/* Immersive focus */
+#continuumFocus{inset:0!important;z-index:40!important;padding:17px 4vw 13px!important;background:radial-gradient(ellipse at 50% 48%,rgba(20,25,30,.52),rgba(5,7,10,.74) 66%,rgba(5,7,10,.9))!important;backdrop-filter:blur(2px)!important}
+#continuumFocus .continuum-topline{opacity:.58}
+#continuumFocus .continuum-stage{width:min(1120px,100%);max-height:none;min-height:0;grid-template-columns:1fr minmax(220px,280px) 1fr;grid-template-rows:minmax(110px,1fr) 110px minmax(110px,1fr);gap:0;margin:auto}
+#continuumFocus .continuum-orbit{display:none!important}#continuumFocus .continuum-axis{opacity:.12;box-shadow:none}#continuumFocus .continuum-routes{opacity:.26}
+#continuumFocus .route{stroke:rgba(209,221,228,.34);stroke-width:1}#continuumFocus .route-point{fill:rgba(218,229,234,.6)}
+#continuumFocus .continuum-core{position:relative;width:auto;min-height:0;padding:10px 14px;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;overflow:visible}
+#continuumFocus .continuum-core:before{content:"";position:absolute;top:-17px;left:50%;width:4px;height:4px;border-radius:50%;background:#e2e9ed;transform:translateX(-50%);box-shadow:0 0 5px #dce6ec88,0 0 13px #dce6ec30}
+#continuumFocus .continuum-core-label{font-size:7px;letter-spacing:.18em;color:#75818a}
+#continuumFocus .continuum-core-title{font-size:17px;font-weight:470;letter-spacing:.04em;margin-top:7px;color:#e5ecef;text-shadow:0 0 12px #dce6ec16}
+#continuumFocus .continuum-core p{font-size:9px;max-width:260px;margin:6px auto 5px;color:#9aa6ae;line-height:1.65}
+#continuumFocus .continuum-core-meta{font-size:7px;color:#68747d}#continuumFocus .continuum-core button{margin-top:6px;padding-top:7px;font-size:8px;color:#aeb9c0;border-top-color:#ffffff10}
+#continuumFocus .continuum-quadrant{width:min(100%,260px);min-height:0;padding:8px 10px;border:0!important;border-radius:0!important;background:transparent!important;backdrop-filter:none!important;box-shadow:none!important;opacity:.17;transform:none!important;transition:opacity .45s ease,color .45s ease}
+#continuumFocus .continuum-quadrant:hover{opacity:.82;background:transparent!important;transform:none!important}
+#continuumFocus .continuum-quadrant .cq-kicker{font-size:7px;color:#78858e;letter-spacing:.16em}#continuumFocus .continuum-quadrant b{font-size:11px;font-weight:480;margin-top:5px;color:#d6dfe3}
+#continuumFocus .continuum-quadrant small{font-size:8px;line-height:1.55;color:#8c99a1;margin-top:3px}#continuumFocus .continuum-quadrant i{font-size:7px;color:#9aa7af;margin-top:5px}
+#continuumFocus .q-forward{align-self:end}#continuumFocus .q-backward{align-self:start}#continuumFocus .q-left{justify-self:end}#continuumFocus .q-right{justify-self:start}
+#continuumFocus .continuum-bottom{border-top:1px solid #ffffff0b;padding-top:8px;opacity:.62}#continuumFocus .continuum-footnote{display:none}
+#continuumFocus.arriving .continuum-core:before{animation:coreStarArrive 1.6s ease-out both}
+@keyframes coreStarArrive{0%{opacity:0;transform:translate(-50%,7px) scale(.5)}55%{opacity:1;transform:translate(-50%,0) scale(1.4)}100%{opacity:.85;transform:translate(-50%,0) scale(1)}}
+@keyframes guanfuGhost{0%,100%{translate:0 0}50%{translate:0 -4px}}
+#continuumFocus .continuum-quadrant{animation:guanfuGhost 13s ease-in-out infinite}#continuumFocus .q-backward{animation-delay:-4s}#continuumFocus .q-left{animation-delay:-7s}#continuumFocus .q-right{animation-delay:-10s}
+/* Filter workbench */
+.filter-head-actions{display:flex;align-items:center;gap:14px}.filter-local-state{font-size:8px;color:#8e9a9f;letter-spacing:.08em}
+.filter-sequence{display:flex;align-items:center;gap:9px;padding:11px 0 16px;border-bottom:1px solid #ffffff0c;color:#65717a;font-size:8px;letter-spacing:.05em}
+.filter-sequence span.active{color:#d5dfe4}.filter-sequence i{width:26px;height:1px;background:#ffffff18}
+.filter-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px;min-height:calc(100vh - 210px)}
+.filter-case-rail{border-right:1px solid #ffffff0d;padding-right:16px}
+.filter-section-head{display:flex;align-items:center;justify-content:space-between;color:#c8d1d6;font-size:10px;margin-bottom:10px}
+.filter-section-head small{font-size:8px;color:#75818a}.filter-section-head button{border:0;background:transparent;color:#9aa7ae;font-size:8px}
+.filter-case-list,.filter-candidate-list,.filter-suggestion-list,.filter-proposal-list{display:flex;flex-direction:column;gap:7px}
+.filter-case-item{display:flex;flex-direction:column;gap:5px;text-align:left;padding:11px;border:1px solid #ffffff0c;border-radius:5px;background:#ffffff03;color:#c9d2d8}
+.filter-case-item.active,.filter-case-item:hover{border-color:#c7d3da35;background:#ffffff08}
+.filter-case-item strong{font-size:9px;font-weight:500}.filter-case-item small{font-size:7px;color:#78858e}
+.filter-main{min-width:0}.filter-case-summary{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:3px 0 12px}
+.filter-case-summary h2{font-size:16px;font-weight:450;margin:7px 0}.filter-case-summary p{font-size:9px;color:#89959d;margin:0;line-height:1.7}
+.filter-summary-counts{display:flex;gap:16px;color:#7d8991;font-size:8px;white-space:nowrap}.filter-summary-counts b{display:block;color:#e0e7eb;font-size:17px;font-weight:400;margin-top:4px}
+.filter-action-row{display:flex;gap:7px;padding:9px 0 13px;border-top:1px solid #ffffff0b;border-bottom:1px solid #ffffff0b}
+.filter-action-row .action-btn{font-size:8px;padding:8px 12px}.filter-ai-config{display:flex;align-items:end;gap:10px;padding:10px 0;color:#76828a;font-size:8px}
+.filter-ai-config label{display:flex;flex-direction:column;gap:5px;min-width:180px}.filter-ai-config input{width:100%;border:1px solid #ffffff13;background:#ffffff04;border-radius:4px;padding:7px 8px;color:#dce4e8;font-size:8px;outline:none}
+.filter-ai-config span{max-width:300px;line-height:1.6}.filter-ai-config.attention input{border-color:#b7a88b66}
+.filter-content-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:10px}
+.filter-column{min-width:0;border-top:1px solid #ffffff15;padding-top:10px}
+.filter-candidate,.filter-proposal{padding:10px 0;border-bottom:1px solid #ffffff0a}
+.filter-candidate b,.filter-proposal b{font-size:9px;font-weight:520;color:#d7dfe3}.filter-candidate p,.filter-proposal p{font-size:8px;line-height:1.7;color:#8b979f;margin:6px 0}
+.filter-candidate small{font-size:7px;color:#69757d}
+.filter-suggestion{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:10px;border:1px solid #ffffff0b;background:#ffffff02;border-radius:4px;text-align:left;color:#cbd4d9}
+.filter-suggestion.active,.filter-suggestion:hover{border-color:#d5e0e633;background:#ffffff07}
+.filter-dimension{font-size:7px;letter-spacing:.08em;color:#a8b6bd}.filter-suggestion b{font-size:9px;font-weight:500}.filter-suggestion small{font-size:8px;line-height:1.6;color:#85919a}
+.filter-proposal-actions{display:flex;gap:7px;margin-top:7px}.filter-proposal-actions button{border:1px solid #ffffff14;background:#ffffff05;border-radius:4px;padding:5px 9px;color:#aeb9c0;font-size:8px}
+.filter-proposal-actions button:first-child{color:#d5e0e4;border-color:#c8d7dd30}
+.filter-empty{padding:15px 8px;color:#66727b;font-size:8px;line-height:1.8}
+.filter-footnote{margin-top:18px;padding-top:10px;border-top:1px solid #ffffff0a;color:#67747d;font-size:8px;line-height:1.7}
+@media(max-width:900px){.top-center .nav{padding:7px 6px;font-size:9px}.filter-layout{grid-template-columns:190px minmax(0,1fr)}.filter-content-grid{grid-template-columns:1fr 1fr}.filter-column:last-child{grid-column:1/-1}}
+@media(max-width:650px){.topbar{padding:0 10px}.brand{min-width:auto}.brand-sub,.top-center .nav:nth-child(n+4),.top-actions .quietbtn{display:none}.top-center{margin-left:auto;margin-right:8px}.search{width:95px}.left-rail{display:none}.right-panel .rail-card:first-child{display:none}.right-panel .rail-card:nth-child(2){bottom:10px;width:128px;right:8px}.mini-map{height:80px}.timeline{left:10px;transform:none;width:calc(100vw - 150px);bottom:12px}.bottom-hint{left:12px;bottom:62px}#continuumFocus .continuum-stage{grid-template-columns:1fr minmax(150px,190px) 1fr;grid-template-rows:minmax(90px,1fr) 90px minmax(90px,1fr)}#continuumFocus .continuum-quadrant{width:100%;padding:5px}#continuumFocus .continuum-quadrant small{display:none}#continuumFocus .continuum-core-title{font-size:14px}.filter-layout{grid-template-columns:1fr}.filter-case-rail{border-right:0;border-bottom:1px solid #ffffff0c;padding:0 0 12px}.filter-case-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.filter-content-grid{grid-template-columns:1fr}.filter-column:last-child{grid-column:auto}.filter-ai-config{flex-wrap:wrap}.filter-ai-config label{min-width:130px;flex:1}.filter-sequence{gap:4px;font-size:7px}.filter-sequence i{width:8px}}
+
 </style>
 </head>
 <body>
 <div id="space"></div><div class="grain"></div>
-<div id="entry-screen"><div class="entry-content"><div class="entry-kicker">A PERSONAL KNOWLEDGE UNIVERSE</div><div class="entry-wordmark">NEBULA</div><div class="entry-rule"></div><div class="entry-subtitle">让知识拥有自己的空间</div><div class="entry-copy">从一个想法出发，连接概念、来源与时间。<br>在属于你的知识宇宙中自由探索。</div><button class="entry-button" id="enterNebula">进入知识宇宙&nbsp; ↗</button><div class="entry-foot">PRIVATE KNOWLEDGE SPACE · EST. 2026</div></div></div>
+<div id="entry-screen"><div class="entry-content"><div class="entry-kicker">A PERSONAL KNOWLEDGE UNIVERSE</div><div class="entry-wordmark">观复 <span>Mind</span></div><div class="entry-rule"></div><div class="entry-subtitle">聚焦一点，仍知全局</div><div class="entry-copy">定其位 · 联其缘 · 生其相 · 归其一<br>一切为了框架建立。</div><button class="entry-button" id="enterNebula">进入知识宇宙&nbsp; ↗</button><div class="entry-foot">PRIVATE KNOWLEDGE SPACE · EST. 2026</div></div></div>
 <header class="topbar">
- <div class="brand"><div class="mark"></div><div><div class="brand-name">NEBULA</div><div class="brand-sub">PERSONAL KNOWLEDGE UNIVERSE</div></div></div>
- <nav class="top-center"><button class="nav" data-view="dashboard">认知驾驶舱</button><button class="nav active" data-view="universe">3D 宇宙</button><button class="nav" data-view="hierarchy">逻辑结构</button><button class="nav" data-view="lab">知识实验室</button><button class="nav" data-view="learning">主动学习</button></nav>
+ <div class="brand"><div class="mark"></div><div><div class="brand-name">观复 Mind</div><div class="brand-sub">PERSONAL KNOWLEDGE UNIVERSE</div></div></div>
+ <nav class="top-center"><button class="nav active" data-view="universe">Mind</button><button class="nav" data-view="hierarchy">框架</button><button class="nav" data-view="sources">资料</button><button class="nav" data-view="filter">过滤</button><button class="nav" data-view="lab">研究</button><button class="nav" data-view="learning">学习</button></nav>
  <div class="top-actions"><input class="search" id="search" placeholder="搜索知识 / 来源…"><button class="iconbtn" id="reviewBtn" title="AI 审核中心">审核</button><button class="iconbtn" id="overviewBtn" title="全局概览">⌘</button><button class="quietbtn" id="importBtn">导入资料 ＋</button><button class="quietbtn" id="profileBtn">本机空间　↗</button></div>
 </header>
 <aside class="left-rail">
- <section class="rail-card"><div class="eyebrow">WORKSPACE</div><div class="workspace-title">我的知识宇宙</div><div class="workspace-meta">LOCAL SPACE · 本机知识空间<br>浏览器本地保存 · 文件夹授权后读取</div><div class="rail-list">
-  <button class="rail-item" data-view="dashboard"><span class="rail-glyph">◫</span>认知驾驶舱</button>
-  <button class="rail-item active" data-view="universe"><span class="rail-glyph">◉</span>知识宇宙</button>
-  <button class="rail-item" data-view="hierarchy"><span class="rail-glyph">⌘</span>逻辑结构</button>
-  <button class="rail-item" data-view="lab"><span class="rail-glyph">⌕</span>知识实验室</button>
-  <button class="rail-item" data-view="learning"><span class="rail-glyph">◎</span>主动学习</button>
-  <button class="rail-item" data-view="sources"><span class="rail-glyph">▤</span>资料中心</button>
+ <section class="rail-card"><div class="eyebrow">WORKSPACE</div><div class="workspace-title">观复 Mind</div><div class="workspace-meta">LOCAL SPACE · 本机知识空间<br>浏览器本地保存 · 文件夹授权后读取</div><div class="rail-list">
+  <button class="rail-item" data-view="universe"><span class="rail-glyph">◉</span>Mind 空间</button>
+  <button class="rail-item" data-view="filter"><span class="rail-glyph">⌁</span>知识过滤</button>
+  <button class="rail-item" data-view="hierarchy"><span class="rail-glyph">⌘</span>框架结构</button>
+  <button class="rail-item" data-view="lab"><span class="rail-glyph">⌕</span>研究</button>
+  <button class="rail-item" data-view="learning"><span class="rail-glyph">◎</span>学习</button>
+  <button class="rail-item" data-view="sources"><span class="rail-glyph">▤</span>资料</button>
   <button class="rail-item" id="fourD"><span class="rail-glyph">✣</span>四向思考</button>
-  <button class="rail-item" id="railReview"><span class="rail-glyph">◇</span>AI 审核中心 <span style="margin-left:auto;color:#b7a88b">4</span></button>
+  <button class="rail-item" id="railReview"><span class="rail-glyph">◇</span>审核中心 <span style="margin-left:auto;color:#b7a88b">4</span></button>
  </div></section>
  <section class="rail-card"><div class="eyebrow">COLLECTIONS</div><div class="rail-list">
   <button class="rail-item"><span class="rail-glyph">◌</span>核心认知</button><button class="rail-item"><span class="rail-glyph">◇</span>待整理知识</button><button class="rail-item"><span class="rail-glyph">▧</span>跨领域连接</button>
  </div></section>
- <section class="rail-card rail-bottom"><div class="eyebrow">DATA STATUS</div><div class="workspace-title">本地空间 · 预览模式</div><div class="workspace-meta">当前为界面演示，尚未连接本地文件夹</div><div class="storage-line"><span></span></div><div class="workspace-meta">IndexedDB 本地保存 · 未启用云同步</div></section>
+ <section class="rail-card rail-bottom"><div class="eyebrow">DATA STATUS</div><div class="workspace-title">本地空间 · 预览模式</div><div class="workspace-meta">本地优先 · IndexedDB · 用户授权读取</div><div class="storage-line"><span></span></div><div class="workspace-meta">IndexedDB 本地保存 · 未启用云同步</div></section>
 </aside>
 <aside class="right-panel">
  <section class="rail-card"><div class="selected-head"><span class="eyebrow">SELECTED KNOWLEDGE</span><span class="eyebrow">01 / 09</span></div><div class="selected-name" id="selectedName">系统思维</div><div class="selected-desc" id="selectedDesc">理解复杂系统中结构、反馈与演化之间的关系。</div><div class="chips"><span class="chip">核心概念</span><span class="chip">多来源关联</span><span class="chip" id="selectedRelationCount">已关联 12 项</span></div><button class="action-btn" id="openNodeDetail" style="width:100%;margin-top:12px">打开知识详情 ↗</button><div style="margin-top:13px"><div class="kv"><span>所属层级</span><strong>一级概念</strong></div><div class="kv"><span>首次记录</span><strong>2026.06.18</strong></div><div class="kv"><span>关联来源</span><strong>8 份资料</strong></div></div></section>
@@ -567,10 +653,10 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
 </aside>
 <div class="bottom-hint"><span>拖拽</span> 旋转空间　 <span>滚轮</span> 缩放　 <span>点击节点</span> 查看知识</div>
 <section class="timeline"><div class="time-top"><span>KNOWLEDGE TIMELINE</span><span>知识形成与演化</span></div><div class="time-track"><div class="time-point active">起源</div><div class="time-point">延展</div><div class="time-point">连接</div><div class="time-point">演化</div><div class="time-point">现在</div></div></section>
-<section class="overlay" id="hierarchy"><div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE STRUCTURE</div><div class="overlay-title">逻辑结构</div><div class="overlay-sub">横向树状导航 · 初始显示当前主题的直接子级，逐层深入或返回上级</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="logic-toolbar"><div><div class="logic-path" id="logicPath">我的知识宇宙 / 系统思维</div><div class="logic-caption" id="logicCaption">当前层级的直接子节点 · 父子层级独立于横向知识关系</div></div><div class="logic-actions"><button class="action-btn" id="logicUp">← 上一级</button><button class="action-btn" id="logicRoot">返回根主题</button></div></div><div class="logic-current"><span class="status">当前主题</span><strong id="logicCurrent">系统思维</strong><span id="logicDepth" class="logic-depth">LEVEL 01</span></div><div class="logic-children" id="logicChildren"></div><div class="logic-related"><div class="section-label">横向关联 · RELATED KNOWLEDGE</div><div id="logicRelations" class="relation-chips"><span class="status">反馈控制</span><span class="status">复杂适应系统</span><span class="status">因果推断</span></div><p class="source-state">这些是跨主题关联，不属于当前主题的子级；选择后可跳转查看，但不会改变父子树。</p></div></section>
-<section class="overlay" id="sources"><div class="overlay-head"><div><div class="eyebrow">ORIGINAL MATERIALS</div><div class="overlay-title">原始资料库</div><div class="overlay-sub">只展示原始讲义、原始思维导图、论文与文献；与 AI 已整理知识分开保存</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="source-workbench">
+<section class="overlay" id="hierarchy"><div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE STRUCTURE</div><div class="overlay-title">框架</div><div class="overlay-sub">横向树状导航 · 初始显示当前主题的直接子级，逐层深入或返回上级</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="logic-toolbar"><div><div class="logic-path" id="logicPath">我的知识宇宙 / 系统思维</div><div class="logic-caption" id="logicCaption">当前层级的直接子节点 · 父子层级独立于横向知识关系</div></div><div class="logic-actions"><button class="action-btn" id="logicUp">← 上一级</button><button class="action-btn" id="logicRoot">返回根主题</button></div></div><div class="logic-current"><span class="status">当前主题</span><strong id="logicCurrent">系统思维</strong><span id="logicDepth" class="logic-depth">LEVEL 01</span></div><div class="logic-children" id="logicChildren"></div><div class="logic-related"><div class="section-label">横向关联 · RELATED KNOWLEDGE</div><div id="logicRelations" class="relation-chips"><span class="status">反馈控制</span><span class="status">复杂适应系统</span><span class="status">因果推断</span></div><p class="source-state">这些是跨主题关联，不属于当前主题的子级；选择后可跳转查看，但不会改变父子树。</p></div></section>
+<section class="overlay" id="sources"><div class="overlay-head"><div><div class="eyebrow">ORIGINAL MATERIALS</div><div class="overlay-title">资料</div><div class="overlay-sub">只展示原始讲义、原始思维导图、论文与文献；与 AI 已整理知识分开保存</div></div><button class="close" data-close>返回宇宙空间</button></div><div class="source-workbench">
  <div class="source-toolbar"><div><span class="source-tag">LOCAL SOURCE LIBRARY</span><div class="source-toolbar-title">资料进入知识系统</div><div class="source-toolbar-sub">原文件保留 · 提取内容独立保存 · AI 建议必须经审核</div></div><button class="action-btn primary" id="chooseSource">＋ 选择本地资料</button><input id="sourceFileInput" type="file" multiple accept=".pdf,.doc,.docx,.emmx,.xmind,.png,.jpg,.jpeg,.webp,.txt,.md" hidden></div>
- <div class="source-notice"><b>本轮为交互原型</b> 当前只读取浏览器文件选择器返回的文件名、格式与大小；不会上传、解析或写入文件。正式版本需在用户授权后接入本地文件读取与解析。</div>
+ <div class="source-notice"><b>本地资料保护</b> 选中的原件由浏览器在本机读取并保存到 IndexedDB，不会自动上传。解析后生成独立候选与来源定位；正式知识仍需经过审核确认。</div>
  <div class="source-flow" id="sourceFlow"><div class="source-step active"><i>01</i><b>选择文件</b><small>本地原件</small></div><div class="source-step"><i>02</i><b>识别结构</b><small>解析与检查</small></div><div class="source-step"><i>03</i><b>预览内容</b><small>原文与提取</small></div><div class="source-step"><i>04</i><b>审核建议</b><small>去重与关系</small></div><div class="source-step"><i>05</i><b>确认入库</b><small>正式知识</small></div></div>
  <div class="source-grid"><div class="source-list"><div class="eyebrow">SOURCE LIBRARY</div><div class="source-row active" data-source-kind="all">全部资料 <span>· 4</span></div><div class="source-row" data-source-kind="document">原始讲义 · PDF / Word</div><div class="source-row" data-source-kind="mindmap">思维导图 · EMMX / XMind</div><div class="source-row" data-source-kind="paper">论文与文献</div><div class="source-row" data-source-kind="image">图片与附件</div><div class="source-row" data-source-kind="conversation" style="margin-top:18px;color:#82928e">AI 对话来源（独立）</div><div class="source-list-note">分类只改变资料视图，不改变原始文件。相同内容可关联多个知识节点。</div></div>
  <div class="source-reader"><div class="source-reader-head"><div><span class="source-tag">ORIGINAL SOURCE · 未经 AI 整理</span><h3>原始资料阅读区</h3></div><span class="status">原件只读保留</span></div><p>选择一份资料后，在此查看原文、章节、层级、图片与页码。知识节点引用来源时，应能定位到原始页码或段落，而不是只显示 AI 摘要。</p><div class="source-file-list" id="sourceFileList"><div class="source-file"><div><b>复杂系统讲义.pdf</b><small>PDF · 42 页 · 已建立来源索引（演示数据）</small></div><span class="status">原始资料</span></div><div class="source-file"><div><b>系统思维导图.emmx</b><small>EMMX · 含层级与图片（演示数据）</small></div><span class="status">原始资料</span></div><div class="source-file"><div><b>DeepSeek 对话：系统动力学</b><small>对话来源 · 独立保存（演示数据）</small></div><span class="status">AI 对话</span></div></div><div class="source-preview" id="sourcePreview"><div class="eyebrow">CONTENT PREVIEW</div><b>导入后预览区</b><p>原始文件、提取文本、图片附件、结构层级和解析警告将在这里分层展示。原始内容与 AI 整理结果不会混写。</p></div></div></div>
@@ -588,7 +674,7 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
 </section>
 
 
-<section class="overlay" id="dashboard"><div class="overlay-head"><div><div class="eyebrow">COGNITIVE DASHBOARD</div><div class="overlay-title">认知驾驶舱</div><div class="overlay-sub">先看认知状态，再处理关键问题，最后决定下一步行动。</div></div><span class="workspace-badge">LOCAL-FIRST · 本机空间</span></div>
+<section class="overlay" id="dashboard"><div class="overlay-head"><div><div class="eyebrow">COGNITIVE DASHBOARD</div><div class="overlay-title">Mind 概览</div><div class="overlay-sub">先看认知状态，再处理关键问题，最后决定下一步行动。</div></div><span class="workspace-badge">LOCAL-FIRST · 本机空间</span></div>
 <div class="panel-grid">
  <div class="metric-card"><div class="metric-label">KNOWLEDGE NODES · 知识节点</div><div class="metric-value">248</div><div class="metric-note">正式知识对象 · 演示数据</div></div>
  <div class="metric-card"><div class="metric-label">SOURCE RECORDS · 资料来源</div><div class="metric-value">36</div><div class="metric-note">原始文件与对话来源 · 演示数据</div></div>
@@ -607,7 +693,7 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
  <div class="section-label">认知演化 · RECENT ACTIVITY</div><div class="evidence-line">今天 · 系统思维新增一条横向关联建议（待审核）</div><div class="evidence-line">昨天 · 导入《复杂系统讲义》PDF，原文件保留</div><div class="evidence-line">11 月 4 日 · 反馈机制的掌握程度因主动回忆结果而更新</div>
  <div class="action-row"><button class="action-btn" data-go="sources">查看资料中心</button><button class="action-btn" data-go="backup">备份与恢复</button></div>
 </section>
-<section class="overlay" id="lab"><div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE LABORATORY</div><div class="overlay-title">知识实验室</div><div class="overlay-sub">研究草稿与证据工作台；未经确认的成果不会直接写入正式知识。</div></div><button class="close" data-close>返回</button></div>
+<section class="overlay" id="lab"><div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE LABORATORY</div><div class="overlay-title">研究</div><div class="overlay-sub">研究草稿与证据工作台；未经确认的成果不会直接写入正式知识。</div></div><button class="close" data-close>返回</button></div>
 <div class="panel-grid">
  <div class="work-card"><h3>单节点研究 · 系统思维</h3><p>定义、发展历史、理论依据、运行机制、案例、反例、争议与适用边界。</p><div class="action-row"><span class="status">研究对象：系统思维</span><span class="status">草稿状态</span></div></div>
  <div class="work-card"><h3>多来源比较</h3><p>讲义、论文、AI 分析与不同作者观点并列比较，提取共识、差异与矛盾。</p><div class="action-row"><button class="action-btn" id="compareBtn">新建比较</button></div></div>
@@ -624,7 +710,7 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
  <div class="section-label">今日训练 · TODAY'S SESSION</div><div class="work-card"><span class="status">当前知识：反馈机制</span><h3 style="margin-top:12px">请先不看资料，解释什么是负反馈？它如何帮助系统维持稳定？</h3><p>尝试说明：定义、运行过程、一个真实案例，以及它与正反馈的区别。</p><textarea id="recallAnswer" placeholder="在这里写下你的独立回忆……" style="width:100%;min-height:110px;margin-top:14px;background:#080c11;border:1px solid var(--line);border-radius:7px;color:var(--text);padding:12px;font:inherit;font-size:10px;resize:vertical"></textarea><div class="action-row"><button class="action-btn primary" id="submitRecall">提交本次回忆</button><button class="action-btn" id="showHint">显示提示</button></div><p id="recallFeedback" class="source-state">评估维度：准确性 · 完整性 · 独立表达 · 应用能力</p></div>
  <div class="section-label">训练方式</div><div class="panel-grid"><div class="task-card"><h3>主动回忆</h3><p>隐藏答案，独立提取核心知识。</p></div><div class="task-card"><h3>口头复述</h3><p>语音或文字解释，识别遗漏与错误。</p></div><div class="task-card"><h3>知识应用</h3><p>在新案例中运用概念，检验迁移能力。</p></div><div class="task-card"><h3>知识测验</h3><p>选择、判断、填空、问答、找错与反向推理。</p></div><div class="task-card"><h3>口诀学习</h3><p>保留原始口诀，AI 只提供校验与优化建议。</p></div><div class="task-card"><h3>间隔复习</h3><p>根据实际表现动态安排下一次复习。</p></div></div>
 </section>
-<section class="overlay" id="review"><div class="overlay-head"><div><div class="eyebrow">AI REVIEW CENTER</div><div class="overlay-title">AI 审核中心</div><div class="overlay-sub">AI 只能提出建议。正式知识变更必须由用户确认。</div></div><button class="close" data-close>返回</button></div>
+<section class="overlay" id="review"><div class="overlay-head"><div><div class="eyebrow">AI REVIEW CENTER</div><div class="overlay-title">审核中心</div><div class="overlay-sub">AI 只能提出建议。正式知识变更必须由用户确认。</div></div><button class="close" data-close>返回</button></div>
 <div class="panel-grid"><div class="metric-card"><div class="metric-label">PENDING PROPOSALS</div><div class="metric-value">4</div><div class="metric-note">等待用户审核</div></div><div class="metric-card"><div class="metric-label">POTENTIAL DUPLICATES</div><div class="metric-value">2</div><div class="metric-note">仅为候选，不自动合并</div></div><div class="metric-card"><div class="metric-label">CONFLICT ALERTS</div><div class="metric-value">1</div><div class="metric-note">需要证据核验</div></div></div>
  <div class="section-label">待审核建议 · PROPOSALS</div>
  <div class="review-row review-proposal"><div><strong>建立关系：反馈机制 ↔ 系统稳定性</strong><p>建议新增“支持关系”。两份来源提及反馈调节与系统稳定性，但仍需核对原文是否构成直接支持。</p><div class="proposal-diff"><div><small>修改前</small><span>两个知识节点尚无显式关系</span></div><div><small>AI 建议</small><span>新增关系：支持（Support）</span></div></div><div class="source-state">来源：复杂系统讲义.pdf · 第 12 页；研究笔记.md · 段落 08<br>置信度：中 · 风险：可能把相关性误判为支持关系</div><div class="review-detail" hidden>核验重点：原文是否提供明确机制或证据；是否存在反向案例。正式操作前需查看来源原文与关系定义。</div></div><div class="review-actions"><button class="action-btn" data-review-action="accept">接受建议</button><button class="action-btn" data-review-action="edit">编辑后接受</button><button class="action-btn" data-review-action="source">查看证据</button><button class="action-btn" data-review-action="defer">暂缓</button></div></div>
@@ -651,7 +737,27 @@ body.entered #entry-screen{opacity:0;visibility:hidden;pointer-events:none}
 <div class="direction-card"><b>前瞻 · 起源与前置</b><p>理论起源、历史脉络、前置概念与必要条件。追问这个知识从哪里来。</p></div><div class="direction-card"><b>顾后 · 后续与影响</b><p>后续发展、影响结果、应用后果与可能演化。追问它将带来什么。</p></div><div class="direction-card"><b>左顾 · 横向与跨学科</b><p>相关概念、共同机制、跨领域联系与可迁移类比。</p></div><div class="direction-card"><b>右盼 · 反向与边界</b><p>反例、相反观点、适用限制、争议与证据不足之处。</p></div></div>
 <div class="section-label">来源与历史 · PROVENANCE</div><div class="panel-grid"><div class="work-card"><h3>关联来源</h3><p>来源记录应显示原始文件名、类型、页码或段落位置；点击后回到原文，而不是 AI 摘要。</p></div><div class="work-card"><h3>知识版本</h3><p>每次确认修改形成新版本；支持查看差异、恢复旧版本与撤销操作。</p></div><div class="work-card"><h3>认知记录</h3><p>学习记录独立保存，记录回忆、解释、应用和迁移表现。</p></div></div>
 <div class="action-row"><button class="action-btn" data-go="sources">查看原始来源</button><button class="action-btn" data-go="lab">进入知识研究</button><button class="action-btn" data-go="learning">测试掌握程度</button></div></section>
-<section class="overlay" id="directionDetail"><div class="overlay-head"><div><div class="eyebrow">FOUR-DIRECTION THINKING</div><div class="overlay-title" id="directionTitle">前瞻 · 起源与前置</div><div class="overlay-sub">四向思考是可编辑、可追溯的知识分支，不是装饰性快捷按钮。</div></div><button class="close" data-close>返回节点详情</button></div><div class="panel-grid"><div class="work-card"><h3>核心问题</h3><p id="directionQuestion">这个概念从哪里产生？它依赖哪些前置知识？</p></div><div class="work-card"><h3>已有内容</h3><p>当前预览未连接真实知识数据。正式版本应显示该方向下的知识节点、关系与来源证据。</p></div><div class="work-card"><h3>下一步</h3><p>创建新分支、关联现有知识、添加来源，或标记为待验证问题。</p></div></div><div class="action-row"><button class="action-btn primary" id="directionDraft">添加思考草稿</button><button class="action-btn" data-go="review">提交审核建议</button></div></section><section id="continuumFocus" class="continuum-focus" aria-live="polite">
+<section class="overlay" id="directionDetail"><div class="overlay-head"><div><div class="eyebrow">FOUR-DIRECTION THINKING</div><div class="overlay-title" id="directionTitle">前瞻 · 起源与前置</div><div class="overlay-sub">四向思考是可编辑、可追溯的知识分支，不是装饰性快捷按钮。</div></div><button class="close" data-close>返回节点详情</button></div><div class="panel-grid"><div class="work-card"><h3>核心问题</h3><p id="directionQuestion">这个概念从哪里产生？它依赖哪些前置知识？</p></div><div class="work-card"><h3>已有内容</h3><p>当前预览未连接真实知识数据。正式版本应显示该方向下的知识节点、关系与来源证据。</p></div><div class="work-card"><h3>下一步</h3><p>创建新分支、关联现有知识、添加来源，或标记为待验证问题。</p></div></div><div class="action-row"><button class="action-btn primary" id="directionDraft">添加思考草稿</button><button class="action-btn" data-go="review">提交审核建议</button></div></section>
+<section class="overlay guanfu-filter" id="filter-workbench">
+ <div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE FILTER ENGINE</div><div class="overlay-title">知识过滤</div><div class="overlay-sub">不是把资料变成更多节点，而是逐条辨异、定位、关联，最后形成自己的框架。</div></div><div class="filter-head-actions"><span class="filter-local-state" id="filterLocalState">本地数据库 · 正在连接</span><button class="close" data-close>返回 Mind</button></div></div>
+ <div class="filter-sequence"><span class="active">01 接收</span><i></i><span>02 提取</span><i></i><span>03 辨异</span><i></i><span>04 定位</span><i></i><span>05 审核</span><i></i><span>06 归入框架</span></div>
+ <div class="filter-layout">
+  <aside class="filter-case-rail"><div class="filter-section-head"><span>过滤案件</span><button id="refreshFilterCases">刷新 ↻</button></div><div id="filterCaseList" class="filter-case-list"><div class="filter-empty">正在读取本地过滤任务…</div></div></aside>
+  <div class="filter-main">
+   <div class="filter-case-summary" id="filterCaseSummary"><div><div class="eyebrow">SELECT A FILTER CASE</div><h2>从一份资料开始</h2><p>选择左侧过滤案件，查看原始候选、辨异结果、四维定位和待审核提案。</p></div><div class="filter-summary-counts"><span>提取候选 <b id="filterCandidateCount">—</b></span><span>待审核 <b id="filterProposalCount">—</b></span></div></div>
+   <div class="filter-action-row"><button class="action-btn" id="runDedupe">辨异重复</button><button class="action-btn" id="runLocate">生成四维定位</button><button class="action-btn" id="runAI">AI 辅助过滤</button><button class="action-btn primary" id="finalizeFilter">完成本批归位</button></div>
+   <div class="filter-ai-config" id="filterAiConfig"><label>Worker 地址 <input id="filterWorkerUrl" placeholder="https://your-worker.example"></label><label>访问令牌 <input id="filterWorkerToken" type="password" placeholder="仅本次使用，不写入知识库"></label><span>仅发送当前选定案件的候选内容与最多 30 个相关节点，不上传整个知识库。</span></div>
+   <div class="filter-content-grid">
+    <section class="filter-column"><div class="filter-section-head"><span>提取候选</span><small id="filterCandidateMeta">原始来源独立保留</small></div><div id="filterCandidateList" class="filter-candidate-list"><div class="filter-empty">尚未选择过滤案件</div></div></section>
+    <section class="filter-column"><div class="filter-section-head"><span>四维定位建议</span><small>建议，不是事实</small></div><div id="filterSuggestionList" class="filter-suggestion-list"><div class="filter-empty">运行辨异后生成定位建议</div></div></section>
+    <section class="filter-column"><div class="filter-section-head"><span>审核提案</span><small>确认后才写入框架</small></div><div id="filterProposalList" class="filter-proposal-list"><div class="filter-empty">暂无待审核提案</div></div></section>
+   </div>
+   <div class="filter-footnote" id="filterWorkbenchFootnote">所有 AI 结果仅进入审核提案；正式知识、父子层级和横向关系不会被自动覆盖或合并。</div>
+  </div>
+ </div>
+</section>
+
+<section id="continuumFocus" class="continuum-focus" aria-live="polite">
  <div class="continuum-topline"><div><span class="source-tag">CONTINUOUS KNOWLEDGE AXIS</span><span class="continuum-path" id="continuumPath">知识宇宙 / 系统思维</span></div><div class="continuum-controls"><button class="continuum-quiet" id="continuumBack" disabled>← 上一个位置</button><button class="continuum-quiet" id="continuumForward" disabled>下一个位置 →</button><button class="continuum-exit" id="continuumExit">退出聚焦 ×</button></div></div>
  <div class="continuum-stage">
   <div class="continuum-axis"></div>
@@ -773,4 +879,109 @@ document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Ent
 </script><script>
 // V7 — review actions are intentionally preview-only
 (function(){document.querySelectorAll('.review-proposal').forEach((row,index)=>{row.querySelectorAll('[data-review-action]').forEach(btn=>btn.addEventListener('click',()=>{const action=btn.dataset.reviewAction;const detail=row.querySelector('.review-detail');if(action==='compare'||action==='source'||action==='edit'){detail.hidden=!detail.hidden;detail.textContent=action==='compare'?'差异检查：比较定义交集、独有内容、来源证据、层级位置与被引用关系。当前仅展示审核要求，不执行合并。':action==='source'?'来源核验：正式版本应打开原始文件并定位到具体页码/段落，展示原文上下文与证据摘录。当前未连接真实来源文件。':'编辑建议：正式版本应允许修改建议内容，再由用户选择“编辑后接受”；编辑过程不应直接覆盖正式知识。当前仅展示说明。';return;}if(action==='defer'){btn.textContent='已暂缓（演示）';row.classList.add('review-done');toast('建议已标记暂缓（仅演示）');return;}if(action==='accept'){btn.textContent='已接受（演示）';row.classList.add('review-done');toast('已记录接受意图；未写入知识库');return;}})});})();
-</script></body></html>
+</script>
+<script type="module">
+import { NEBULA_LOCAL } from './nebula-local.js';
+const $=id=>document.getElementById(id);
+let filterSnapshot=null,activeFilterCaseId=null,activeSuggestionIndex=-1;
+const statusLabel={received:"待提取",extracting:"提取中",extracted:"待辨异",filtering:"过滤中",needs_review:"待审核",approved:"已归位",rejected:"已拒绝",failed:"失败",archived:"已归档"};
+function safeText(tag,text,className){const el=document.createElement(tag);if(className)el.className=className;el.textContent=String(text??"");return el;}
+function setFilterMessage(text){$("filterWorkbenchFootnote").textContent=text;}
+async function refreshFilterWorkbench(){
+ try{
+  filterSnapshot=await NEBULA_LOCAL.getFilterWorkbenchSnapshot();
+  $("filterLocalState").textContent="LOCAL-FIRST · IndexedDB 已连接";
+  $("filterCandidateCount").textContent=filterSnapshot.stats.candidateCount;
+  $("filterProposalCount").textContent=filterSnapshot.stats.pendingReviewCount;
+  const list=$("filterCaseList");list.replaceChildren();
+  if(!filterSnapshot.cases.length){list.append(safeText("div","本地还没有过滤案件。导入一份 PDF、DOCX、EMMX 或 XMind 后，系统会自动建立提取批次。","filter-empty"));return;}
+  filterSnapshot.cases.forEach(item=>{
+   const button=safeText("button","", "filter-case-item"+(item.id===activeFilterCaseId?" active":""));
+   button.append(safeText("strong",item.summary||item.items?.[0]?.title||item.sourceId||"未命名资料"));
+   button.append(safeText("small",(statusLabel[item.status]||item.status)+" · "+(item.items?.length||0)+" 个候选 · "+(item.pendingProposalCount||0)+" 条待审"));
+   button.addEventListener("click",()=>selectFilterCase(item.id));list.append(button);
+  });
+  if(!activeFilterCaseId||!filterSnapshot.cases.some(x=>x.id===activeFilterCaseId))activeFilterCaseId=filterSnapshot.cases[0]?.id||null;
+  if(activeFilterCaseId)renderFilterCase();
+ }catch(error){$("filterLocalState").textContent="本地数据库暂不可用";$("filterCaseList").replaceChildren(safeText("div",error.message,"filter-empty"));}
+}
+function activeCase(){return filterSnapshot?.cases?.find(x=>x.id===activeFilterCaseId)||null;}
+function selectFilterCase(id){activeFilterCaseId=id;activeSuggestionIndex=-1;renderFilterCase();$("filterCaseList").querySelectorAll(".filter-case-item").forEach((el,i)=>el.classList.toggle("active",filterSnapshot.cases[i]?.id===id));}
+async function renderFilterCase(){
+ const item=activeCase();if(!item)return;
+ const summary=$("filterCaseSummary");summary.querySelector("h2").textContent=item.summary||item.items?.[0]?.title||"过滤案件";
+ summary.querySelector("p").textContent="状态："+(statusLabel[item.status]||item.status)+" · 当前阶段："+(item.currentStage||"待开始")+" · 来源："+(item.sourceId||"未关联");
+ $("filterCandidateCount").textContent=item.items?.length||0;$("filterProposalCount").textContent=item.pendingProposalCount||0;
+ const candidates=$("filterCandidateList");candidates.replaceChildren();
+ (item.items||[]).forEach(candidate=>{
+  const row=safeText("article","","filter-candidate");
+  row.append(safeText("b",candidate.title||"未命名候选"),safeText("p",candidate.excerpt||candidate.content||"暂无提取文字"));
+  const locator=candidate.locator||{};
+  const locatorText=(locator.kind||"未定位")+(locator.page?" · 第 "+locator.page+" 页":"")+(locator.topicPath?.length?" · "+locator.topicPath.join(" / "):"");
+  row.append(safeText("small",locatorText));candidates.append(row);
+ });
+ const suggestions=$("filterSuggestionList");suggestions.replaceChildren();
+ const all=item.locationSuggestions||[];
+ if(!all.length)suggestions.append(safeText("div","尚未生成定位建议。先运行“辨异重复”，再生成四维定位。","filter-empty"));
+ all.forEach((suggestion,index)=>{
+  const row=safeText("button","", "filter-suggestion"+(activeSuggestionIndex===index?" active":""));
+  const dim={lineage:"谱系纵向",time:"时间维度",space:"空间/领域",horizontal:"横向关联"}[suggestion.dimension]||"待归位";
+  row.append(safeText("span",dim,"filter-dimension"),safeText("b",suggestion.targetTitle||suggestion.kind||"暂未找到位置"),safeText("small",suggestion.reasoning||""));
+  row.addEventListener("click",()=>{activeSuggestionIndex=index;renderFilterCase()});suggestions.append(row);
+ });
+ const proposals=$("filterProposalList");proposals.replaceChildren();
+ const pending=(filterSnapshot.pendingProposals||[]).filter(p=>p.filterCaseId===item.id);
+ if(!pending.length)proposals.append(safeText("div","暂无待审核提案。选择一条定位建议后可生成提案。","filter-empty"));
+ pending.forEach(proposal=>{
+  const row=safeText("article","","filter-proposal");
+  row.append(safeText("b",proposal.proposedSnapshot?.name||proposal.proposedSnapshot?.label||proposal.proposalType+" 提案"),safeText("p",proposal.reasoning||"需要核对来源、定义和层级。"));
+  const actions=safeText("div","","filter-proposal-actions");
+  const accept=safeText("button","接受");accept.addEventListener("click",async()=>{
+   try{if(proposal.proposalType==="relation")await NEBULA_LOCAL.applyKnowledgeRelationProposal(proposal.id,"accept","用户在观复 Mind 审核中心确认");
+    else await NEBULA_LOCAL.applyFilterCaseProposal(proposal.id,"accept","用户在观复 Mind 审核中心确认");
+    await refreshFilterWorkbench();setFilterMessage("已确认提案。正式知识变更已记录版本并保留来源。");
+   }catch(e){setFilterMessage(e.message);}
+  });
+  const reject=safeText("button","拒绝");reject.addEventListener("click",async()=>{
+   try{if(proposal.proposalType==="relation")await NEBULA_LOCAL.applyKnowledgeRelationProposal(proposal.id,"reject","用户拒绝该关系建议");
+    else await NEBULA_LOCAL.applyFilterCaseProposal(proposal.id,"reject","用户拒绝该建议");
+    await refreshFilterWorkbench();setFilterMessage("已拒绝提案；原始资料与提取候选仍保留。");
+   }catch(e){setFilterMessage(e.message);}
+  });
+  actions.append(accept,reject);row.append(actions);proposals.append(row);
+ });
+}
+$("refreshFilterCases").addEventListener("click",refreshFilterWorkbench);
+$("runDedupe").addEventListener("click",async()=>{if(!activeFilterCaseId)return;try{const r=await NEBULA_LOCAL.analyzeFilterCaseDuplicates(activeFilterCaseId);setFilterMessage("辨异完成：比较 "+r.comparedItems+" 个候选，发现 "+r.pairs.length+" 组重复/近似重复候选。未自动合并。");await refreshFilterWorkbench();}catch(e){setFilterMessage(e.message);}});
+$("runLocate").addEventListener("click",async()=>{if(!activeFilterCaseId)return;try{const r=await NEBULA_LOCAL.suggestFilterCaseLocations(activeFilterCaseId);setFilterMessage("四维建议生成：谱系 "+r.summary.lineage+" · 时间 "+r.summary.time+" · 领域 "+r.summary.space+" · 横向 "+r.summary.horizontal+"。所有建议等待审核。");await refreshFilterWorkbench();}catch(e){setFilterMessage(e.message);}});
+$("runAI").addEventListener("click",async()=>{if(!activeFilterCaseId)return;const endpoint=$("filterWorkerUrl").value.trim(),token=$("filterWorkerToken").value.trim();if(!endpoint||!token){$("filterAiConfig").classList.add("attention");setFilterMessage("请填写已部署的 Worker 地址和访问令牌。令牌只在本次页面内存中使用，不会写入本地知识库。");return;}try{const r=await NEBULA_LOCAL.analyzeFilterCaseWithAI(endpoint,token,activeFilterCaseId);setFilterMessage("AI 分析完成：生成 "+r.proposals.length+" 条节点提案、"+r.relationProposals.length+" 条关系提案、"+r.mergeProposals.length+" 条合并提案。全部等待人工审核。");await refreshFilterWorkbench();}catch(e){setFilterMessage("AI 分析未完成："+e.message);}});
+$("finalizeFilter").addEventListener("click",async()=>{if(!activeFilterCaseId)return;try{const result=await NEBULA_LOCAL.finalizeFilterCase(activeFilterCaseId);setFilterMessage("过滤案件已完成："+(statusLabel[result.status]||result.status));await refreshFilterWorkbench();}catch(e){setFilterMessage(e.message);}});
+document.querySelectorAll('[data-view="filter"]').forEach(button=>button.addEventListener("click",()=>{document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"));$("continuumFocus").classList.remove("open");$("filter-workbench").classList.add("open");document.querySelectorAll(".nav,.rail-item").forEach(x=>x.classList.toggle("active",x===button));refreshFilterWorkbench();}));
+document.querySelectorAll('[data-view="universe"]').forEach(button=>button.addEventListener("click",()=>{$("filter-workbench").classList.remove("open");}));
+const sourceInput=$("sourceFileInput");
+document.addEventListener("change",async event=>{
+ if(event.target!==sourceInput)return;
+ event.stopImmediatePropagation();
+ const files=Array.from(sourceInput.files||[]);if(!files.length)return;
+ const status=$("sourceImportState");status.textContent="正在本机解析并保存原始资料…";
+ let saved=0,failed=[];
+ for(const file of files){
+  try{
+   const ext=file.name.split(".").pop().toLowerCase();
+   if(["txt","md"].includes(ext)){
+    const text=await file.text();
+    await NEBULA_LOCAL.saveConversation({title:file.name,transcript:text,source:"local-file-import",fileName:file.name,blob:file});
+   }else{
+    const result=await NEBULA_LOCAL.saveReference(file);
+    if(result.extractionStatus==="failed")failed.push(file.name+"："+result.extractionError);else saved++;
+   }
+  }catch(error){failed.push(file.name+"："+error.message);}
+ }
+ status.textContent="本机处理完成：成功 "+saved+" 个，异常 "+failed.length+" 个。原始文件保留在本地；提取候选进入知识过滤队列。"+(failed.length?"\n"+failed.join("\n"):"");
+ sourceInput.value="";await refreshFilterWorkbench();
+},true);
+window.addEventListener("keydown",event=>{if(event.key==="Escape")$("filter-workbench").classList.remove("open");});
+refreshFilterWorkbench();
+</script>
+
+</body></html>
