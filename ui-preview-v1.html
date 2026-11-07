@@ -1430,18 +1430,26 @@ document.addEventListener("change",async event=>{
     if(ext==="json"){
      try{
       const parsed=JSON.parse(raw),messages=[];
-      const contentText=value=>typeof value==="string"?value:Array.isArray(value)?value.map(contentText).filter(Boolean).join("\n"):value&&typeof value==="object"?(Array.isArray(value.parts)?value.parts.map(contentText).filter(Boolean).join("\n"):typeof value.text==="string"?value.text:""):"";
+      const contentText=value=>{
+       if(typeof value==="string")return value;
+       if(Array.isArray(value))return value.map(contentText).filter(Boolean).join("\n");
+       if(!value||typeof value!=="object")return "";
+       if(Array.isArray(value.parts))return value.parts.map(contentText).filter(Boolean).join("\n");
+       if(Array.isArray(value.blocks))return value.blocks.map(contentText).filter(Boolean).join("\n");
+       for(const key of ["text","content","value","body"])if(typeof value[key]==="string")return value[key];
+       return "";
+      };
       const walk=value=>{
        if(Array.isArray(value)){value.forEach(walk);return;}
        if(!value||typeof value!=="object")return;
-       const role=value.role||value.author?.role||value.speaker;
-       const body=contentText(value.content??value.text??value.message?.content);
+       const role=value.role||value.author?.role||value.speaker||value.sender||value.from;
+       const body=contentText(value.content??value.text??value.body??value.message?.content??value.message?.body);
        if(role&&body){messages.push(String(role)+": "+body);return;}
-       Object.entries(value).forEach(([key,child])=>{if(!["metadata","settings","config","attachments"].includes(key))walk(child);});
+       Object.entries(value).forEach(([key,child])=>{if(!["metadata","settings","config","attachments","files"].includes(key))walk(child);});
       };
       walk(parsed);
       if(messages.length)transcript=messages.join("\n\n");
-      metadata={...metadata,deepseekExport:true,parsedMessageCount:messages.length};
+      metadata={...metadata,deepseekExport:true,parsedMessageCount:messages.length,...(!messages.length?{jsonParseWarning:"JSON 已解析，但未识别出标准消息列表；原始 JSON 已保留"}:{})};
      }catch{metadata={...metadata,jsonParseWarning:"JSON 无法解析，按原文保存"};}
     }
     await NEBULA_LOCAL.saveConversation({title:file.name,transcript,source:ext==="json"?"deepseek-json-import":"local-text-import",fileName:file.name,blob:file,metadata});
