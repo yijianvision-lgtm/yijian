@@ -44,8 +44,8 @@ assert.ok(html.includes("var(--core-minimap-dx,0px)") && html.includes("var(--co
 assert.ok(html.includes("corePoint.style.setProperty('--core-minimap-dx'") && html.includes("corePoint.style.setProperty('--core-minimap-dy'"), "The core-to-minimap movement must use measured on-screen positions.");
 assert.ok(html.includes("async function openKnowledgeArchive(){"), "Both archive entry points must share a single archive-opening flow.");
 
-assert.ok(html.includes("await retractFocusToMinimap();\\n archive.classList.add('open');"), "The archive must appear after the core and four directions finish retracting, not be hidden behind the transition.");
-assert.ok(html.includes("renderContinuum();\\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
+assert.ok(html.includes("await retractFocusToMinimap();\n archive.classList.add('open');"), "The archive must appear after the core and four directions finish retracting, not be hidden behind the transition.");
+assert.ok(html.includes("renderContinuum();\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
 assert.ok(html.includes("#nodeDetail{z-index:40}"), "The full knowledge archive must render above the 3D exploration layer.");
 assert.ok(html.includes("host.append(safeText('p','正在读取关联来源…'));"), "The archive must show a visible loading state while original sources are resolved.");
 assert.ok(html.includes("corePoint.addEventListener('transitionend',onTransitionEnd);"), "The archive-opening flow must wait for the core-to-minimap transition.");
