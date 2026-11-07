@@ -764,13 +764,16 @@ NEBULA_LOCAL.saveConversation = async function(record) {
   const previous=(await this.listConversations()).find(x=>x.contentHash===contentHash);
   if(previous && !record?.id) {
     const sourceId="src_"+previous.id;
+    let source=await this.getSource(sourceId);
+    if(!source) source=await this.saveSource({
+      id:sourceId,sourceType:"ai_conversation",title:previous.title||"AI 对话",
+      referenceId:previous.id,fileName:previous.fileName||"",origin:previous.source||"legacy-import",
+      contentHash:previous.contentHash||contentHash,createdAt:previous.savedAt||Date.now()
+    });
     const batches=await this.listExtractionBatches(sourceId);
     if(!batches.length) {
-      const source=await this.getSource(sourceId);
-      if(source) {
-        const pipeline=await this.createExtractionFromParsedSource({sourceId,referenceId:previous.id,name:previous.title||"AI 对话",text:previous.transcript||"",warnings:[]});
-        return {...previous,duplicate:true,extractionBatchId:pipeline.id,extractionItemCount:pipeline.items.length,filterCaseId:pipeline.filterCase?.id||null,extractionStatus:pipeline.status};
-      }
+      const pipeline=await this.createExtractionFromParsedSource({sourceId,referenceId:previous.id,name:previous.title||"AI 对话",text:previous.transcript||"",warnings:[]});
+      return {...previous,duplicate:true,extractionBatchId:pipeline.id,extractionItemCount:pipeline.items.length,filterCaseId:pipeline.filterCase?.id||null,extractionStatus:pipeline.status};
     }
     return {...previous,duplicate:true};
   }
