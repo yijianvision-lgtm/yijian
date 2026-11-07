@@ -76,7 +76,7 @@ assert.ok(preview.includes("演示节点 · 非正式知识"), "Demo nodes must 
 assert.ok(preview.includes("temporalTarget"), "Time navigation requires an explicit temporal relation.");
 assert.ok(!preview.includes("Math.abs(a.year-year)-Math.abs(b.year-year)"), "Nearest year alone must not create a time relation.");
 assert.ok(preview.includes("deepseek-json-import"), "DeepSeek JSON imports must be identifiable.");
-assert.ok(preview.includes("parsedMessageCount"), "DeepSeek import must report parsed message count.");
+assert.ok(local.includes("parsedMessageCount"), "The tested local normalizer must report parsed message count.");
 assert.ok(preview.includes("getCognitiveDashboard()"), "Dashboard must use local cognitive metrics.");
 assert.ok(preview.includes("buildLearningQueue(50)"), "Learning workspace must read the real local queue.");
 assert.ok(preview.includes("saveLearningRecord({nodeId:selectedLearningNode.id"), "Active recall must persist a real learning record.");
