@@ -877,8 +877,24 @@ document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Ent
  byId('restoreConfirm').addEventListener('click',()=>{byId('backupStatus').textContent='恢复已停止在确认前：当前原型不具备真实数据库与文件恢复能力。正式版本应先创建当前数据快照，再执行用户确认的恢复，并提供撤销/回滚。';toast('预览模式：未执行恢复')});
 })();
 </script><script>
-// V7 — review actions are intentionally preview-only
-(function(){document.querySelectorAll('.review-proposal').forEach((row,index)=>{row.querySelectorAll('[data-review-action]').forEach(btn=>btn.addEventListener('click',()=>{const action=btn.dataset.reviewAction;const detail=row.querySelector('.review-detail');if(action==='compare'||action==='source'||action==='edit'){detail.hidden=!detail.hidden;detail.textContent=action==='compare'?'差异检查：比较定义交集、独有内容、来源证据、层级位置与被引用关系。当前仅展示审核要求，不执行合并。':action==='source'?'来源核验：正式版本应打开原始文件并定位到具体页码/段落，展示原文上下文与证据摘录。当前未连接真实来源文件。':'编辑建议：正式版本应允许修改建议内容，再由用户选择“编辑后接受”；编辑过程不应直接覆盖正式知识。当前仅展示说明。';return;}if(action==='defer'){btn.textContent='已暂缓（演示）';row.classList.add('review-done');toast('建议已标记暂缓（仅演示）');return;}if(action==='accept'){btn.textContent='已接受（演示）';row.classList.add('review-done');toast('已记录接受意图；未写入知识库');return;}})});})();
+// V7 — legacy static review cards remain explicitly preview-only
+(function(){
+ document.querySelectorAll(".review-proposal").forEach(row=>{
+  row.querySelectorAll("[data-review-action]").forEach(btn=>{
+   btn.addEventListener("click",()=>{
+    const action=btn.dataset.reviewAction;
+    const detail=row.querySelector(".review-detail");
+    if(action==="compare"||action==="source"||action==="edit"){
+     detail.hidden=!detail.hidden;
+     detail.textContent=action==="compare"?"差异检查：比较定义交集、独有内容、来源证据、层级位置与被引用关系。当前仅展示审核要求，不执行合并。":action==="source"?"来源核验：正式版本应打开原始文件并定位到具体页码/段落，展示原文上下文与证据摘录。当前未连接真实来源文件。":"编辑建议：正式版本应允许修改建议内容，再由用户选择“编辑后接受”；编辑过程不应直接覆盖正式知识。当前仅展示说明。";
+     return;
+    }
+    if(action==="defer"){btn.textContent="已暂缓（演示）";row.classList.add("review-done");toast("建议已标记暂缓（仅演示）");return;}
+    if(action==="accept"){btn.textContent="已接受（演示）";row.classList.add("review-done");toast("已记录接受意图；未写入知识库");}
+   });
+  });
+ });
+})();
 </script>
 <script type="module">
 import { NEBULA_LOCAL } from './nebula-local.js';
