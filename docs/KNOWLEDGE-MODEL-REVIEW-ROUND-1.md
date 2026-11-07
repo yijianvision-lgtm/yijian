@@ -146,3 +146,76 @@
 - 不把单一 parentId 当成万能归属。
 - 不将用户学习时间混入知识事件时间。
 - 任何正式修改可追溯、可比较、可撤销。
+
+
+## 10. 当前真实代码的后台审计（main 读取，只读检查）
+
+### 本地数据层现状
+- `nebula-local.js` 声明 `DB_NAME = nebula_local_v2`、`DB_VERSION = 5`，包含 22 个 IndexedDB stores。
+- 数据层文件头明确写明：无登录、无云数据库、无账户服务、无远程文件存储；知识和原始资料保存在当前浏览器 IndexedDB。
+- 这与此前产品要求的“个人账户私有、跨设备访问”存在明确缺口。当前 local-first 只能证明单浏览器本地保存；不能宣称已具备账户私有云同步。可继续保留 local-first，但跨设备同步需要独立的身份、加密/访问控制、同步冲突与恢复设计，尚不能假设已实现。
+- DeepSeek 对话支持用户导出 JSON/TXT 后导入、解析与保留原始导出；没有证据证明已自动同步 DeepSeek 网页版新对话。不得宣称实时同步。
+
+### 当前框架归属结构
+- 图谱节点仍以 `parentId` 组织一条父子路径。
+- Framework 记录保存 `rootNodeIds`，`getFrameworkTree` 从全局 graph 节点按 `parentId` 递归构树。
+- 没有独立的 FrameworkMembership / ContextualPlacement store。
+- 同一节点可被不同框架 rootNodeIds 引用的可能性存在，但无法在不同框架中为同一知识对象保存不同的上下文父级/路径/角色。
+- 因此“多框架 membership”尚未被充分建模；不能把当前结构说成已经完整支持一个知识对象在多个知识体系中的不同位置。
+
+### 四维空间投影的真实程度
+- `getSpatialProjection` 返回固定的 `["lineage","time","space","horizontal"]`。
+- 默认语义坐标由树深度/parentId、`knowledgeTime/date`、`domain/domainPath` 推导；布局坐标由保存位置或节点的 x/y/z 得到。
+- 这属于现有投影机制，不代表四个维度都有独立、完整、带证据的关系模型。尤其 space 默认更接近 domain 标签，不能把“领域”与物理地理空间或现实世界空间混为一谈。
+
+### 关系与审核
+- `knowledgeRelations` 是独立 store，关系两端节点会校验存在；但 `saveKnowledgeRelation` 主要验证端点，并未统一强制关系类型枚举、方向约束或证据要求。
+- `relationEvidence` 有 proposed/confirmed/disputed/unknown 状态，这比普通无类型连线更好，但需要统一到所有关系写入路径。
+- AI 关系提案能先存入 Review Proposal，用户接受后再写入关系；这是应该保留的安全原则。
+- 正式知识和 AI 提案目前有审核边界，但需要检查每条写入路径，不能只依据一两个测试断言宣布整个系统安全。
+
+### 版本与合并/拆分风险
+- `saveNodeVersion` 的“是否发生变化”比较字段目前只包括 name/coreWord/desc/before/after/left/right/parentId/status/confidence；诸如 knowledgeTime、domain、framework context 等字段变化可能不触发新版本。需扩大字段快照比较或采用规范化完整快照哈希。
+- merge 实现会重映射部分父级、图谱 links、nodeSourceLinks 和 knowledgeRelations，但当前实现没有同步迁移所有引用该节点的 store（例如 learningRecords、nodePositions 等需要逐项检查）。被合并节点删除后可能留下悬空引用。
+- split 实现主要替换图谱节点并创建版本；目前测试只确认拆分后节点存在，没有验证原始来源、关系证据、学习记录、空间位置、筛选决策是否按用户确认的映射迁移。
+- runtime tests 对 merge 的检查目前主要是来源链接、子节点 parentId、关系存在；对 split 的检查较浅。不能把“merge/split 测试通过”理解成所有关联数据都完整保留。
+- 在补齐引用迁移和恢复测试之前，不应对重要真实知识批量执行 merge/split。每次先做完整备份，并在副本数据上演练。
+
+## 11. 当前应该保留、暂停和不应再做的东西
+
+### 保留
+- IndexedDB local-first 作为当前本地原型的数据存储层。
+- 原始文件与提取候选分离、保留原件。
+- Extraction → Filter → 用户审核 → 正式图谱的流程。
+- 来源证据定位、关系证据、提案审核、版本记录、完整备份/恢复。
+- 真实知识数据与演示数据隔离；没有数据时显示真实空状态。
+- 语义关系与空间投影分开，空间坐标不创建知识边。
+
+### 暂停，待模型审定
+- 单一 parentId 作为全系统唯一归属。
+- 固定四维数组作为所有知识对象的必填维度。
+- 将 domain 当成完整的 space/world 维度。
+- 以树为唯一主结构或把树/网/地图直接定成最终本体。
+- 自动布局对语义坐标的解释。
+- 批量自动去重、自动合并、自动补关系。
+- 正式账号/跨设备同步方案和 Worker 部署。
+
+### 不要再做
+- 不得让随机坐标、距离、最近年份或同领域标签自动产生语义关系。
+- 不得将 AI 推断直接写成已确认知识。
+- 不得删除原始资料、重复来源或不同语境。
+- 不得把已撤回的 V7/V9 重新当成当前设计候选。
+- 不得因 CI 红灯而恢复用户已撤回的实验页面。
+- 不得只为让测试变绿而删除运行测试或降低验收标准。
+- 不得把 Pages 发布成功说成后台已上线。
+- 不得改正式入口或数据库 schema，直到模型与迁移计划得到用户确认。
+
+## 12. 下一轮技术工作（先测试后重构）
+
+1. 建立引用完整性测试：merge/split/delete 后检查 graph、relations、relationEvidence、nodeSourceLinks、learningRecords、nodePositions、filterDecisions、frameworkVersions 等是否有悬空引用。
+2. 完整快照版本测试：每个会影响知识语义、归属、来源或关系的字段变更都必须形成版本。
+3. 多框架测试：同一知识对象在不同框架中拥有不同上下文路径，验证当前模型缺口。
+4. 关系 schema 测试：类型枚举、方向、状态、证据和用户/AI 提出者统一校验。
+5. 本地备份恢复测试：覆盖所有 store、二进制原件、来源链接和版本，并验证校验失败时不会覆盖现有数据。
+6. 用户私有多设备同步先做威胁模型和冲突方案，不直接引入远程存储。
+7. 真实浏览器测试 V3-A；不以静态字符串测试替代实际交互。
