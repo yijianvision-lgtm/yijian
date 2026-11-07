@@ -192,6 +192,43 @@ assert.equal(duplicateDecision.actor, "user");
 assert.equal((await api.getFilterCase(duplicateIngestion.filterCase.id)).duplicateCandidates[0].resolution, "keep_separate");
 assert.equal((await api.listExtractionItems(duplicateIngestion.id)).length, 2, "duplicate analysis must not delete or merge extraction items");
 
+
+await api.saveGraph([
+  { id: "art-root", name: "中国绘画艺术", coreWord: "绘画艺术", desc: "中国绘画史与艺术理论", level: 1, date: "中国绘画史" },
+  { id: "art-wei-jin", name: "魏晋绘画理论", coreWord: "魏晋画论", desc: "魏晋南北朝时期的绘画理论与品评", parentId: "art-root", level: 2, date: "魏晋南北朝", domain: "艺术 绘画" },
+  { id: "art-southern", name: "南朝绘画实践", coreWord: "南朝绘画", desc: "南朝人物画与绘画实践", parentId: "art-root", level: 2, date: "南朝", domain: "艺术 绘画" }
+], []);
+const locationSource = await api.saveSource({ id: "src-location-test", sourceType: "lecture", title: "魏晋画论材料" });
+const locationIngestion = await api.createExtractionFromParsedSource({
+  sourceId: locationSource.id, referenceId: "ref-location-test", name: "魏晋画论材料",
+  tree: [{ title: "谢赫画品", parent: "魏晋绘画理论", note: "魏晋南北朝绘画品评与中国绘画艺术理论。", sourcePart: "content.xml" }]
+});
+await api.analyzeFilterCaseDuplicates(locationIngestion.filterCase.id);
+const locationResult = await api.suggestFilterCaseLocations(locationIngestion.filterCase.id);
+assert.ok(locationResult.summary.lineage >= 1, "lineage placement suggestions should be generated");
+assert.ok(locationResult.summary.time >= 1, "time dimension suggestions should be generated");
+assert.ok(locationResult.summary.space >= 1, "domain dimension suggestions should be generated");
+assert.ok(locationResult.summary.horizontal >= 1, "horizontal relation suggestions should be generated");
+const parentSuggestionIndex = locationResult.suggestions.findIndex(x => x.dimension === "lineage" && x.kind === "parent_candidate" && x.targetNodeId === "art-wei-jin");
+assert.ok(parentSuggestionIndex >= 0, "topic parent should match the existing framework node");
+const createProposal = await api.createFilterSuggestionProposal(locationIngestion.filterCase.id, parentSuggestionIndex);
+assert.equal(createProposal.proposalType, "create");
+assert.equal((await api.loadGraph()).nodes.some(x => x.name === "谢赫画品"), false, "AI suggestions must not write to the formal graph");
+await api.applyFilterCaseProposal(createProposal.id, "accept", "确认归入魏晋绘画理论");
+const placedGraph = await api.loadGraph();
+const placedNode = placedGraph.nodes.find(x => x.name === "谢赫画品");
+assert.equal(placedNode.parentId, "art-wei-jin");
+assert.equal((await api.listNodeSources(placedNode.id)).some(x => x.sourceId === locationSource.id), true, "accepted nodes must retain source links");
+
+const relationProposal = await api.createKnowledgeRelationProposal(placedNode.id, "art-southern", {
+  type: "historical_context", label: "时代与实践关联", reasoning: "用于核对画论与南朝绘画实践之间的历史关联。",
+  evidenceSourceIds: [locationSource.id], evidence: { excerpt: "魏晋南北朝绘画品评与中国绘画艺术理论。", locator: { kind: "topic", topicIndex: 0 } }
+});
+assert.equal(relationProposal.proposalType, "relation");
+const relationApplied = await api.applyKnowledgeRelationProposal(relationProposal.id, "accept", "确认作为待追溯的历史关联");
+assert.ok(relationApplied.relation?.id);
+assert.equal((await api.listRelationEvidence(relationApplied.relation.id)).length, 1, "accepted relation must retain its evidence locator");
+
 const v5Backup = await api.exportFullBackup();
 assert.equal((await api.previewFullBackup(v5Backup.blob)).schemaVersion, 5);
 
