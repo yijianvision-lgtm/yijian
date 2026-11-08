@@ -1189,6 +1189,57 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
 }
 </style>
 
+
+<style id="v37-core-info-float-and-status-anchor">
+/* V37: float core information above the luminous sphere; keep its word centered on the sphere axis. */
+#continuumFocus .continuum-core{
+ position:absolute!important;left:50%!important;top:calc(50% - 200px)!important;
+ transform:translate(-50%,-50%)!important;width:min(440px,72vw)!important;
+ height:auto!important;min-height:0!important;max-width:none!important;
+ display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+ padding:8px 30px!important;margin:0!important;text-align:center!important;
+ border:0!important;border-radius:0!important;background:transparent!important;
+ box-shadow:none!important;backdrop-filter:none!important;overflow:visible!important;
+}
+#continuumFocus .continuum-core-label{display:none!important}
+#continuumFocus .continuum-core-title{
+ width:100%!important;margin:0!important;text-align:center!important;
+ font-size:clamp(23px,2.5vw,32px)!important;line-height:1.25!important;
+ letter-spacing:.065em!important;font-weight:450!important;
+ text-shadow:0 2px 24px rgba(190,214,228,.16)!important;
+}
+#continuumFocus .continuum-core p{
+ max-width:390px!important;margin:8px auto 7px!important;text-align:center!important;
+ font-size:10px!important;line-height:1.65!important;
+}
+#continuumFocus .continuum-core-meta{justify-content:center!important;align-items:center!important}
+#continuumFocus .continuum-core #masteryStatusToggle{
+ position:absolute!important;left:calc(100% + 4px)!important;top:50%!important;
+ transform:translateY(-50%)!important;margin:0!important;
+}
+#continuumFocus .continuum-core #masteryStatusToggle:hover,
+#continuumFocus .continuum-core #masteryStatusToggle[aria-expanded="true"]{
+ transform:translateY(-50%) scale(1.08)!important;
+}
+#continuumFocus .continuum-core #masteryStatusMenu{
+ position:absolute!important;left:auto!important;right:calc(100% + 15px)!important;
+ top:50%!important;transform:translateY(-50%)!important;
+ width:max-content!important;min-width:100px!important;
+}
+#continuumFocus .continuum-core #continuumOpenDetail{
+ margin-top:8px!important;padding:7px 4px 0!important;
+}
+@media(max-width:760px){
+ #continuumFocus .continuum-core{
+  top:calc(49% - 168px)!important;width:min(82vw,340px)!important;padding:7px 20px!important;
+ }
+ #continuumFocus .continuum-core-title{font-size:clamp(21px,5.2vw,26px)!important}
+ #continuumFocus .continuum-core p{font-size:9px!important;max-width:290px!important}
+ #continuumFocus .continuum-core #masteryStatusToggle{left:calc(100% + 0px)!important}
+ #continuumFocus .continuum-core #masteryStatusMenu{right:calc(100% + 10px)!important}
+}
+</style>
+
 </head>
 <body>
 <div id="space"></div><div class="grain"></div>
@@ -1481,6 +1532,7 @@ masteryMenu?.addEventListener('click',async event=>{
  finally{choice.disabled=false;}
 });
 document.addEventListener('click',event=>{if(masteryMenu&&!masteryMenu.hidden&&!masteryMenu.contains(event.target)&&!masteryToggle?.contains(event.target)){masteryMenu.hidden=true;masteryToggle?.setAttribute('aria-expanded','false');}});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&masteryMenu&&!masteryMenu.hidden){masteryMenu.hidden=true;masteryToggle?.setAttribute('aria-expanded','false');masteryToggle?.focus();}});
 
 function renderContinuum(){const i=selected,formal=!isDemoUniverse&&!!localGraphNodes[i],path=formal?localNodePath(localGraphNodes[i].id).map(n=>n.name||n.coreWord||'未命名知识'):[],lineage=document.getElementById('positionLineage'),timePosition=document.getElementById('positionTime'),world=document.getElementById('positionWorld'),relations=document.getElementById('positionRelations');
 if(lineage)lineage.textContent=formal?(path.join(' / ')||'根节点'):'演示路径 · '+Math.max(1,focusCursor+1)+' 层';
