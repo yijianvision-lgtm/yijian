@@ -1342,23 +1342,42 @@ async function loadKnowledgeArchiveEvidence(nodeId,host){
  }catch(error){if(isCurrentRequest())host.replaceChildren(safeText('p','来源回溯失败：'+error.message));}
 }
 function openKnowledgeArchive(){
- renderContinuum();
  const archive=document.getElementById('nodeDetail');
  const host=document.getElementById('nodeEvidenceList');
+ if(!archive||!host){
+  console.error('[GUANFU_ARCHIVE] Required archive DOM is missing.',{archive:!!archive,host:!!host});
+  toast('知识档案界面未完整加载，请刷新预览；已记录入口错误。');
+  return false;
+ }
  const nodeId=localGraphNodes[selected]?.id??window.__guanfuSelectedNodeId??null;
- // Bind every evidence response to this exact archive target before asynchronous reads begin.
- archive.dataset.nodeId=String(nodeId??'');
+ // Open the archive first. Rendering labels, reading IndexedDB and animating the
+ // minimap are secondary tasks and must never prevent the panel from appearing.
  document.querySelectorAll('.overlay.open').forEach(panel=>{if(panel!==archive)panel.classList.remove('open')});
+ archive.dataset.nodeId=String(nodeId??'');
+ archive.dataset.openState='opening';
  archive.scrollTop=0;
  host.replaceChildren(safeText('p','正在打开知识档案…'));
  archive.classList.add('open');
- // Start the spatial retraction without blocking the archive. The 3D transition
- // remains visible behind the archive while its content becomes available immediately.
- retractFocusToMinimap();
- loadKnowledgeArchiveEvidence(nodeId,host);
+ archive.dataset.openState='open';
+ window.__guanfuArchiveLastError='';
+ try{renderContinuum();}
+ catch(error){
+  window.__guanfuArchiveLastError=String(error?.stack||error);
+  console.error('[GUANFU_ARCHIVE] Metadata render failed after archive opened.',error);
+  host.replaceChildren(safeText('p','档案已打开，但知识信息渲染失败：'+(error?.message||error)));
+ }
+ try{retractFocusToMinimap();}
+ catch(error){console.warn('[GUANFU_ARCHIVE] Minimap retraction failed; archive remains open.',error);}
+ try{loadKnowledgeArchiveEvidence(nodeId,host);}
+ catch(error){
+  window.__guanfuArchiveLastError=String(error?.stack||error);
+  console.error('[GUANFU_ARCHIVE] Evidence loader failed after archive opened.',error);
+  host.replaceChildren(safeText('p','档案已打开，但来源读取启动失败：'+(error?.message||error)));
+ }
+ return true;
 }
-
-document.getElementById('continuumOpenDetail').onclick=openKnowledgeArchive;
+window.__guanfuOpenKnowledgeArchive=openKnowledgeArchive;
+document.getElementById('continuumOpenDetail').onclick=()=>window.__guanfuOpenKnowledgeArchive?.();
 window.__guanfuSelectNode=(nodeId)=>{const index=localGraphNodes.findIndex(n=>String(n.id)===String(nodeId));if(index<0)return false;selectNode(index);return true;};
 // V23: distinguish a deliberate node click from a drag-to-orbit gesture.
 let nodePointerStart=null;
@@ -1374,7 +1393,7 @@ function toast(s){const t=document.getElementById('toast');t.textContent=s;t.cla
 function showView(v){document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.view===v));document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'));if(v==='hierarchy')document.getElementById('hierarchy').classList.add('open');if(v==='sources')document.getElementById('sources').classList.add('open')}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 document.getElementById('overviewBtn').onclick=()=>document.getElementById('overview').classList.add('open');document.getElementById('fourD').onclick=()=>{if(!localGraphNodes.length)toast('当前是示例空间；导入并确认知识后才显示真实四维定位。');else toast('四维定位已按当前正式节点的谱系、时间、领域与横向关系呈现。');};document.getElementById('profileBtn').onclick=()=>toast('本机知识空间 · 本地优先模式（预览）');
-document.getElementById('openNodeDetail').onclick=openKnowledgeArchive;
+document.getElementById('openNodeDetail').onclick=()=>window.__guanfuOpenKnowledgeArchive?.();
 document.querySelectorAll('.direction-row').forEach(b=>b.onclick=()=>{const d=({瞻前:'forward',顾后:'backward',向内:'left',向外:'right'})[b.dataset.direction];if(!focusHistory.length)selectNode(selected,true);navigateContinuum(d)});
 document.getElementById('fourD').onclick=()=>{if(!focusHistory.length)selectNode(selected,true);else document.getElementById('continuumFocus').classList.add('open')};
 document.getElementById('directionDraft').onclick=()=>toast('探索草稿功能尚未接入正式保存流程；当前不会写入知识库。');

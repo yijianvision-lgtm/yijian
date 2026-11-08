@@ -56,7 +56,11 @@ assert.ok(html.includes("button.addEventListener('click',()=>enterFormalDirectio
 assert.ok(html.includes("function enterFormalDirectionTarget(targetIndex,direction,panel){") && html.includes("openKnowledgeArchive();") && html.includes("recordFormalExploration(targetIndex,direction).then("), "Confirmed directional targets must open their archive immediately and persist the exploration path in the background.");
 assert.ok(html.includes("将打开当前核心档案，不会自动补造正式知识。');openKnowledgeArchive();return;"), "An empty formal direction must still provide access to the current knowledge archive without inventing a relation.");
 
-assert.ok(html.includes("archive.scrollTop=0;") && html.includes("host.replaceChildren(safeText('p','正在打开知识档案…'));") && html.includes("archive.classList.add('open');") && html.includes("retractFocusToMinimap();") && html.includes("loadKnowledgeArchiveEvidence(nodeId,host);"), "The archive must open immediately while quadrant retraction and evidence loading continue without blocking.");
+assert.ok(html.includes("archive.classList.add('open');") && html.includes("archive.dataset.openState='open';"), "The archive must become visible before metadata rendering, minimap animation, or evidence loading.");
+assert.ok(html.indexOf("archive.classList.add('open');") < html.indexOf("try{renderContinuum();}"), "A metadata-rendering error must never prevent the knowledge archive from opening.");
+assert.ok(html.includes("window.__guanfuOpenKnowledgeArchive=openKnowledgeArchive;"), "Both archive entry buttons must call the same explicit module bridge.");
+assert.ok(html.includes("Required archive DOM is missing") && html.includes("档案已打开，但知识信息渲染失败"), "Archive startup and rendering failures must be visible and diagnosable instead of silently leaving the user stuck.");
+assert.ok(html.includes("try{retractFocusToMinimap();}") && html.includes("try{loadKnowledgeArchiveEvidence(nodeId,host);}"), "Minimap animation or evidence loading failures must not block archive visibility.");
 assert.ok(html.includes("renderContinuum();\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
 assert.ok(html.includes(".overlay.open{display:block}#nodeDetail{z-index:60!important}.overlay-head{"), "The knowledge archive must stack above the full-screen #continuumFocus layer (z-index 40).");
 const archiveZIndex = Number(html.match(/#nodeDetail\{z-index:(\d+)!important\}/)?.[1] || 0);
