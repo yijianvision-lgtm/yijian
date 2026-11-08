@@ -72,7 +72,7 @@ const animateBody = html.slice(animateStart, animateEnd);
 assert.ok(!animateBody.includes("drawMini()"), "The 2D minimap must not be redrawn on every WebGL animation frame.");
 assert.ok(html.includes("innerWidth<760?1.2:1.5"), "The WebGL pixel ratio must be capped to reduce high-DPI rendering cost.");
 assert.ok(animateBody.includes("camera.position.lerp(desired,.065)") && animateBody.includes("controls.target.lerp(targetWorld,.065)"), "Camera follow must respond smoothly without the previous sluggish easing.");
-assert.ok(html.includes(".overlay.open{animation:mindViewEnter .42s") && html.includes("#nodeDetail.open{animation:mindArchiveEnter .5s"), "Main views and the knowledge archive must enter with a spatial transition.");
+assert.ok(html.includes(".overlay.open{animation:mindViewEnter .42s") && html.includes("#nodeDetail.open{animation:mindArchiveEnter .24s"), "Main views and the knowledge archive must enter with a spatial transition.");
 assert.ok(html.includes("#continuumFocus.open{animation:nebulaFocusIn .72s"), "The four-direction focus view must use a shorter, consistent entrance transition.");
 assert.ok(html.includes("@media(prefers-reduced-motion:reduce)") && html.includes(".overlay.open,#nodeDetail.open,#continuumFocus.open,.layer-page.open{animation:none!important}"), "All added view transitions must respect reduced-motion preferences.");
 
