@@ -7,6 +7,9 @@ const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .filter(([, attributes, body]) => !/type\s*=\s*["']importmap["']/i.test(attributes) && body.trim());
 assert.ok(scripts.length >= 4, "Expected the V3-A preview page's inline JavaScript modules and scripts.");
 assert.ok(html.includes("from './nebula-local.js?env=preview';"), "V3-A must load its isolated preview data environment.");
+assert.ok(html.includes("https://esm.sh/three@0.160.0"), "The 3D runtime must have an independent fallback CDN so a primary CDN failure cannot prevent all knowledge interactions from initializing.");
+assert.ok(html.includes("3D 引擎加载失败"), "If both 3D CDNs fail, the preview must show an explicit startup error instead of a blank/unresponsive page.");
+
 assert.ok(!html.includes("from './nebula-local.js';"), "V3-A must not import the production local database module.");
 assert.ok(html.includes("from './nebula-local.js?env=preview';"), "V3-A must load its isolated preview data environment.");
 assert.ok(html.includes("import('./nebula-local.js?env=source')"), "Preview snapshot import must read the production DB through the non-migrating source module.");
