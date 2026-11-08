@@ -982,6 +982,21 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
 .continuum-core.is-mastered{border-color:rgba(205,224,237,.22)!important;box-shadow:0 24px 90px #0009,0 0 22px rgba(190,216,232,.035),inset 0 0 24px rgba(190,214,230,.012)!important}
 .continuum-core.is-mastered:before{opacity:.62!important;filter:blur(13px)!important;background:radial-gradient(ellipse,rgba(208,229,241,.035),rgba(190,215,231,.012) 46%,transparent 72%)!important}
 </style>
+<style id="v31-final-cascade-fix">
+/* V31 final cascade: keep the status trigger compact but comfortably clickable,
+   and let the polished menu rules win over earlier preview overrides. */
+#masteryStatusToggle{width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;padding:0!important;margin:7px auto 0!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;border:1px solid rgba(205,220,230,.19)!important;border-radius:50%!important;background:rgba(220,232,240,.045)!important;box-shadow:0 2px 10px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.035)!important;font-size:0!important;line-height:0!important;opacity:.9!important;transition:all .2s ease!important}
+#masteryStatusToggle:hover,#masteryStatusToggle[aria-expanded="true"]{opacity:1!important;border-color:rgba(215,229,239,.38)!important;background:rgba(220,232,240,.085)!important;box-shadow:0 0 14px rgba(190,211,226,.09)!important}
+#masteryStatusToggle .mastery-status-dot{width:7px!important;height:7px!important;min-width:7px!important;box-shadow:0 0 0 3px rgba(190,207,220,.075)!important}
+#masteryStatusToggle .mastery-status-label{display:none!important}
+.mastery-status-menu{left:50%!important;top:calc(100% + 8px)!important;transform:translateX(-50%)!important;width:152px!important;min-width:152px!important;padding:7px!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:4px!important;border:1px solid rgba(192,210,222,.22)!important;border-radius:11px!important;background:rgba(12,17,23,.985)!important;box-shadow:0 16px 38px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.045)!important;backdrop-filter:blur(20px) saturate(120%)!important;animation:masteryMenuFinalIn .18s ease-out both!important}
+.mastery-status-menu[hidden]{display:none!important}
+.mastery-status-menu button{display:flex!important;align-items:center!important;justify-content:center!important;min-height:29px!important;padding:5px 4px!important;border:1px solid rgba(205,220,230,.075)!important;border-radius:6px!important;background:rgba(220,232,240,.018)!important;color:#c5d0d8!important;font-size:9px!important;letter-spacing:.015em!important;line-height:1.2!important;white-space:nowrap!important;text-align:center!important}
+.mastery-status-menu button:hover{background:rgba(205,222,234,.095)!important;border-color:rgba(205,220,230,.16)!important;color:#f0f4f7!important}
+.mastery-status-menu button[data-mastery-cancel]{grid-column:1/-1!important;min-height:25px!important;margin:3px 0 0!important;padding:5px!important;border:0!important;border-top:1px solid rgba(210,225,236,.12)!important;border-radius:0!important;background:transparent!important;color:#929ea8!important}
+.mastery-status-menu button[aria-checked="true"]{background:rgba(205,222,234,.12)!important;border-color:rgba(205,222,234,.2)!important;color:#f0f4f7!important}
+@keyframes masteryMenuFinalIn{from{opacity:0;transform:translateX(-50%) translateY(-4px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+</style>
 </head>
 <body>
 <div id="space"></div><div class="grain"></div>
