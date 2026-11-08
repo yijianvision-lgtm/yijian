@@ -58,6 +58,7 @@ assert.ok(html.includes("host.replaceChildren(safeText('p','正在读取关联�
 assert.ok(html.includes("corePoint.addEventListener('transitionend',onTransitionEnd);"), "The core-to-minimap transition must remain event-driven.");
 assert.ok(html.includes("function closeKnowledgeArchive(){") && html.includes("if(b.closest('#nodeDetail'))closeKnowledgeArchive();else closeAll();"), "The archive Return button must close only the archive and preserve the collapsed universe state.");
 assert.ok(html.includes("document.getElementById('continuumFocus')?.classList.remove('open');"), "Returning from the archive must reveal the 3D universe instead of leaving an empty full-screen quadrant layer.");
+assert.ok(html.includes("#nodeDetail.open{animation:mindArchiveEnter .24s"), "The knowledge archive must appear with a short, non-blocking entrance animation.");
 assert.ok(html.includes("document.getElementById('continuumFocus')?.classList.add('open');restoreFocusFromMinimap();"), "The minimap must reopen the quadrant layer before restoring the four directions.");
 assert.ok(!html.includes("document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'))));"), "A duplicate global close listener must not race with the archive-specific return flow.");
 assert.ok(html.includes("if(!closeKnowledgeArchive())closeAll();"), "Escape must close the archive first without closing or resetting the underlying universe.");
