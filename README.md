@@ -111,6 +111,7 @@ V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版�
 
 - [V3.3 四向四维一体模型正式校正](docs/MIND-V3.3-FOUR-DIRECTIONS-FOUR-DIMENSIONS-UNIFIED-MODEL.md) — 明确中心题眼、框架层级与前源/左体/右用/后流四侧一体观察，并保留历史时点复原、当时世界、周围对象、口诀与知识链参考。该校正正式覆盖 V3.1/V3.2 中把四向与四维拆成两个独立系统的错误表述。
 - [V3.3 实体关系与状态规格](docs/MIND-V3.3-ENTITY-RELATIONSHIP-AND-STATE-SPEC.md) — 对照真实 IndexedDB v6、API 与自动化测试，区分已有实体、部分承载、缺失概念、状态域、旧方向值兼容映射及 UI 未接入能力。
+- [V3.3 A4 四侧交互与历史时点复原规格](docs/MIND-V3.3-A4-FOUR-SIDED-INTERACTION-AND-HISTORICAL-RECONSTRUCTION.md) — 将前源/左体/右用/后流落到可验收的交互规则，包含历史时点复原、当时世界与周围对象、框架层级锚点、题眼切换/回退、元定位与口诀知识链参考。
 - [产品与工程 Skill 1.2](docs/NEBULA-SKILL.md) — 已同步统一认知模型。
 
 ## MIND V3.2｜架构一致性审查与规范校准
@@ -122,4 +123,4 @@ V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版�
 - [产品与工程 Skill 1.1](docs/NEBULA-SKILL.md) — 已校准旧四向术语、时间维度和视觉边界。
 - [最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md)。
 
-**当前状态：V3.3 已正式校正四向四维一体模型，并完成阶段 B 实体关系与状态规格初稿；V3.2 中四向/四维正交拆分图只保留为历史审查记录，不再作为有效产品定义。Claim/Interpretation、WorldContext、CorrectionMapping、MnemonicIndex 与 ReplayEvent 的必要性和最小实现仍待审议。未修改网站 UI、产品代码、数据库或后台，未启动 UI 改版。**
+**当前状态：V3.3 已正式校正四向四维一体模型，并完成阶段 B 实体关系与状态规格初稿及 A4 四侧交互/历史时点复原规格；V3.2 中四向/四维正交拆分图只保留为历史审查记录，不再作为有效产品定义。Claim/Interpretation、WorldContext、CorrectionMapping、MnemonicIndex 与 ReplayEvent 的必要性和最小实现仍待审议。未修改网站 UI、产品代码、数据库或后台，未启动 UI 改版。**
