@@ -42,7 +42,7 @@ The preview uses Three.js / WebGL for the spatial scene. When a local IndexedDB 
 - **Local-first storage:** IndexedDB schema v5 with non-destructive migration and portable backup/restore.
 - **Source ingestion:** original PDF, DOCX, DOC, EMMX and XMind materials remain separate from extracted candidates. Legacy DOC is retained with a conversion warning; scanned-PDF OCR is not yet included.
 - **Extraction and filtering:** extraction batches, candidate items, filter cases, duplicate/near-duplicate suggestions, and append-only user decisions.
-- **Four-dimensional placement:** lineage, time, domain/space, and horizontal relation suggestions, each carrying rationale, source and uncertainty.
+- **Legacy placement suggestions:** the existing backend retains lineage, time, domain/space and horizontal-relation suggestion fields. These are legacy data/API concepts and must not be mistaken for a second, independent four-dimensional product model; the current product cognition model is the unified four-sided model documented in V3.3.
 - **Review protection:** AI and rule-based suggestions become review proposals. They do not directly overwrite formal knowledge. Accepted nodes keep source links; relations keep independent evidence records.
 - **Framework and space:** framework tree, spatial projection, semantic coordinates separated from visual XYZ layout, MindContext, and version snapshots.
 - **Evidence resolver:** resolve candidates and formal nodes back to original sources, page/topic/block locators, excerpts, and review decisions.
@@ -68,9 +68,9 @@ See [NEBULA Skill 1.0](docs/NEBULA-SKILL.md) for detailed product and implementa
 
 ### V7-A｜深空主线 · 对话学习与连续四向延伸（当前迭代）
 
-当前只沿 A「深空纯宇宙」继续迭代，不再制作新的 B/C 方案。V7-A 保留 V6-A 的画布优先布局、角落默认小地图与明确的左右面板入口，并集中处理三项体验：
+当前只沿 A「深空纯宇宙」继续迭代，不再制作新的 B/C 方案。V7-A（历史预览记录）保留 V6-A 的画布优先布局、角落默认小地图与明确的左右面板入口，并集中处理三项体验：
 
-- **学习页 AI 对话：** 学习页加入一对一对话工作区，可切换综合理解、瞻前、顾后、左顾、右盼五种学习视角；仅在用户主动选择后附带当前知识节点；对话可由用户保存到本机资料库，不会自动修改正式知识。
+- **学习页 AI 对话：** 学习页加入一对一对话工作区，可围绕当前题眼按前源、左体、右用、后流四侧一体展开学习；仅在用户主动选择后附带当前知识节点；对话可由用户保存到本机资料库，不会自动修改正式知识。
 - **四向视野排布：** 四向文字固定在右侧上方的独立区域，中央核心知识不再与左右文字叠压。
 - **连续方向延伸：** 方向文字保持稳定，连续流动效果只出现在四向路径上，避免标签散动。
 
@@ -107,7 +107,7 @@ V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版�
 
 
 
-## MIND V3.2｜架构一致性审查与规范校准
+## MIND V3.3｜四向四维一体模型校正\n\n- [V3.3 四向四维一体模型正式校正](docs/MIND-V3.3-FOUR-DIRECTIONS-FOUR-DIMENSIONS-UNIFIED-MODEL.md) — 明确中心题眼、框架层级与前源/左体/右用/后流四侧一体观察，并保留历史时点复原、当时世界、周围对象、口诀与知识链参考。该校正正式覆盖 V3.1/V3.2 中把四向与四维拆成两个独立系统的错误表述。\n- [产品与工程 Skill 1.2](docs/NEBULA-SKILL.md) — 已同步统一认知模型。\n\n## MIND V3.2｜架构一致性审查与规范校准
 
 - [V3.2 架构一致性审查报告](docs/MIND-V3.2-ARCHITECTURE-CONSISTENCY-REVIEW.md) — 含架构总览图、四向/四维对照图、对象/树/网/地图关系图、多路径回放图、AI纠错审核流程图及逐图解说。
 - [V3.2 数据层现状核对](docs/MIND-V3.2-DATA-LAYER-AUDIT.md) — 对照真实 IndexedDB stores、API、自动化测试和预览 UI，区分后台已存在与前端未接入的能力。
@@ -116,4 +116,4 @@ V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版�
 - [产品与工程 Skill 1.1](docs/NEBULA-SKILL.md) — 已校准旧四向术语、时间维度和视觉边界。
 - [最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md)。
 
-**当前状态：阶段 A 架构审查与术语校准文档已提交；多框架位置、主张语境与回放事件模型仍待阶段 B 数据规格审查。未修改网站 UI、产品代码、数据库或后台，未启动 UI 改版。**
+**当前状态：V3.3 已正式校正四向四维一体模型；V3.2 中四向/四维正交拆分图只保留为历史审查记录，不再作为有效产品定义。多框架位置、主张语境与回放事件模型仍待阶段 B 数据规格审查。未修改网站 UI、产品代码、数据库或后台，未启动 UI 改版。**
