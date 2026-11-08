@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>观复 Mind V41｜四向定位与遮挡修复预览</title>
+<title>观复 Mind V42｜核心词精简预览</title>
 <meta name="description" content="NEBULA 3D Knowledge Universe — visual interface preview">
 <style>
 :root{color-scheme:dark;--bg:#07090d;--surface:rgba(17,20,25,.82);--surface2:rgba(23,27,33,.76);--line:rgba(211,222,235,.105);--line2:rgba(211,222,235,.17);--text:#e8ebef;--muted:#929ba7;--dim:#626d79;--ice:#c8d5df;--warm:#b7a88b;--green:#9db7a8}
@@ -2882,6 +2882,29 @@ document.addEventListener('click',function(event){
  #continuumFocus .continuum-core-heading-row #masteryStatusToggle{left:calc(100% - 2px)!important}
  #continuumFocus .continuum-core-heading-row #masteryStatusMenu{left:calc(100% + 24px)!important}
  #continuumFocus .continuum-core-heading-row #masteryStatusMenu.opens-left{left:auto!important;right:calc(100% + 6px)!important}
+}
+</style>
+
+
+<style id="v42-core-word-refinement">
+/* V42 refinement: keep the original V42 structure; only simplify the center. */
+#continuumFocus .continuum-core-title{
+  font-size:clamp(24px,2.4vw,32px)!important;
+  line-height:1.18!important;
+  font-weight:500!important;
+  letter-spacing:.045em!important;
+}
+/* No secondary copy below the focal word. Keep the learning-status control. */
+#continuumFocus .continuum-core-label,
+#continuumFocus .continuum-core>p,
+#continuumFocus .continuum-core-meta,
+#continuumFocus #continuumOpenDetail{
+  display:none!important;
+}
+@media(max-width:760px){
+  #continuumFocus .continuum-core-title{
+    font-size:clamp(22px,5vw,27px)!important;
+  }
 }
 </style>
 
