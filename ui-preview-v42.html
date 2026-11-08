@@ -2961,6 +2961,70 @@ document.addEventListener('click',function(event){
   #continuumFocus .continuum-core-heading-row #masteryStatusToggle{left:calc(100% + 5px)!important}
   #continuumFocus .continuum-core-heading-row #masteryStatusMenu{left:calc(100% + 29px)!important}
 }
+
+<style id="v42-axis-stack-correction">
+/* The red crosshair intersection is the single layout origin. */
+#continuumFocus .continuum-stage{position:relative!important}
+#continuumFocus .continuum-stage>.continuum-core{
+  position:absolute!important;left:50%!important;top:50%!important;
+  transform:translate(-50%,-50%)!important;
+  display:block!important;width:320px!important;max-width:min(76vw,440px)!important;
+  height:190px!important;min-height:190px!important;
+  margin:0!important;padding:0!important;overflow:visible!important;
+  border:0!important;border-radius:0!important;background:transparent!important;
+  box-shadow:none!important;backdrop-filter:none!important;
+  z-index:8!important;isolation:isolate!important;
+}
+/* Keep the approved soft sphere/glow appearance; move it directly below the title on the same axis. */
+#continuumFocus .continuum-core:after{
+  left:50%!important;top:calc(50% + 47px)!important;
+  transform:translate(-50%,-50%)!important;
+  z-index:0!important;pointer-events:none!important;
+}
+#continuumFocus .continuum-core:before{
+  left:50%!important;top:calc(50% + 47px)!important;
+  transform:translate(-50%,-50%)!important;
+  z-index:0!important;pointer-events:none!important;
+}
+#continuumFocus .continuum-core-heading-row{
+  position:absolute!important;left:50%!important;top:50%!important;
+  transform:translate(-50%,-50%)!important;
+  display:block!important;width:max-content!important;max-width:min(76vw,400px)!important;
+  height:auto!important;min-height:0!important;margin:0!important;padding:0!important;
+  z-index:10!important;pointer-events:auto!important;
+}
+#continuumFocus .continuum-core-title{
+  display:block!important;position:relative!important;
+  width:max-content!important;max-width:100%!important;margin:0!important;padding:0!important;
+  font-size:clamp(32px,2.45vw,36px)!important;
+  line-height:1.18!important;font-weight:500!important;letter-spacing:.035em!important;
+  text-align:center!important;white-space:nowrap!important;overflow:visible!important;
+  z-index:11!important;
+  /* Preserve the already-approved foreground contrast and glow separation. */
+  color:rgba(245,249,252,.99)!important;
+  text-shadow:0 1px 8px rgba(3,7,11,.96),0 0 2px rgba(3,7,11,.9)!important;
+}
+#continuumFocus .continuum-core-heading-row #masteryStatusToggle{
+  position:absolute!important;left:calc(100% + 9px)!important;right:auto!important;
+  top:50%!important;transform:translateY(-50%)!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;
+  margin:0!important;padding:0!important;border:0!important;border-radius:50%!important;
+  background:transparent!important;box-shadow:none!important;z-index:13!important;
+}
+#continuumFocus .continuum-core-heading-row #masteryStatusMenu{
+  position:absolute!important;left:calc(100% + 39px)!important;right:auto!important;
+  top:50%!important;transform:translateY(-50%)!important;margin:0!important;z-index:20!important;
+}
+#continuumFocus .continuum-core-heading-row #masteryStatusMenu.opens-left{
+  left:auto!important;right:calc(100% + 8px)!important;
+}
+@media(max-width:760px){
+  #continuumFocus .continuum-stage>.continuum-core{width:260px!important;max-width:82vw!important}
+  #continuumFocus .continuum-core-title{font-size:clamp(28px,7vw,32px)!important}
+  #continuumFocus .continuum-core-heading-row #masteryStatusToggle{left:calc(100% + 5px)!important}
+  #continuumFocus .continuum-core-heading-row #masteryStatusMenu{left:calc(100% + 33px)!important}
+}
 </style>
 
 </body></html>
