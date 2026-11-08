@@ -1027,6 +1027,62 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
 @media(max-width:760px){#masteryStatusToggle{min-width:104px!important;height:32px!important;min-height:32px!important}.mastery-status-menu{width:168px!important;min-width:168px!important}}
 </style>
 
+
+<style id="v34-status-control-rebuild">
+/* V34: one clear status control; reset inherited .continuum-core button rules. */
+#continuumFocus #masteryStatusToggle{
+ position:relative!important;display:inline-flex!important;flex-direction:row!important;
+ align-items:center!important;justify-content:center!important;gap:12px!important;
+ width:auto!important;min-width:156px!important;height:34px!important;min-height:34px!important;
+ margin:12px 0 0!important;padding:0 11px!important;
+ border:1px solid rgba(196,214,226,.19)!important;border-radius:7px!important;
+ background:rgba(15,21,27,.78)!important;color:rgba(199,212,221,.78)!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.035)!important;
+ font:500 9px/1.2 inherit!important;letter-spacing:.025em!important;
+ cursor:pointer!important;transition:background .2s,border-color .2s,color .2s!important;
+}
+#continuumFocus #masteryStatusToggle:hover,
+#continuumFocus #masteryStatusToggle[aria-expanded="true"]{
+ background:rgba(28,37,45,.92)!important;border-color:rgba(207,225,237,.34)!important;color:#edf3f7!important;
+ box-shadow:0 0 18px rgba(185,211,229,.07),inset 0 1px rgba(255,255,255,.05)!important;
+}
+#continuumFocus #masteryStatusToggle .mastery-status-caption{font-size:9px!important;color:rgba(151,166,177,.72)!important;white-space:nowrap!important}
+#continuumFocus #masteryStatusToggle .mastery-status-value{display:inline-flex!important;align-items:center!important;gap:7px!important;white-space:nowrap!important;color:rgba(228,237,243,.94)!important}
+#continuumFocus #masteryStatusToggle .mastery-status-dot{display:inline-block!important;width:6px!important;height:6px!important;min-width:6px!important;flex:0 0 6px!important;border-radius:50%!important;background:#aebbc4!important;box-shadow:0 0 0 2px rgba(190,207,220,.08)!important}
+#continuumFocus #masteryStatusToggle .mastery-status-dot[data-status="学习中"]{background:#b8cbd8!important}
+#continuumFocus #masteryStatusToggle .mastery-status-dot[data-status="复习中"]{background:#d0dce4!important}
+#continuumFocus #masteryStatusToggle .mastery-status-dot[data-status="已掌握"]{background:#edf5fa!important;box-shadow:0 0 7px rgba(226,237,245,.45)!important}
+#continuumFocus #masteryStatusToggle .mastery-status-dot[data-status="未掌握"]{background:#87939c!important}
+#continuumFocus #masteryStatusToggle .mastery-status-label{display:inline!important;font-size:9px!important;white-space:nowrap!important}
+#continuumFocus #masteryStatusToggle .mastery-status-chevron{font-size:12px!important;line-height:1!important;color:rgba(160,177,189,.72)!important;transform:translateY(-1px)!important}
+#continuumFocus #masteryStatusMenu{
+ position:absolute!important;z-index:80!important;left:50%!important;top:calc(100% + 7px)!important;
+ transform:translateX(-50%)!important;width:166px!important;min-width:166px!important;
+ display:flex!important;flex-direction:column!important;gap:2px!important;
+ margin:0!important;padding:6px!important;border:1px solid rgba(194,213,226,.22)!important;
+ border-radius:8px!important;background:rgba(7,11,16,.985)!important;
+ box-shadow:0 14px 38px rgba(0,0,0,.62),inset 0 1px rgba(255,255,255,.04)!important;
+ backdrop-filter:blur(20px)!important;
+}
+#continuumFocus #masteryStatusMenu[hidden]{display:none!important}
+#continuumFocus #masteryStatusMenu button{
+ display:flex!important;flex:0 0 auto!important;align-items:center!important;justify-content:flex-start!important;
+ width:100%!important;min-height:32px!important;height:32px!important;margin:0!important;padding:0 10px!important;
+ border:1px solid transparent!important;border-radius:5px!important;
+ background:transparent!important;color:rgba(196,209,218,.82)!important;
+ font-size:9px!important;line-height:1!important;text-align:left!important;letter-spacing:.025em!important;
+ cursor:pointer!important;
+}
+#continuumFocus #masteryStatusMenu button:hover{background:rgba(205,222,234,.09)!important;border-color:rgba(205,222,234,.12)!important;color:#f0f5f8!important}
+#continuumFocus #masteryStatusMenu button[aria-checked="true"]{background:rgba(205,222,234,.12)!important;border-color:rgba(205,222,234,.16)!important;color:#f1f6f9!important}
+#continuumFocus #masteryStatusMenu button[aria-checked="true"]::after{content:"✓"!important;margin-left:auto!important;color:#e0ebf2!important}
+#continuumFocus #masteryStatusMenu button[data-mastery-cancel]{justify-content:center!important;height:28px!important;min-height:28px!important;margin-top:4px!important;padding:0!important;border:0!important;border-top:1px solid rgba(205,220,230,.12)!important;border-radius:0!important;color:rgba(145,160,171,.8)!important}
+@media(max-width:760px){
+ #continuumFocus #masteryStatusToggle{min-width:148px!important;height:33px!important;min-height:33px!important}
+ #continuumFocus #masteryStatusMenu{width:158px!important;min-width:158px!important}
+}
+</style>
+
 </head>
 <body>
 <div id="space"></div><div class="grain"></div>
@@ -1166,7 +1222,7 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
   <button class="continuum-quadrant q-backward" data-continuum="backward"><span class="cq-kicker">FUTURE · 向未来延伸</span><b>顾后</b><small>影响、演变、继承、转化、后世</small><i>展开多个探索入口 ↗</i></button>
   <button class="continuum-quadrant q-left" data-continuum="left"><span class="cq-kicker">ESSENCE · 向本质深入</span><b>向内</b><small>本质、定义、原理、组成、结构</small><i>展开多个探索入口 ↗</i></button>
   <button class="continuum-quadrant q-right" data-continuum="right"><span class="cq-kicker">CONTEXT · 向外部关联</span><b>向外</b><small>同时代、人物、领域、文明、跨域</small><i>展开多个探索入口 ↗</i></button>
-  <div class="continuum-core" id="continuumCoreCard"><span class="continuum-core-label">CURRENT CORE · 当前核心知识</span><div class="continuum-core-title" id="continuumCoreTitle">系统思维</div><p id="continuumCoreDefinition">理解复杂系统中结构、反馈与演化之间的关系。</p><div class="continuum-core-meta"><span id="continuumCoreDepth">NODE 01</span><span id="coreMasteryState">中心轴 · 当前认知位置</span></div><button id="masteryStatusToggle" class="mastery-status-toggle" type="button" aria-label="设置学习状态：未学习" title="学习状态：未学习" aria-expanded="false"><span class="mastery-status-dot" aria-hidden="true"></span><span id="masteryStatusLabel" class="mastery-status-label">未学习</span></button><div id="masteryStatusMenu" class="mastery-status-menu" hidden role="menu" aria-label="选择学习状态"><button type="button" data-mastery-status="未学习">未学习</button><button type="button" data-mastery-status="学习中">学习中</button><button type="button" data-mastery-status="复习中">复习中</button><button type="button" data-mastery-status="已掌握">已掌握</button><button type="button" data-mastery-status="未掌握">未掌握</button><button type="button" data-mastery-cancel>取消</button></div><button id="continuumOpenDetail">打开完整知识档案 ↗</button></div>
+  <div class="continuum-core" id="continuumCoreCard"><span class="continuum-core-label">CURRENT CORE · 当前核心知识</span><div class="continuum-core-title" id="continuumCoreTitle">系统思维</div><p id="continuumCoreDefinition">理解复杂系统中结构、反馈与演化之间的关系。</p><div class="continuum-core-meta"><span id="continuumCoreDepth">NODE 01</span><span id="coreMasteryState">中心轴 · 当前认知位置</span></div><button id="masteryStatusToggle" class="mastery-status-toggle" type="button" aria-label="设置学习状态：未学习" title="学习状态：未学习" aria-expanded="false"><span class="mastery-status-caption">学习状态</span><span class="mastery-status-value"><span class="mastery-status-dot" aria-hidden="true"></span><span id="masteryStatusLabel" class="mastery-status-label">未学习</span></span><span class="mastery-status-chevron" aria-hidden="true">⌄</span></button><div id="masteryStatusMenu" class="mastery-status-menu" hidden role="menu" aria-label="选择学习状态"><button type="button" data-mastery-status="未学习">未学习</button><button type="button" data-mastery-status="学习中">学习中</button><button type="button" data-mastery-status="复习中">复习中</button><button type="button" data-mastery-status="已掌握">已掌握</button><button type="button" data-mastery-status="未掌握">未掌握</button><button type="button" data-mastery-cancel>取消</button></div><button id="continuumOpenDetail">打开完整知识档案 ↗</button></div>
  </div>
  <section class="continuum-choice-panel" id="continuumChoicePanel" hidden aria-live="polite">
   <div class="choice-panel-head"><div><span class="source-tag" id="choiceDirectionLabel">探索方向</span><b id="choicePanelTitle">选择一个探索入口</b></div><button class="continuum-quiet" id="closeChoicePanel">收起</button></div>
