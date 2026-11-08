@@ -1813,11 +1813,24 @@ function openContinuumChoices(direction){
  });
  panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+function showRelatedObjectActions(targetIndex,direction){
+ const panel=document.getElementById('continuumChoicePanel'),list=document.getElementById('continuumChoiceList');
+ const node=nodes[targetIndex],name=String(node?.[0]||'关联知识对象').replace(/（待探索）$/,'');
+ document.getElementById('choiceDirectionLabel').textContent=directionNames[direction]+' · 发现关联对象';
+ document.getElementById('choicePanelTitle').textContent=name;
+ list.replaceChildren();
+ const note=document.createElement('p');note.className='choice-panel-note';note.textContent='该对象与当前中心题眼相关。你可以先查看关系而不切换焦点，也可以主动将它设为新的中心题眼。';list.append(note);
+ const view=document.createElement('button');view.className='continuum-choice';const viewTitle=document.createElement('strong');viewTitle.textContent='仅查看关联';const viewDesc=document.createElement('small');viewDesc.textContent='保留当前中心题眼，不改变探索路径';view.append(viewTitle,viewDesc);
+ view.addEventListener('click',()=>{panel.hidden=true;const sphere=spheres[targetIndex];if(sphere){sphere.userData.targetGlow=.34;sphere.userData.targetOpacity=.8;}toast('已保留当前中心题眼；关联对象未切换为中心。');});
+ const focus=document.createElement('button');focus.className='continuum-choice';const focusTitle=document.createElement('strong');focusTitle.textContent='设为新中心题眼';const focusDesc=document.createElement('small');focusDesc.textContent='切换焦点，并保留原题眼与探索返回路径';focus.append(focusTitle,focusDesc);
+ focus.addEventListener('click',()=>{panel.hidden=true;selectNode(targetIndex,true);});
+ list.append(view,focus);panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 function createExplorationNode(direction,choiceIndex,customTitle=''){
  const links=directionalMap[selected]||(directionalMap[selected]={});
  const targets=Array.isArray(links[direction])?links[direction]:(Number.isInteger(links[direction])?[links[direction]]:[]);
  const existing=choiceIndex>=0?targets.find(i=>continuationMeta[i]?.choiceIndex===choiceIndex):-1;
- if(Number.isInteger(existing)&&nodes[existing]){selectNode(existing,true);return;}
+ if(Number.isInteger(existing)&&nodes[existing]){showRelatedObjectActions(existing,direction);return;}
  if(!isDemoUniverse){toast('正式知识关系尚未经过证据确认；当前不自动创建或推断关系。');return;}
  const prompt=choiceIndex>=0?directionPrompts[direction][choiceIndex]:[customTitle,'用户自定义的探索问题，仍需后续资料与证据核验'],parent=selected,base=positions[parent]||new THREE.Vector3();
  const lane={forward:new THREE.Vector3(0,1,0),backward:new THREE.Vector3(0,-1,0),left:new THREE.Vector3(-1,0,0),right:new THREE.Vector3(1,0,0)}[direction];
@@ -1830,7 +1843,7 @@ function createExplorationNode(direction,choiceIndex,customTitle=''){
  edges.push([parent,target]);core.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([base,pos]),lineMat));
  links[direction]=targets.concat(target);directionalMap[target]={};continuationDescriptions[target]=prompt[1]+'。这是待探索的抽象节点，不代表已经核实的事实或个人知识。';
  continuationMeta[target]={virtual:true,parent,direction,choiceIndex,identity:'demo:'+parent+':'+direction+':'+choiceIndex+':'+target};
- document.getElementById('continuumChoicePanel').hidden=true;selectNode(target,true);
+ showRelatedObjectActions(target,direction);
 }
 function openFormalDirectionTargets(direction,targets){
  const panel=document.getElementById('continuumChoicePanel'),list=document.getElementById('continuumChoiceList');
