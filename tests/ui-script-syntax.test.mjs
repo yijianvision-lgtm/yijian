@@ -6,6 +6,8 @@ const html = await readFile(new URL("../ui-preview-v3-a-cosmos.html", import.met
 const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .filter(([, attributes, body]) => !/type\s*=\s*["']importmap["']/i.test(attributes) && body.trim());
 assert.ok(scripts.length >= 4, "Expected the V3-A preview page's inline JavaScript modules and scripts.");
+assert.ok(html.includes("from './nebula-local.js?env=preview';"), "V3-A must load its isolated preview data environment.");
+assert.ok(!html.includes("from './nebula-local.js';"), "V3-A must not import the production local database module.");
 
 for (const [index, [, attributes, source]] of scripts.entries()) {
   const result = spawnSync(process.execPath, ["--input-type=module", "--check"], {

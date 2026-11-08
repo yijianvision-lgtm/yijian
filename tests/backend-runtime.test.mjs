@@ -457,3 +457,16 @@ const v5Backup = await api.exportFullBackup();
 assert.equal((await api.previewFullBackup(v5Backup.blob)).schemaVersion, 6);
 
 console.log("NEBULA IndexedDB runtime tests passed.");
+
+// Preview and production must use independent IndexedDB databases.
+const productionBeforePreview = await api.loadGraph();
+assert.ok(productionBeforePreview?.nodes?.length, "Production fixture data must exist before preview isolation is checked.");
+const previewModule = await import("../nebula-local.js?env=preview");
+const previewApi = previewModule.NEBULA_LOCAL;
+assert.equal(await previewApi.loadGraph(), null, "A fresh preview environment must not read production graph data.");
+await previewApi.saveGraph([{ id: "preview-only", name: "Preview-only knowledge" }], []);
+assert.deepEqual((await previewApi.loadGraph()).nodes.map(node => node.id), ["preview-only"]);
+assert.deepEqual((await api.loadGraph()).nodes.map(node => node.id), productionBeforePreview.nodes.map(node => node.id), "Preview writes must not alter production graph data.");
+await api.saveGraph([{ id: "production-only", name: "Production-only knowledge" }], []);
+assert.deepEqual((await previewApi.loadGraph()).nodes.map(node => node.id), ["preview-only"], "Production writes must not leak into preview.");
+console.log("NEBULA production/preview database isolation tests passed.");

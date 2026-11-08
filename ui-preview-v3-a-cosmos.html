@@ -1102,7 +1102,7 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-import { NEBULA_LOCAL } from './nebula-local.js';
+import { NEBULA_LOCAL } from './nebula-local.js?env=preview';
 const host=document.getElementById('space');const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x070b12,.018);
 const camera=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,.1,500);camera.position.set(0,1.8,18);
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});const pixelRatioForViewport=()=>Math.min(devicePixelRatio||1,innerWidth<760?1.2:1.5);renderer.setPixelRatio(pixelRatioForViewport());renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x000000,0);host.appendChild(renderer.domElement);
@@ -1604,7 +1604,7 @@ document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Ent
 })();
 </script>
 <script type="module">
-import { NEBULA_LOCAL } from './nebula-local.js';
+import { NEBULA_LOCAL } from './nebula-local.js?env=preview';
 const $=id=>document.getElementById(id);
 let filterSnapshot=null,activeFilterCaseId=null,activeSuggestionIndex=-1,activeDimensionFilter="all";
 const statusLabel={received:"待提取",extracting:"提取中",extracted:"待辨异",filtering:"过滤中",needs_review:"待审核",approved:"已归位",rejected:"已拒绝",failed:"失败",archived:"已归档"};
