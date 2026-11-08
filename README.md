@@ -107,7 +107,7 @@ V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版�
 
 
 
-## MIND V3.3｜四向四维一体模型校正\n\n- [V3.3 四向四维一体模型正式校正](docs/MIND-V3.3-FOUR-DIRECTIONS-FOUR-DIMENSIONS-UNIFIED-MODEL.md) — 明确中心题眼、框架层级与前源/左体/右用/后流四侧一体观察，并保留历史时点复原、当时世界、周围对象、口诀与知识链参考。该校正正式覆盖 V3.1/V3.2 中把四向与四维拆成两个独立系统的错误表述。\n- [产品与工程 Skill 1.2](docs/NEBULA-SKILL.md) — 已同步统一认知模型。\n\n## MIND V3.2｜架构一致性审查与规范校准
+## MIND V3.3｜四向四维一体模型校正\n\n- [V3.3 四向四维一体模型正式校正](docs/MIND-V3.3-FOUR-DIRECTIONS-FOUR-DIMENSIONS-UNIFIED-MODEL.md) — 明确中心题眼、框架层级与前源/左体/右用/后流四侧一体观察，并保留历史时点复原、当时世界、周围对象、口诀与知识链参考。该校正正式覆盖 V3.1/V3.2 中把四向与四维拆成两个独立系统的错误表述。\n- [V3.3 实体关系与状态规格](docs/MIND-V3.3-ENTITY-RELATIONSHIP-AND-STATE-SPEC.md) — 对照真实 IndexedDB v6、API 与自动化测试，区分已有实体、部分承载、缺失概念、状态域、旧方向值兼容映射及 UI 未接入能力。\n- [产品与工程 Skill 1.2](docs/NEBULA-SKILL.md) — 已同步统一认知模型。\n\n## MIND V3.2｜架构一致性审查与规范校准
 
 - [V3.2 架构一致性审查报告](docs/MIND-V3.2-ARCHITECTURE-CONSISTENCY-REVIEW.md) — 含架构总览图、四向/四维对照图、对象/树/网/地图关系图、多路径回放图、AI纠错审核流程图及逐图解说。
 - [V3.2 数据层现状核对](docs/MIND-V3.2-DATA-LAYER-AUDIT.md) — 对照真实 IndexedDB stores、API、自动化测试和预览 UI，区分后台已存在与前端未接入的能力。
@@ -116,4 +116,4 @@ V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版�
 - [产品与工程 Skill 1.1](docs/NEBULA-SKILL.md) — 已校准旧四向术语、时间维度和视觉边界。
 - [最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md)。
 
-**当前状态：V3.3 已正式校正四向四维一体模型；V3.2 中四向/四维正交拆分图只保留为历史审查记录，不再作为有效产品定义。多框架位置、主张语境与回放事件模型仍待阶段 B 数据规格审查。未修改网站 UI、产品代码、数据库或后台，未启动 UI 改版。**
+**当前状态：V3.3 已正式校正四向四维一体模型，并完成阶段 B 实体关系与状态规格初稿；V3.2 中四向/四维正交拆分图只保留为历史审查记录，不再作为有效产品定义。Claim/Interpretation、WorldContext、CorrectionMapping、MnemonicIndex 与 ReplayEvent 的必要性和最小实现仍待审议。未修改网站 UI、产品代码、数据库或后台，未启动 UI 改版。**
