@@ -61,7 +61,7 @@ assert.ok(html.indexOf("archive.classList.add('open');") < html.indexOf("try{ren
 assert.ok(html.includes("window.__guanfuOpenKnowledgeArchive=openKnowledgeArchive;"), "Both archive entry buttons must call the same explicit module bridge.");
 assert.ok(html.includes("Required archive DOM is missing") && html.includes("档案已打开，但知识信息渲染失败"), "Archive startup and rendering failures must be visible and diagnosable instead of silently leaving the user stuck.");
 assert.ok(html.includes("try{retractFocusToMinimap();}") && html.includes("try{loadKnowledgeArchiveEvidence(nodeId,host);}"), "Minimap animation or evidence loading failures must not block archive visibility.");
-assert.ok(html.includes("renderContinuum();\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
+assert.ok(html.includes("try{renderContinuum();}"), "The selected knowledge object's title, definition and structure must refresh after the archive becomes visible, without blocking it.");
 assert.ok(html.includes(".overlay.open{display:block}#nodeDetail{z-index:60!important}.overlay-head{"), "The knowledge archive must stack above the full-screen #continuumFocus layer (z-index 40).");
 const archiveZIndex = Number(html.match(/#nodeDetail\{z-index:(\d+)!important\}/)?.[1] || 0);
 const focusZIndexes = [...html.matchAll(/#continuumFocus\{[^}]*?z-index:(\d+)!important/g)].map(match => Number(match[1]));
