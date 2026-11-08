@@ -2987,6 +2987,8 @@ document.addEventListener('click',function(event){
   #continuumFocus .continuum-core-heading-row #masteryStatusMenu{left:calc(100% + 29px)!important}
 }
 
+</style>
+
 <style id="v42-axis-stack-correction">
 /* Correct interpretation: title and luminous core overlap exactly and share the crosshair origin. */
 #continuumFocus .continuum-stage{position:relative!important}
@@ -3061,4 +3063,52 @@ document.addEventListener('click',function(event){
   text-shadow:0 1px 5px rgba(3,7,11,.94),0 0 1px rgba(3,7,11,.84)!important;
 }
 </style>
+
+ 
+<style id="v42-2-frosted-depth-and-title-arrival">
+/* V42.2: keep the approved geometric center and status control untouched.
+   A restrained frosted veil separates rear light from the foreground title. */
+#continuumFocus .continuum-core-heading-row{
+  isolation:isolate!important;
+}
+#continuumFocus .continuum-core-heading-row:before{
+  content:""!important;
+  position:absolute!important;
+  left:50%!important;top:50%!important;
+  width:calc(100% + 34px)!important;height:calc(100% + 22px)!important;
+  transform:translate(-50%,-50%)!important;
+  border-radius:999px!important;
+  background:rgba(8,13,19,.30)!important;
+  -webkit-backdrop-filter:blur(9px) saturate(.68)!important;
+  backdrop-filter:blur(9px) saturate(.68)!important;
+  box-shadow:0 0 22px rgba(5,10,16,.18),inset 0 0 16px rgba(210,226,238,.018)!important;
+  opacity:.88!important;
+  z-index:-1!important;
+  pointer-events:none!important;
+}
+/* More restrained scale; title remains centered on the exact same anchor. */
+#continuumFocus .continuum-core-title{
+  font-size:clamp(31px,2.25vw,34px)!important;
+  text-shadow:0 1px 7px rgba(2,6,10,.98),0 0 2px rgba(2,6,10,.96)!important;
+}
+@media(max-width:760px){
+  #continuumFocus .continuum-core-title{font-size:clamp(26px,5.9vw,29px)!important}
+  #continuumFocus .continuum-core-heading-row:before{
+    width:calc(100% + 26px)!important;height:calc(100% + 18px)!important;
+  }
+}
+/* selectNode() replays .arriving for each deliberate core/node selection. */
+#continuumFocus.arriving .continuum-core-title{
+  animation:v42CoreTitleEmerge 1.15s cubic-bezier(.2,.72,.22,1) both!important;
+}
+@keyframes v42CoreTitleEmerge{
+  0%{opacity:0;filter:blur(7px);transform:translateY(3px) scale(.985)}
+  58%{opacity:.72;filter:blur(1.8px);transform:translateY(0) scale(.997)}
+  100%{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}
+}
+@media(prefers-reduced-motion:reduce){
+  #continuumFocus.arriving .continuum-core-title{animation-duration:.01ms!important}
+}
+</style>
+
 </body></html>
