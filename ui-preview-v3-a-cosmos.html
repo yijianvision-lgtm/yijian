@@ -2099,6 +2099,26 @@ refreshResearchWorkspace();
   event.stopImmediatePropagation();
   const archive=document.getElementById('nodeDetail');
   const evidence=document.getElementById('nodeEvidenceList');
+  const closeButton=event.target&&event.target.closest?event.target.closest('#nodeDetail [data-close]'):null;
+  if(closeButton){
+   event.preventDefault();event.stopImmediatePropagation();
+   if(typeof window.__guanfuCloseKnowledgeArchive==='function'){
+    try{window.__guanfuCloseKnowledgeArchive();}catch(error){console.error('[GUANFU_ARCHIVE_CLOSE] Main close failed.',error);}
+   }
+   archive.classList.remove('open');archive.scrollTop=0;
+   archive.dataset.openState='closed';
+   document.getElementById('continuumFocus')?.classList.remove('open');
+   return;
+  }
+  if(event.key==='Escape'&&archive?.classList.contains('open')){
+   event.preventDefault();event.stopImmediatePropagation();
+   if(typeof window.__guanfuCloseKnowledgeArchive==='function'){
+    try{window.__guanfuCloseKnowledgeArchive();}catch(error){console.error('[GUANFU_ARCHIVE_CLOSE] Escape close failed.',error);}
+   }
+   archive.classList.remove('open');archive.scrollTop=0;archive.dataset.openState='closed';
+   document.getElementById('continuumFocus')?.classList.remove('open');
+   return;
+  }
   if(!archive||!evidence){
    console.error('[GUANFU_ARCHIVE_FALLBACK] Archive DOM missing.',{archive:!!archive,evidence:!!evidence});
    window.alert('知识档案界面组件缺失，请刷新页面并反馈此错误。');
