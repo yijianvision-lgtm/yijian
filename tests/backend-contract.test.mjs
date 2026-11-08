@@ -134,3 +134,8 @@ assert.ok(local.includes('legacyRelationType'), "Legacy free-form relation label
 assert.ok(local.includes('const comparable=x=>JSON.stringify(x??null)'), "Node version comparison must include every persisted semantic field.");
 assert.ok(local.includes('parentPlacementId'), "Framework membership must be modeled independently from node parentId.");
 assert.ok(local.includes('explorationSteps'), "Exploration traversal must be persisted separately from knowledge object identity.");
+
+assert.match(worker, /const supportedPath = \[["']\/analyze["'], ["']\/coach["'], ["']\/mnemonic["'], ["']\/research["'], ["']\/chat["']\]/, "The /chat route must pass the Worker allowlist.");
+assert.match(worker, /env\.CLAUDE_API_KEY/, "Claude must use a server-side secret.");
+assert.match(worker, /https:\/\/api\.anthropic\.com\/v1\/messages/, "Claude Messages API adapter must exist.");
+assert.match(worker, /provider === "claude"/, "The chat gateway must select the requested provider.");

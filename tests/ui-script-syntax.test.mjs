@@ -101,3 +101,8 @@ console.log("Checked " + scripts.length + " inline scripts and V3-A exploration 
 
 assert.ok(html.includes("document.getElementById('search').addEventListener('click',()=>open('globalSearch'))"), "Global search should open only after an explicit click, not merely when the page or input receives focus.");
 assert.ok(!html.includes("document.getElementById('search').addEventListener('focus',()=>open('globalSearch'))"), "Global search must not auto-open on focus during page entry.");
+
+assert.ok(html.includes('id="v39-sphere-projected-core-anchor-and-quiet-menu"'), "V39 must use the final authoritative core alignment and quiet menu styles.");
+assert.ok(html.includes("function updateCoreScreenAnchor()"), "The core heading must follow the selected sphere's projected screen coordinates.");
+assert.ok(html.includes("updateCoreScreenAnchor();renderer.render(scene,camera)"), "The projected anchor must refresh during the 3D render loop.");
+assert.ok(html.includes("masteryMenu.classList.toggle('opens-left'"), "The status menu must flip inward near the viewport edge.");

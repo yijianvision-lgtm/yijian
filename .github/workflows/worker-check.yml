@@ -59,7 +59,7 @@ jobs:
           missing = [item for item in required_local if item not in local]
           if missing:
               raise SystemExit("Missing local backend contracts: " + ", ".join(missing))
-          required_worker = ['"/analyze"', '"/coach"', '"/mnemonic"', '"/research"', '"/share"']
+          required_worker = ['"/analyze"', '"/coach"', '"/mnemonic"', '"/research"', '"/share"', '"/chat"']
           missing = [item for item in required_worker if item not in worker]
           if missing:
               raise SystemExit("Missing Worker routes: " + ", ".join(missing))
