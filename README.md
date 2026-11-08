@@ -110,6 +110,7 @@ V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版�
 ## MIND V3.2｜架构一致性审查与规范校准
 
 - [V3.2 架构一致性审查报告](docs/MIND-V3.2-ARCHITECTURE-CONSISTENCY-REVIEW.md) — 含架构总览图、四向/四维对照图、对象/树/网/地图关系图、多路径回放图、AI纠错审核流程图及逐图解说。
+- [V3.2 数据层现状核对](docs/MIND-V3.2-DATA-LAYER-AUDIT.md) — 对照真实 IndexedDB stores、API、自动化测试和预览 UI，区分后台已存在与前端未接入的能力。
 - [V3.1 正式架构审议变更清单](docs/MIND-V3.1-ARCHITECTURE-DECISIONS.md) — 13 项 old / merge / new / later 用户决定。
 - [V3.1 统一产品架构与 UI 设计任务书](docs/MIND-DESIGN-TASKBOOK-V3.1.md) — 先统一架构，再进入 UI 设计。
 - [产品与工程 Skill 1.1](docs/NEBULA-SKILL.md) — 已校准旧四向术语、时间维度和视觉边界。
