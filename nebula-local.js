@@ -931,6 +931,7 @@ Object.assign(NEBULA_LOCAL,{
     const messages=Array.isArray(payload.messages)?payload.messages.slice(-22):[];
     if(!messages.length)throw new Error("学习对话不能为空。");
     return callNebulaWorker(endpoint,token,"/chat",{body:{
+      provider:payload.provider==="claude"?"claude":"deepseek",
       mode:payload.mode||"all",
       context:String(payload.context||"").slice(0,9000),
       messages:messages.map(item=>({role:item.role==="assistant"?"assistant":"user",content:String(item.content||"").slice(0,12000)}))

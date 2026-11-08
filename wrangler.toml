@@ -9,3 +9,4 @@ DEEPSEEK_MODEL = "deepseek-v4-pro"
 # Secrets are configured separately and are never committed:
 # npx wrangler secret put DEEPSEEK_API_KEY
 # npx wrangler secret put NEBULA_SYNC_TOKEN
+# npx wrangler secret put CLAUDE_API_KEY

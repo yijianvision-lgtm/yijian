@@ -139,3 +139,5 @@ assert.match(worker, /const supportedPath = \[["']\/analyze["'], ["']\/coach["']
 assert.match(worker, /env\.CLAUDE_API_KEY/, "Claude must use a server-side secret.");
 assert.match(worker, /https:\/\/api\.anthropic\.com\/v1\/messages/, "Claude Messages API adapter must exist.");
 assert.match(worker, /provider === "claude"/, "The chat gateway must select the requested provider.");
+
+assert.match(local, /provider:payload\.provider===\"claude\"\?\"claude\":\"deepseek\"/, "The local chat bridge must pass through an explicit DeepSeek or Claude provider choice.");
