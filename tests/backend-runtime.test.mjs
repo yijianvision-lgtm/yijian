@@ -128,7 +128,7 @@ await api.saveGraph([{ id: "keep", name: "Keep current data" }, { id: "base", na
 await api.restoreFullBackup(backup.blob, { mode: "merge", preferIncoming: true });
 let graph = await api.loadGraph();
 assert.ok(graph.nodes.some(node => node.id === "keep"), "Incoming-preferred preview sync must preserve preview-only nodes.");
-assert.equal(graph.nodes.find(node => node.id === "base")?.name, "Base", "Incoming-preferred preview sync must refresh matching formal nodes from production.");
+assert.equal(graph.nodes.find(node => node.id === "base")?.name, "Base knowledge", "Incoming-preferred preview sync must refresh matching formal nodes from production.");
 
 await api.restoreFullBackup(backup.blob, { mode: "replace" });
 graph = await api.loadGraph();
