@@ -1,77 +1,169 @@
-# NEBULA Skill 1.0 — Product & Engineering Specification
+# 观复 Mind｜产品与工程 Skill 1.1
 
-> **最高原则（优先级高于本文件其余具体要求）：** 本项目产品主名为「观复 Mind」。实施任何设计或开发前，必须先阅读 [《观复 Mind｜最高设计总纲》](GUANFU-MIND-DESIGN-CHARTER.md)。本文件是技术与实现补充，不得与最高总纲冲突。产品核心是知识过滤与个人思维框架建立，认知顺序为「定其位 → 联其缘 → 生其相 → 归其一」。三维宇宙是空间界面，框架是结果，过滤才是核心工程。
+> **最高依据：** 实施任何产品、架构、交互或工程工作前，必须遵循 [《观复 Mind｜最高设计总纲》](GUANFU-MIND-DESIGN-CHARTER.md)、[V3.1 架构审议正式变更清单](MIND-V3.1-ARCHITECTURE-DECISIONS.md)、[V3.1 统一产品架构与 UI 设计任务书](MIND-DESIGN-TASKBOOK-V3.1.md) 与 [V3.2 架构一致性审查](MIND-V3.2-ARCHITECTURE-CONSISTENCY-REVIEW.md)。本 Skill 是实现补充，不得覆盖用户已审议的 old / merge / new / later 决定。
 
-## Role
-Act as a 3D interactive visualization designer, knowledge-graph architect, logical-thinking-system designer, Three.js/WebGL frontend engineer, and personal knowledge-management system designer.
+## 1. 产品身份与目标
 
-## Product identity
-NEBULA — 3D Knowledge Universe is a long-term, extensible personal knowledge system. It must feel like exploring a universe of ideas, not browsing a conventional mind map.
+- 中文主名：**观复**
+- 英文副名：**Mind**
+- NEBULA：工程代号，不取代产品主名。
+- 产品是认知定位与知识过滤界面，不是普通脑图、仪表盘或炫技知识图谱。
+- 核心目标：建立用户自己的个人思维框架，让用户聚焦一点仍知全局。
+- 核心顺序固定为：**定其位 → 联其缘 → 生其相 → 归其一**。
+- “道生一”等哲学思想可作理念背景，不得替换或另立第二套产品操作流程。
 
-## Visual direction
-- Deep black, navy, and violet cosmic environment.
-- Luminous knowledge bodies, light-line connections, spatial depth, star dust, glow, and restrained particles.
-- Premium, immersive, legible interface; visual effects must not compromise usability.
+## 2. 四向探索：探索行为
 
-## True 3D is mandatory
-- Use Three.js / WebGL or an equivalent real 3D engine.
-- Nodes must occupy meaningful positions in all three axes (X, Y, Z).
-- Support orbit/drag rotation, zoom, node selection, spatial repositioning, and camera reset.
-- Do not fake 3D with a flat 2D canvas, CSS transforms, or a coplanar node layout.
+每个当前知识对象都可成为新的探索中心，并重新开启四向：
 
-## Four-direction thinking panels
-When a node is selected, show four translucent glass-like floating panels around or near that node. These are spatial overlays, not a conventional fixed sidebar.
-- **前瞻:** prerequisite knowledge, historical background, origins, formation conditions, and causes.
-- **顾后:** subsequent development, consequences, wider impacts, long-term evolution, and plausible futures.
-- **左顾:** lateral connections, related concepts, other disciplines, comparable cases, and analogies.
-- **右盼:** opposing views, reverse reasoning, limitations, contradictions, and alternative explanations.
-Each node must receive content-specific, independent, logically useful analysis. Never fill the panels with generic repeated templates or copied reference text.
+### 时间轴
+- **瞻前：** 向过去追溯起源、前提、形成条件、历史背景及相关人物、思想、事件和环境。
+- **顾后：** 追踪已经发生、可考察的继承、演变、后续影响、争论和历史结果。不得把未经验证的未来预测混入历史后续。
 
-## Knowledge relationships
-- One-to-many and many-to-many relationships.
-- Directed and bidirectional links.
-- Cross-topic membership.
-- Causal, historical-inheritance, conceptual-evolution, conflicting, and complementary relationships.
-- A node may belong to multiple knowledge systems simultaneously.
-Do not silently rewrite or remove user-authored relationships.
+### 纵深轴
+- **向内：** 深入对象自身，分析定义、边界、组成、材料、结构、工艺、机制、形成主体及组成部分。
+- **向外：** 将对象放回同时代及更广阔世界，探索跨人物、群体、政治、经济、文学、艺术、科技、制度、文化、地域和学科的关联。
 
-## Time as a dimension
-Store origin dates/periods, development periods, key events, prerequisites, subsequent effects, and historical evolution paths. Provide a timeline along the bottom of the experience. Selecting a timeline event should locate and select the corresponding node. The long-term direction is a fourth temporal dimension layered onto the 3D knowledge space.
+### 递归规则
+1. 每个新发现对象都可成为新的探索中心。
+2. 每个方向可有零个、一个或多个结果；不要求每个对象填满四向。
+3. 四向是探索入口，不是关系类型的穷尽分类。
+4. 时间先后不自动等于因果；同时代共存不自动等于影响。
+5. 每次进入新对象，保留来路、进入方向、关系上下文和返回能力。
+6. 不预设固定探索层数，也不一次性加载所有知识。
 
-## Modes
-1. **3D Universe Mode:** spatial exploration of the knowledge graph.
-2. **Logical Structure Mode:** a more explicit view of logical organization.
-Both modes must use the same underlying knowledge data.
+**历史术语说明：** 旧版 Skill 中“前瞻/顾后/左顾/右盼”及四块玻璃面板定义已废止，不再作为独立产品模型。原有有效含义已经合并到瞻前、顾后、向内、向外。不得恢复旧四向面板体系。
 
-## Node and data management
-Support creating, editing, and deleting nodes; editing four-direction content and time data; changing XYZ coordinates; creating and removing links; searching; importing and exporting portable JSON.
-When adding a node, help the user develop its four-direction analysis. Do not alter existing user content or relationships without permission.
-Use a durable local-first data layer such as IndexedDB, with localStorage only where appropriate. Keep data exportable and avoid vendor lock-in.
+## 3. 四维定位：全局位置语义
 
-## Suggested data model
-A node should support: stable id; title and body/summary; topic/category tags; x, y, z coordinates; four-direction content (foresight, aftermath, lateral, counterview); time metadata and historical events; created/updated timestamps.
-A relationship should support: stable id; source node id; target node id; relationship type; directionality; optional label and notes.
-The schema may evolve, but migrations must preserve existing data.
+四维回答“对象在整体认知宇宙中处于什么位置”，与四向探索严格分层：
 
-## Technical direction
-- HTML, CSS, JavaScript / TypeScript.
-- Three.js and WebGL for the 3D scene.
-- JSON for portable interchange.
-- IndexedDB / localStorage for local persistence.
-- Keep rendering, graph data, interaction, and persistence concerns modular.
+1. **谱系：** 所属框架、主干、分支、上下位、组成和上下文角色。
+2. **时间：** 历史时间、事件时间、时代背景、有效时间和演变。
+3. **空间／世界：** 地理位置、区域、场景、制度环境、文化世界或知识领域。必须标明语义类型。
+4. **横向关联：** 跨层、跨分支、跨框架、跨文献、跨学科的有类型关系。
 
-## Delivery workflow
-1. Understand the supplied material.
-2. Extract meaningful knowledge nodes.
-3. Map explicit and inferred relationships, distinguishing inference from user-provided facts.
-4. Develop specific four-direction thinking for each node.
-5. Build a time sequence where evidence supports one.
-6. Generate or update the 3D knowledge universe.
-7. Deliver a runnable web project and explain how to run it.
-8. Clearly label incomplete features; never claim unimplemented functionality is complete.
+约束：
+- 四维不是四向按钮，也不是必须填满的四个字段。
+- 未知、待确认、不适用均是合法状态。
+- 知识领域标签不等于地理空间；同领域不代表空间相邻。
+- 画面 XYZ 坐标不决定知识身份、谱系位置或语义关系。
+- 时间定位与用户学习/导入时间分开。
 
-## Non-negotiable principles
-- Never downgrade the product to a conventional 2D mind map or tree.
-- Preserve user data and relationships.
-- Design for long-term expansion and portability.
-- Prioritize a real, navigable 3D spatial model.
+## 4. 稳定知识身份、框架树与关系网络
+
+### 稳定知识对象
+知识对象拥有稳定 ID、名称/别名、对象类型及可维护的当前解释。身份不能由标题、路径或 XYZ 坐标生成。
+
+### 主张与解释
+同一对象可以承载多个来源、主体或语境下的主张/解释。主张应保留提出者、来源、适用语境、时间范围、状态和版本。不同主张可以互补、冲突或适用范围不同，不得为了“合并对象”而抹掉差异。
+
+### 框架树
+框架树表达某个特定框架中的主干、分支、上下位和结构归属。对象可出现在多个框架上下文中；框架中的位置和角色不等于对象身份。不得把单一 parentId 当作全局唯一归属。
+
+### 关系网络
+关系网络表达对象之间有类型的多对多语义关系。关系应尽可能有类型、方向（适用时）、上下文、理由、证据和审核状态。父子层级、横向关系、空间邻近不得混成同一类边。
+
+### 三维空间地图
+真实 Three.js/WebGL XYZ 空间用于投影、聚焦、探索和导航。布局坐标是呈现信息，不是知识事实；可按视图重新布局，但不能因此改变知识身份、关系或框架归属。
+
+## 5. 探索路径与认知回放
+
+探索路径记录用户如何抵达对象，而不是创建另一个对象。概念上可记录起点、当前焦点、访问序列、每步进入方向、关系上下文、来源引用、时间和返回点。
+
+- 多条路径可抵达同一稳定知识对象。
+- 路径可分叉、回退、切换和继续深入。
+- 路径不自动改变知识对象、框架位置或关系事实。
+- 回放可聚合知识版本、路径事件、审核决策和学习记录，但必须保留事件类型。
+- 回放默认只读；恢复旧版本须用户明确执行。
+- 知识历史、用户学习时间、历史事件时间不可混为一个时间字段。
+
+## 6. 原始输入、专业纠错与 AI 认知分析
+
+### 原文保全
+原始文件、原始转写、原文片段和定位信息必须保留。任何提取、规范化或纠错都不得覆盖原始来源。
+
+### 专业语境纠错
+流程固定为：
+
+**原始识别保留 → 专业语境分析 → 候选纠正 → 展示理由/来源/不确定性 → 用户确认**
+
+- 覆盖语音识别、文字输入和文档提取中的专业术语、人名、作品名、年代和概念误识。
+- 用户确认后保存“原始表达 ↔ 确认修正”的可追溯关系。
+- 未确认不得静默替换；无法判断时保留候选或待确认状态。
+- 不得凭专业背景臆造来源或确定答案。
+
+### AI 认知分析
+AI 纳入既有过滤顺序，执行专业语境识别、题眼/底层矛盾提取、定位建议、结构拆解、四向探索建议、四维定位建议、重复/冲突/缺口识别和整体归纳。
+
+AI 必须区分：
+- 原始来源事实；
+- 用户观点；
+- AI 推断；
+- 待确认建议；
+- 用户已确认内容。
+
+AI 只生成候选/ReviewProposal。正式知识、关系或框架变更必须经用户审核；不得静默合并、覆盖、重设父级或更改正式框架。
+
+## 7. 口诀机制
+
+口诀是可选知识压缩索引：
+- 用户可输入，AI 可提出候选。
+- 用户确认后才成为正式索引。
+- 一个口诀可关联多个知识对象，一个对象可关联多个口诀。
+- 口诀相似不代表知识相同，不得自动合并。
+- 口诀不强制，不替代完整知识、推理、来源和证据。
+
+## 8. 来源与证据边界
+
+必须保留来源记录、原文定位、证据状态、不确定性和 AI 推断标识。关系证据应能回链到来源与定位。
+
+**第 10 项独立证据可靠性体系仍处于 later：** 不新增独立证据评分、来源权重或自动可信度排序引擎，除非用户未来另行批准。保留现有追溯能力，不得因暂缓而删除。
+
+## 9. 空间化与视觉规范（old，未经授权不得改）
+
+- 保留用户已确认的原版深黑宇宙、克制低亮度、真实三维空间、柔和受控微光、清晰文字、低干扰小地图与收敛侧栏。
+- 不擅自新增星云、星球、轨道、粒子、霓虹、大光环、厚重卡片或常驻 HUD。
+- 不擅自修改 Logo、主题、主色、节点样式、光效、导航结构或空间组织。
+- 不把 DeepSeek 文字代码框、文字四维图、口诀模板或答题模板直接转成 UI。
+- 四向探索与四维定位必须在语义上分层；任何 UI 表达须等架构通过后单独设计并经用户确认。
+- 逻辑结构视图与三维宇宙共享稳定知识身份和关系，但不能将两者强行合成同一套视觉结构。
+
+## 10. 本地优先与隐私
+
+- 默认本地优先，知识图谱、讲义和提取内容保存在用户本地浏览器 IndexedDB。
+- 无注册、无登录、无自动云端整库同步；不得擅自引入 Clerk、Supabase、D1、R2 或百度网盘。
+- 网页不得静默扫描本机文件夹；只能在用户主动选择/授权后访问。
+- 只有用户主动调用 AI 分析时，才发送用户明确选中的最小必要文本。
+- 不索取账号密码、Cookie、验证码或模型密钥；不宣称端到端加密。
+- 数据备份、恢复、导出应由用户主动操作并提供清晰状态。
+
+## 11. 工程与数据迁移原则
+
+- 继续使用 IndexedDB 等可移植本地存储；保留旧 localStorage 兼容路径。
+- 原始资料与提取候选分开；正式知识与审核提案分开。
+- 数据模型演进必须增量迁移，保留旧数据、备份和回滚方案。
+- 在确认真实代码接口前，不得只凭历史文档假定实体或字段已实现。
+- 概念模型不等于数据库 schema。任何 schema 变更都需单独列明字段、迁移、旧数据兼容、测试和回滚，并取得授权。
+- 代码存在、UI 已接入、服务已部署、自动化测试通过、真实浏览器端到端验收通过，必须分别标记。
+
+## 12. 工作交付规范
+
+每轮项目汇报必须说明：
+1. 用户提出的问题；
+2. 原因定位（未确认须标待定位）；
+3. 正在执行方案与进度（已完成/进行中/待验证）；
+4. 测试、部署状态与可打开预览链接；
+5. 可能遇到的困难及应对；
+6. 整体任务列表中的当前位置与下一步。
+
+每个完成版本单独提交，提供可核实的文件/提交/预览链接。自动化检查成功不得描述为真实浏览器验收成功。架构文档提交不得描述为 UI 或产品功能已上线。
+
+## 13. 阶段门
+
+- **阶段 A｜统一产品架构：** 统一术语、对象边界、树/网/地图、四向/四维、路径、AI审核、纠错、口诀和回放。未通过前不启动 UI 设计。
+- **阶段 B｜数据与交互规格：** 对照真实代码确定实体复用/新增、路径与多框架身份规则、纠错映射、事件回放、备份和迁移方案。不得直接实施 schema。
+- **阶段 C｜UI 设计：** 仅在架构通过后，在原版空间界面基础上设计，逐项由用户确认。
+- **阶段 D｜工程实现：** 必须另行授权；按小版本提交并完成自动化、浏览器实测和回滚说明。
+
+**总验收原则：身份稳定、关系有型、路径可追、定位不丢、原文不改、AI 不越权、视觉不擅改。**
