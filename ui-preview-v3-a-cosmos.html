@@ -1237,6 +1237,8 @@ function updateCoreMasteryUI(){
  if(label)label.textContent=status;
  if(toggle){toggle.setAttribute('aria-label','设置学习状态：'+status);toggle.title='学习状态：'+status+'（点击更改）';toggle.classList.toggle('is-open',!document.getElementById('masteryStatusMenu')?.hidden);}
  if(dot)dot.dataset.status=status;
+ const statusMenu=document.getElementById('masteryStatusMenu');
+ statusMenu?.querySelectorAll('[data-mastery-status]').forEach(item=>item.setAttribute('aria-checked',String(item.dataset.masteryStatus===status)));
  const card=document.getElementById('continuumCoreCard');
  card?.classList.toggle('is-mastered',status==='已掌握');
  if(spheres[i])spheres[i].userData.currentKnowledgeStatus=status;
