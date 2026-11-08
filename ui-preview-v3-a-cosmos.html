@@ -1253,7 +1253,7 @@ function openFormalDirectionTargets(direction,targets){
   const title=document.createElement('strong');title.textContent=node.name||node.coreWord||'未命名知识';
   const desc=document.createElement('small');desc.textContent=(node.desc||'暂无说明')+' · 稳定知识对象';
   button.append(title,desc);
-  button.addEventListener('click',async()=>{try{await recordFormalExploration(targetIndex,direction);panel.hidden=true;selectNode(targetIndex,true);}catch(error){toast('探索路径未能保存：'+error.message);}});
+  button.addEventListener('click',async()=>{try{await recordFormalExploration(targetIndex,direction);panel.hidden=true;selectNode(targetIndex,true);openKnowledgeArchive();}catch(error){toast('探索路径未能保存：'+error.message);}});
   list.append(button);
  });
  panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -1262,9 +1262,9 @@ function navigateContinuum(direction){
  if(!['forward','backward','left','right'].includes(direction))return;
  const links=directionalMap[selected]||{},value=links[direction],targets=(Array.isArray(value)?value:(Number.isInteger(value)?[value]:[])).filter(index=>Number.isInteger(index)&&nodes[index]);
  if(!isDemoUniverse){
-  if(targets.length===1){recordFormalExploration(targets[0],direction).then(()=>selectNode(targets[0],true)).catch(error=>toast('探索路径未能保存：'+error.message));return;}
+  if(targets.length===1){recordFormalExploration(targets[0],direction).then(()=>{selectNode(targets[0],true);openKnowledgeArchive();}).catch(error=>toast('探索路径未能保存：'+error.message));return;}
   if(targets.length>1){openFormalDirectionTargets(direction,targets);return;}
-  toast('这个方向暂时没有已记录的关系目标；不会自动补造正式知识。');return;
+  toast('这个方向暂时没有已记录的关系目标；将打开当前核心档案，不会自动补造正式知识。');openKnowledgeArchive();return;
  }
  openContinuumChoices(direction);
 }

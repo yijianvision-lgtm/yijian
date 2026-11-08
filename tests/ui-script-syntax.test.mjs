@@ -49,6 +49,9 @@ assert.ok(html.includes("#continuumFocus.quadrants-retracting .continuum-core{")
 assert.ok(html.includes("var(--core-minimap-dx,0px)") && html.includes("var(--core-minimap-dy,0px)"), "The core point must travel toward the minimap center rather than merely disappear.");
 assert.ok(html.includes("corePoint.style.setProperty('--core-minimap-dx'") && html.includes("corePoint.style.setProperty('--core-minimap-dy'"), "The core-to-minimap movement must use measured on-screen positions.");
 assert.ok(html.includes("function openKnowledgeArchive(){"), "Both archive entry points must share a single archive-opening flow.");
+assert.ok(html.includes("selectNode(targetIndex,true);openKnowledgeArchive();"), "Choosing a confirmed directional target must enter its knowledge archive.");
+assert.ok(html.includes("selectNode(targets[0],true);openKnowledgeArchive();"), "A single confirmed directional target must enter its knowledge archive.");
+assert.ok(html.includes("将打开当前核心档案，不会自动补造正式知识。');openKnowledgeArchive();return;"), "An empty formal direction must still provide access to the current knowledge archive without inventing a relation.");
 
 assert.ok(html.includes("archive.scrollTop=0;") && html.includes("host.replaceChildren(safeText('p','正在打开知识档案…'));") && html.includes("archive.classList.add('open');") && html.includes("retractFocusToMinimap();") && html.includes("loadKnowledgeArchiveEvidence(nodeId,host);"), "The archive must open immediately while quadrant retraction and evidence loading continue without blocking.");
 assert.ok(html.includes("renderContinuum();\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
