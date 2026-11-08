@@ -44,7 +44,7 @@ assert.ok(html.includes("var(--core-minimap-dx,0px)") && html.includes("var(--co
 assert.ok(html.includes("corePoint.style.setProperty('--core-minimap-dx'") && html.includes("corePoint.style.setProperty('--core-minimap-dy'"), "The core-to-minimap movement must use measured on-screen positions.");
 assert.ok(html.includes("async function openKnowledgeArchive(){"), "Both archive entry points must share a single archive-opening flow.");
 
-assert.ok(/await retractFocusToMinimap\(\);\s*document\.querySelectorAll\('\.overlay\.open'\)\.forEach\(panel=>\{if\(panel!==archive\)panel\.classList\.remove\('open'\)\}\);\s*archive\.classList\.add\('open'\);/.test(html), "The archive must appear after the core and four directions finish retracting, with competing overlays cleared.");
+assert.ok(/document\.querySelectorAll\('\.overlay\.open'\)\.forEach\(panel=>\{if\(panel!==archive\)panel\.classList\.remove\('open'\)\}\);\s*archive\.scrollTop=0;\s*host\.replaceChildren\(safeText\('p','正在打开知识档案…'\)\);\s*archive\.classList\.add\('open'\);\s*retractFocusToMinimap\(\);\s*loadKnowledgeArchiveEvidence\(nodeId,host\);/.test(html), "The archive must open immediately while quadrant retraction and evidence loading continue without blocking.");
 assert.ok(html.includes("renderContinuum();\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
 assert.ok(html.includes(".overlay.open{display:block}#nodeDetail{z-index:60!important}.overlay-head{"), "The knowledge archive must stack above the full-screen #continuumFocus layer (z-index 40).");
 const archiveZIndex = Number(html.match(/#nodeDetail\{z-index:(\d+)!important\}/)?.[1] || 0);
@@ -55,7 +55,10 @@ assert.ok(html.includes(".overlay-head{display:flex;align-items:end;justify-cont
 assert.ok(html.includes("document.querySelectorAll('.overlay.open').forEach(panel=>{if(panel!==archive)panel.classList.remove('open')});"), "Opening the archive must close any previously open overlay so it cannot cover the archive.");
 assert.ok(html.includes("const ids=['dashboard','hierarchy','sources','lab','learning','review','filter-workbench','backup','globalSearch','overview','nodeDetail'];"), "The shared close action must include the knowledge archive so its Return button and Escape key both work.");
 assert.ok(html.includes("host.append(safeText('p','正在读取关联来源…'));"), "The archive must show a visible loading state while original sources are resolved.");
-assert.ok(html.includes("corePoint.addEventListener('transitionend',onTransitionEnd);"), "The archive-opening flow must wait for the core-to-minimap transition.");
+assert.ok(html.includes("corePoint.addEventListener('transitionend',onTransitionEnd);"), "The core-to-minimap transition must remain event-driven.");
+assert.ok(html.includes("function closeKnowledgeArchive(){") && html.includes("if(b.closest('#nodeDetail'))closeKnowledgeArchive();else closeAll();"), "The archive Return button must close only the archive and preserve the collapsed universe state.");
+assert.ok(html.includes("if(!closeKnowledgeArchive())closeAll();"), "Escape must close the archive first without closing or resetting the underlying universe.");
+assert.ok(html.includes("loadKnowledgeArchiveEvidence(nodeId,host);"), "Evidence loading must be separated from the archive's immediate opening transition.");
 
 
 const animateStart = html.indexOf("function animate(){");
