@@ -107,10 +107,12 @@ V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版�
 
 
 
-## MIND V3.1｜最新架构审议与设计任务书
+## MIND V3.2｜架构一致性审查与规范校准
 
-- [V3.1 正式架构审议变更清单](docs/MIND-V3.1-ARCHITECTURE-DECISIONS.md) — 逐项记录 13 项 old / merge / new / later 决定及本轮边界。
+- [V3.2 架构一致性审查报告](docs/MIND-V3.2-ARCHITECTURE-CONSISTENCY-REVIEW.md) — 含架构总览图、四向/四维对照图、对象/树/网/地图关系图、多路径回放图、AI纠错审核流程图及逐图解说。
+- [V3.1 正式架构审议变更清单](docs/MIND-V3.1-ARCHITECTURE-DECISIONS.md) — 13 项 old / merge / new / later 用户决定。
 - [V3.1 统一产品架构与 UI 设计任务书](docs/MIND-DESIGN-TASKBOOK-V3.1.md) — 先统一架构，再进入 UI 设计。
-- [最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md) — 已增加 V3.1 用户审议决议。
+- [产品与工程 Skill 1.1](docs/NEBULA-SKILL.md) — 已校准旧四向术语、时间维度和视觉边界。
+- [最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md)。
 
-**当前状态：文档已提交；架构统一阶段待审阅。未修改网站代码、UI、数据库或后台，也未启动 UI 改版。**
+**当前状态：阶段 A 架构审查与术语校准文档已提交；多框架位置、主张语境与回放事件模型仍待阶段 B 数据规格审查。未修改网站 UI、产品代码、数据库或后台，未启动 UI 改版。**
