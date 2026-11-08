@@ -964,7 +964,8 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
  <section class="rail-card rail-bottom"><div class="eyebrow">DATA STATUS</div><div class="workspace-title">本地空间 · 预览模式</div><div class="workspace-meta">本地优先 · IndexedDB · 用户授权读取</div><div class="storage-line"><span></span></div><div class="workspace-meta">IndexedDB 本地保存 · 未启用云同步</div></section>
 </aside>
 <aside class="right-panel">
- <section class="rail-card"><div class="selected-head"><span class="eyebrow">SELECTED KNOWLEDGE</span><span class="eyebrow" id="selectedIndexLabel">演示空间</span></div><div class="selected-name" id="selectedName">系统思维</div><div class="selected-desc" id="selectedDesc">理解复杂系统中结构、反馈与演化之间的关系。</div><div class="chips"><span class="chip" id="selectedKindChip">演示节点</span><span class="chip" id="selectedSourceChip">无正式来源</span><span class="chip" id="selectedRelationCount">已关联 12 项</span></div><button class="action-btn" id="openNodeDetail" style="width:100%;margin-top:12px">打开知识详情 ↗</button><div style="margin-top:13px"><div class="kv"><span>所属层级</span><strong id="selectedLevel">演示层级</strong></div><div class="kv"><span>首次记录</span><strong id="selectedCreatedAt">未记录</strong></div><div class="kv"><span>关联来源</span><strong id="selectedSourceCount">无正式来源</strong></div></div></section>
+ <section class="rail-card"><div class="selected-head"><span class="eyebrow">SELECTED KNOWLEDGE</span><span class="eyebrow" id="selectedIndexLabel">演示空间</span></div><div class="selected-name" id="selectedName">系统思维</div><div class="selected-desc" id="selectedDesc">理解复杂系统中结构、反馈与演化之间的关系。</div><div class="chips"><span class="chip" id="selectedKindChip">演示节点</span><span class="chip" id="selectedSourceChip">无正式来源</span><span class="chip" id="selectedRelationCount">已关联 12 项</span></div><button class="action-btn" id="openNodeDetail" style="width:100%;margin-top:12px">打开知识详情 ↗</button>
+<button class="quietbtn" id="syncProductionSnapshot" type="button" style="width:100%;margin-top:7px;font-size:9px">从正式版复制知识快照到预览</button><div style="margin-top:13px"><div class="kv"><span>所属层级</span><strong id="selectedLevel">演示层级</strong></div><div class="kv"><span>首次记录</span><strong id="selectedCreatedAt">未记录</strong></div><div class="kv"><span>关联来源</span><strong id="selectedSourceCount">无正式来源</strong></div></div></section>
  <section class="rail-card"><div class="selected-head"><span class="eyebrow">SPATIAL ORIENTATION</span><span class="eyebrow">MINI MAP</span></div><div class="mini-map"><canvas id="miniMap"></canvas><div class="minimap-quadrant-compass" aria-label="四向探索缩略图"><span class="mini-compass-forward">瞻前</span><span class="mini-compass-backward">顾后</span><span class="mini-compass-inward">向内</span><span class="mini-compass-outward">向外</span><i></i></div><button class="minimap-quadrant-return" id="minimapQuadrantReturn" type="button" aria-label="重新展开四向探索">四向 ↗</button></div><div class="map-caption"><span>当前知识位置</span><span>点击节点定位</span></div></section>
  <section class="rail-card"><div class="eyebrow">FOUR DIRECTIONS</div><button class="direction-row" data-direction="瞻前"><span>瞻前 · 时间回溯</span><strong>查看 →</strong></button><button class="direction-row" data-direction="顾后"><span>顾后 · 时间延展</span><strong>查看 →</strong></button><button class="direction-row" data-direction="向内"><span>向内 · 深入本质</span><strong>查看 →</strong></button><button class="direction-row" data-direction="向外"><span>向外 · 外部世界</span><strong>查看 →</strong></button></section>
 </aside>
@@ -1309,7 +1310,7 @@ function openKnowledgeArchive(){
  renderContinuum();
  const archive=document.getElementById('nodeDetail');
  const host=document.getElementById('nodeEvidenceList');
- const nodeId=window.__guanfuSelectedNodeId;
+ const nodeId=localGraphNodes[selected]?.id??window.__guanfuSelectedNodeId??null;
  document.querySelectorAll('.overlay.open').forEach(panel=>{if(panel!==archive)panel.classList.remove('open')});
  archive.scrollTop=0;
  host.replaceChildren(safeText('p','正在打开知识档案…'));
@@ -1542,6 +1543,32 @@ async function connectLocalKnowledgeUniverse(){
   const state=document.getElementById("universeState");if(state)state.textContent="本地正式框架 · "+ordered.length+" 个节点";
  }catch(error){console.warn("Guanfu Mind local graph preview could not load:",error);localGraphNodes=[];localGraphRelations=[];localFramework=null;logicStack=[];isDemoUniverse=true;window.__guanfuSelectedNodeId=null;renderLogic();renderContinuum();const state=document.getElementById("universeState");if(state)state.textContent="本地框架读取失败 · "+error.message+" · 当前仅显示非正式演示空间";}
 }
+document.getElementById('syncProductionSnapshot')?.addEventListener('click',async()=>{
+ const button=document.getElementById('syncProductionSnapshot');
+ if(!button||button.dataset.busy==='true')return;
+ button.dataset.busy='true';button.disabled=true;button.textContent='正在安全读取正式数据…';
+ try{
+  // The source module opens the production DB without running legacy migrations or backfills.
+  const sourceModule=await import('./nebula-local.js?env=source');
+  const backup=await sourceModule.NEBULA_LOCAL.exportFullBackup();
+  const raw=await backup.blob.text();
+  const manifest=backup.manifest||{};
+  const graphRecords=Number(manifest.graph?.records||0);
+  if(!graphRecords)throw new Error('正式版本机数据库中没有可复制的知识图谱记录；预览数据未改变。');
+  button.textContent='正在合并到独立预览库…';
+  const result=await NEBULA_LOCAL.restoreFullBackup(raw,{mode:'merge'});
+  await connectLocalKnowledgeUniverse();
+  const graph=await NEBULA_LOCAL.loadGraph();
+  const count=graph?.nodes?.length||0;
+  if(!count)throw new Error('快照已读取，但没有恢复出可展示的知识节点。');
+  toast('正式知识快照已复制到预览库：'+count+' 个节点；正式数据未修改。');
+  button.textContent='已同步 '+count+' 个节点 · 可再次更新';
+ }catch(error){
+  console.error('Preview snapshot import failed:',error);
+  toast('同步未完成：'+error.message);
+  button.textContent='重试：从正式版复制知识快照';
+ }finally{button.dataset.busy='false';button.disabled=false;}
+});
 connectLocalKnowledgeUniverse();
 
 document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=e.target.value.trim();const i=nodes.findIndex(n=>n[0].includes(q));if(i>=0)selectNode(i);else toast(q?'没有找到匹配节点':'请输入搜索内容')}});

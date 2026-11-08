@@ -2,7 +2,8 @@
  * All knowledge, source files and extracted text stay in this browser's IndexedDB.
  * No login, cloud database, account service or remote file storage.
  */
-const DB_ENVIRONMENT = new URL(import.meta.url).searchParams.get("env") === "preview" ? "preview" : "production";
+const DB_MODE = new URL(import.meta.url).searchParams.get("env") || "production";
+const DB_ENVIRONMENT = DB_MODE === "preview" ? "preview" : "production";
 const DB_NAME = DB_ENVIRONMENT === "preview" ? "nebula_local_preview_v1" : "nebula_local_v2";
 const DB_VERSION = 6;
 const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence", "frameworkPlacements", "explorationPaths", "explorationSteps"];
@@ -296,7 +297,7 @@ async function migrateLegacyReferences() {
   } catch (e) { console.warn("NEBULA legacy reference migration skipped:", e); }
 }
 globalThis.NEBULA_LOCAL = NEBULA_LOCAL;
-(DB_ENVIRONMENT === "preview" ? Promise.resolve() : migrateLegacyReferences()).finally(() => { backfillSourceCatalog(); window.dispatchEvent(new CustomEvent("nebula-local-ready")); });
+(DB_MODE === "source" ? Promise.resolve() : (DB_ENVIRONMENT === "preview" ? Promise.resolve() : migrateLegacyReferences()).then(() => backfillSourceCatalog())).finally(() => { window.dispatchEvent(new CustomEvent("nebula-local-ready")); });
 
 
 // --- Cognitive OS persistence layer (schema v3) ----------------------------
