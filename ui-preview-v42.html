@@ -3017,7 +3017,7 @@ document.addEventListener('click',function(event){
 #continuumFocus .continuum-core-title{
   display:block!important;position:relative!important;
   width:max-content!important;max-width:100%!important;margin:0!important;padding:0!important;
-  font-size:clamp(38px,2.8vw,42px)!important;
+  font-size:clamp(34px,2.45vw,37px)!important;
   line-height:1.18!important;font-weight:500!important;letter-spacing:.035em!important;
   text-align:center!important;white-space:nowrap!important;overflow:visible!important;
   z-index:11!important;color:rgba(245,249,252,.99)!important;
@@ -3040,10 +3040,25 @@ document.addEventListener('click',function(event){
 }
 @media(max-width:760px){
   #continuumFocus .continuum-stage>.continuum-core{width:260px!important;max-width:82vw!important}
-  #continuumFocus .continuum-core-title{font-size:clamp(32px,7.4vw,36px)!important}
+  #continuumFocus .continuum-core-title{font-size:clamp(29px,6.6vw,32px)!important}
   #continuumFocus .continuum-core-heading-row #masteryStatusToggle{left:calc(100% + 5px)!important}
   #continuumFocus .continuum-core-heading-row #masteryStatusMenu{left:calc(100% + 33px)!important}
 }
 </style>
 
+
+<style id="v42-soft-glow-refinement">
+/* Keep the approved shared center; soften the rear light and clarify the foreground word. */
+#continuumFocus .continuum-core:after{
+  opacity:.52!important;filter:blur(14px)!important;
+  background:radial-gradient(ellipse,rgba(190,211,225,.026),rgba(190,211,225,.009) 46%,transparent 78%)!important;
+}
+#continuumFocus .continuum-core:before{
+  opacity:.66!important;
+  box-shadow:0 0 4px rgba(238,247,251,.48),0 0 10px rgba(222,239,248,.14)!important;
+}
+#continuumFocus .continuum-core-title{
+  text-shadow:0 1px 5px rgba(3,7,11,.94),0 0 1px rgba(3,7,11,.84)!important;
+}
+</style>
 </body></html>
