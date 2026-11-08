@@ -72,6 +72,9 @@ assert.ok(html.includes("document.getElementById('continuumFocus')?.classList.ad
 assert.ok(!html.includes("document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'))));"), "A duplicate global close listener must not race with the archive-specific return flow.");
 assert.ok(html.includes("if(!closeKnowledgeArchive())closeAll();"), "Escape must close the archive first without closing or resetting the underlying universe.");
 assert.ok(html.includes("loadKnowledgeArchiveEvidence(nodeId,host);"), "Evidence loading must be separated from the archive's immediate opening transition.");
+assert.ok(html.includes("archive.dataset.nodeId=String(nodeId??'');") && html.includes("archive.dataset.evidenceRequest=requestId;"), "Each archive evidence request must be bound to the exact selected node and a monotonically increasing request ID.");
+assert.ok(html.includes("const isCurrentRequest=()=>!!archive?.classList.contains('open')&&archive.dataset.evidenceRequest===requestId&&archive.dataset.nodeId===String(nodeId??'')&&host?.isConnected;"), "Late evidence responses must not overwrite a newer archive selection or a closed archive.");
+assert.ok(html.includes("if(isCurrentRequest()&&row.isConnected)row.querySelector('p').textContent="), "Late original-source locator responses must not mutate detached or outdated archive rows.");
 
 
 const animateStart = html.indexOf("function animate(){");

@@ -1295,11 +1295,15 @@ document.getElementById('continuumBack').onclick=()=>{if(focusCursor>0){focusCur
  return true;
 }
 async function loadKnowledgeArchiveEvidence(nodeId,host){
- if(!nodeId){host.replaceChildren(safeText('p','当前聚焦的是演示节点，不属于正式知识框架，也没有可回溯的真实来源。',''));return;}
+ const archive=document.getElementById('nodeDetail');
+ const requestId=String((Number(archive?.dataset.evidenceRequest||0)+1));
+ if(archive)archive.dataset.evidenceRequest=requestId;
+ const isCurrentRequest=()=>!!archive?.classList.contains('open')&&archive.dataset.evidenceRequest===requestId&&archive.dataset.nodeId===String(nodeId??'')&&host?.isConnected;
+ if(!nodeId){if(isCurrentRequest())host.replaceChildren(safeText('p','当前聚焦的是演示节点，不属于正式知识框架，也没有可回溯的真实来源。',''));return;}
  host.replaceChildren(safeText('p','正在读取关联来源…'));
  try{
   const resolved=await NEBULA_LOCAL.resolveNodeEvidence(nodeId);
-  if(!document.getElementById('nodeDetail')?.classList.contains('open'))return;
+  if(!isCurrentRequest())return;
   host.replaceChildren();
   if(!resolved.sources.length){host.append(safeText('p','该正式节点目前没有关联原始来源。可以在知识过滤审核后补充来源。'));return;}
   resolved.sources.forEach(entry=>{
@@ -1310,19 +1314,21 @@ async function loadKnowledgeArchiveEvidence(nodeId,host){
    row.append(safeText('b',name),safeText('small',location),safeText('p',entry.excerpt||'暂无可展示摘录。'));
    const action=safeText('button','重新定位原文','candidate-evidence-btn');
    action.addEventListener('click',async()=>{
-    try{const exact=await NEBULA_LOCAL.resolveEvidenceLocator(entry.source.id,locator);row.querySelector('p').textContent=exact.excerpt||entry.excerpt||'原文定位不可用；保留已存摘录。';}
-    catch(error){row.querySelector('p').textContent='原文读取失败：'+error.message;}
+    try{const exact=await NEBULA_LOCAL.resolveEvidenceLocator(entry.source.id,locator);if(isCurrentRequest()&&row.isConnected)row.querySelector('p').textContent=exact.excerpt||entry.excerpt||'原文定位不可用；保留已存摘录。';}
+    catch(error){if(isCurrentRequest()&&row.isConnected)row.querySelector('p').textContent='原文读取失败：'+error.message;}
    });
    row.append(action);host.append(row);
   });
   if(resolved.relations.length)host.append(safeText('small','已关联 '+resolved.relations.length+' 条横向关系；关系证据由独立记录管理。'));
- }catch(error){if(document.getElementById('nodeDetail')?.classList.contains('open'))host.replaceChildren(safeText('p','来源回溯失败：'+error.message));}
+ }catch(error){if(isCurrentRequest())host.replaceChildren(safeText('p','来源回溯失败：'+error.message));}
 }
 function openKnowledgeArchive(){
  renderContinuum();
  const archive=document.getElementById('nodeDetail');
  const host=document.getElementById('nodeEvidenceList');
  const nodeId=localGraphNodes[selected]?.id??window.__guanfuSelectedNodeId??null;
+ // Bind every evidence response to this exact archive target before asynchronous reads begin.
+ archive.dataset.nodeId=String(nodeId??'');
  document.querySelectorAll('.overlay.open').forEach(panel=>{if(panel!==archive)panel.classList.remove('open')});
  archive.scrollTop=0;
  host.replaceChildren(safeText('p','正在打开知识档案…'));
