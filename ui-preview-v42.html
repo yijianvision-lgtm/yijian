@@ -3111,4 +3111,77 @@ document.addEventListener('click',function(event){
 }
 </style>
 
+
+<style id="v42-3-light-first-title-second">
+/* V42.3: preserve the approved common center and status control.
+   Keep the core glow present and luminous, soften its edge; reveal the title afterward. */
+#continuumFocus .continuum-core:before{
+  opacity:.78!important;
+  filter:blur(3.5px)!important;
+  box-shadow:0 0 7px rgba(238,247,251,.52),0 0 17px rgba(222,239,248,.22),0 0 28px rgba(222,239,248,.08)!important;
+}
+#continuumFocus .continuum-core:after{
+  opacity:.64!important;
+  filter:blur(19px)!important;
+  background:radial-gradient(ellipse,rgba(190,211,225,.035),rgba(190,211,225,.014) 48%,transparent 80%)!important;
+}
+/* A diffuse, transparent veil rather than a visible pill, card, or glass panel. */
+#continuumFocus .continuum-core-heading-row:before{
+  width:calc(100% + 54px)!important;
+  height:calc(100% + 38px)!important;
+  border-radius:50%!important;
+  background:radial-gradient(ellipse at center,rgba(12,19,27,.30) 0%,rgba(12,19,27,.18) 48%,rgba(12,19,27,.045) 76%,transparent 100%)!important;
+  -webkit-backdrop-filter:blur(11px) saturate(.72)!important;
+  backdrop-filter:blur(11px) saturate(.72)!important;
+  box-shadow:none!important;
+  opacity:.72!important;
+}
+#continuumFocus .continuum-core-title{
+  font-size:clamp(28px,2.05vw,31px)!important;
+}
+@media(max-width:760px){
+  #continuumFocus .continuum-core-title{font-size:clamp(23px,5.2vw,26px)!important}
+  #continuumFocus .continuum-core-heading-row:before{
+    width:calc(100% + 42px)!important;height:calc(100% + 30px)!important;
+  }
+}
+/* On selection: the core light settles first; the word emerges only afterward. */
+#continuumFocus.arriving .continuum-core:before{
+  animation:v423CoreLightArrive .72s ease-out both!important;
+}
+#continuumFocus.arriving .continuum-core:after{
+  animation:v423CoreMistArrive .9s ease-out both!important;
+}
+#continuumFocus.arriving .continuum-core-heading-row:before{
+  animation:v423VeilArrive .9s ease-out both!important;
+}
+#continuumFocus.arriving .continuum-core-title{
+  animation:v423TitleAfterLight 1.05s cubic-bezier(.2,.72,.22,1) .72s both!important;
+}
+@keyframes v423CoreLightArrive{
+  0%{opacity:.12;filter:blur(7px)}
+  65%{opacity:.68;filter:blur(4.5px)}
+  100%{opacity:.78;filter:blur(3.5px)}
+}
+@keyframes v423CoreMistArrive{
+  0%{opacity:.08;filter:blur(25px)}
+  100%{opacity:.64;filter:blur(19px)}
+}
+@keyframes v423VeilArrive{
+  0%{opacity:0;filter:blur(17px)}
+  100%{opacity:.72;filter:blur(11px)}
+}
+@keyframes v423TitleAfterLight{
+  0%{opacity:0;filter:blur(7px);transform:translateY(3px) scale(.99)}
+  65%{opacity:.76;filter:blur(1.6px);transform:translateY(0) scale(.998)}
+  100%{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}
+}
+@media(prefers-reduced-motion:reduce){
+  #continuumFocus.arriving .continuum-core:before,
+  #continuumFocus.arriving .continuum-core:after,
+  #continuumFocus.arriving .continuum-core-heading-row:before,
+  #continuumFocus.arriving .continuum-core-title{animation-duration:.01ms!important;animation-delay:0ms!important}
+}
+</style>
+
 </body></html>
