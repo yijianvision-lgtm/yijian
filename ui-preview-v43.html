@@ -2973,4 +2973,42 @@ document.addEventListener('click',function(event){
 }
 </style>
 
+
+<style id="v43-title-group-centering-correction">
+/* The heading wrapper hugs the title's real rendered width. The title stays
+   mathematically centered; the status dot and menu attach to its right edge. */
+#continuumFocus .continuum-core-heading-row{
+ position:fixed!important;left:50%!important;top:50%!important;
+ width:max-content!important;max-width:70vw!important;height:auto!important;
+ margin:0!important;padding:0!important;display:block!important;
+ transform:translate(-50%,-50%)!important;z-index:18!important;
+}
+#continuumFocus .continuum-core-title{
+ position:relative!important;left:auto!important;top:auto!important;
+ display:block!important;width:max-content!important;max-width:68vw!important;
+ margin:0!important;padding:0!important;transform:none!important;
+ text-align:center!important;pointer-events:none!important;
+}
+#continuumFocus .continuum-core-heading-row #masteryStatusToggle{
+ position:absolute!important;left:calc(100% + 8px)!important;right:auto!important;
+ top:50%!important;transform:translateY(-50%)!important;
+ width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;
+ margin:0!important;padding:0!important;z-index:20!important;
+}
+#continuumFocus .continuum-core-heading-row #masteryStatusMenu{
+ position:absolute!important;left:calc(100% + 32px)!important;right:auto!important;
+ top:50%!important;transform:translateY(-50%)!important;margin:0!important;z-index:30!important;
+}
+#continuumFocus .continuum-core-heading-row #masteryStatusMenu.opens-left{
+ left:auto!important;right:calc(100% + 8px)!important;
+}
+@media(max-width:760px){
+ #continuumFocus .continuum-core-heading-row{max-width:72vw!important}
+ #continuumFocus .continuum-core-title{max-width:68vw!important;font-size:clamp(27px,7vw,38px)!important}
+ #continuumFocus .continuum-core-heading-row #masteryStatusToggle{left:calc(100% + 5px)!important;width:18px!important;height:18px!important}
+ #continuumFocus .continuum-core-heading-row #masteryStatusMenu{left:calc(100% + 26px)!important}
+ #continuumFocus .continuum-core-heading-row #masteryStatusMenu.opens-left{left:auto!important;right:calc(100% + 5px)!important}
+}
+</style>
+
 </body></html>
