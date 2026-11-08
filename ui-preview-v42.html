@@ -2963,7 +2963,7 @@ document.addEventListener('click',function(event){
 }
 
 <style id="v42-axis-stack-correction">
-/* The red crosshair intersection is the single layout origin. */
+/* Correct interpretation: title and luminous core overlap exactly and share the crosshair origin. */
 #continuumFocus .continuum-stage{position:relative!important}
 #continuumFocus .continuum-stage>.continuum-core{
   position:absolute!important;left:50%!important;top:50%!important;
@@ -2975,14 +2975,10 @@ document.addEventListener('click',function(event){
   box-shadow:none!important;backdrop-filter:none!important;
   z-index:8!important;isolation:isolate!important;
 }
-/* Keep the approved soft sphere/glow appearance; move it directly below the title on the same axis. */
-#continuumFocus .continuum-core:after{
-  left:50%!important;top:calc(50% + 47px)!important;
-  transform:translate(-50%,-50%)!important;
-  z-index:0!important;pointer-events:none!important;
-}
+/* The luminous sphere and the word have precisely the same center: no vertical offset. */
+#continuumFocus .continuum-core:after,
 #continuumFocus .continuum-core:before{
-  left:50%!important;top:calc(50% + 47px)!important;
+  left:50%!important;top:50%!important;
   transform:translate(-50%,-50%)!important;
   z-index:0!important;pointer-events:none!important;
 }
@@ -2999,9 +2995,7 @@ document.addEventListener('click',function(event){
   font-size:clamp(32px,2.45vw,36px)!important;
   line-height:1.18!important;font-weight:500!important;letter-spacing:.035em!important;
   text-align:center!important;white-space:nowrap!important;overflow:visible!important;
-  z-index:11!important;
-  /* Preserve the already-approved foreground contrast and glow separation. */
-  color:rgba(245,249,252,.99)!important;
+  z-index:11!important;color:rgba(245,249,252,.99)!important;
   text-shadow:0 1px 8px rgba(3,7,11,.96),0 0 2px rgba(3,7,11,.9)!important;
 }
 #continuumFocus .continuum-core-heading-row #masteryStatusToggle{
