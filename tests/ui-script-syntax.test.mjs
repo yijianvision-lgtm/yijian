@@ -35,7 +35,7 @@ assert.ok(html.includes("document.getElementById('continuumOpenDetail').onclick=
 assert.ok(html.includes("document.getElementById('openNodeDetail').onclick=openKnowledgeArchive;"), "The selected-node archive button must use the same archive-opening flow.");
 assert.ok(html.includes('class="minimap-quadrant-compass"'), "The four directions must remain represented in the minimap while retracted.");
 assert.ok(html.includes('.right-panel .mini-map.quadrants-stowed .minimap-quadrant-compass{opacity:1;'), "The four-direction mini compass must appear when the guide is retracted.");
-assert.ok(html.includes("minimapQuadrantReturn?.addEventListener('click',event=>{event.stopPropagation();restoreFocusFromMinimap();"), "The minimap control must restore the core and four directions on demand.");
+assert.ok(html.includes("minimapQuadrantReturn?.addEventListener('click',event=>{event.stopPropagation();document.getElementById('continuumFocus')?.classList.add('open');restoreFocusFromMinimap();"), "The minimap control must reopen the quadrant layer and restore the core and four directions on demand.");
 
 
 assert.ok(html.includes("function retractFocusToMinimap(){"), "Both archive entry points must share one core-and-quadrant retraction action.");
