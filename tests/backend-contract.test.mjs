@@ -122,7 +122,7 @@ assert.ok(charter.includes("稳定知识身份"), "The current charter must requ
 assert.ok(charter.includes("同一个知识对象可从多条路径抵达"), "The current charter must support the same object across multiple exploration paths.");
 assert.ok(charter.includes("不同框架可为同一对象提供不同上下文位置"), "The current charter must support multiple framework contexts for one object.");
 assert.ok(charter.includes("探索路径负责记录用户如何抵达"), "The current charter must model recursive exploration paths independently.");
-assert.ok(charter.includes("四向探索模型") && charter.includes("四维定位模型"), "Exploration directions and global dimensions must remain separate.");
+assert.ok(charter.includes("四向四维是同一个整体认知观察模型"), "Four directions and four dimensions must be one unified model.");
 assert.ok(charter.includes("坐标本身不构成语义关系"), "Spatial coordinates must never fabricate knowledge semantics.");
 assert.ok(charter.includes("AI 不得未经确认直接覆盖用户知识"), "AI proposals must require explicit user approval.");
 assert.ok(mindArchitecture.includes("唯一主要 parentId"), "The legacy V2 architecture should remain available as a historical implementation reference.");
