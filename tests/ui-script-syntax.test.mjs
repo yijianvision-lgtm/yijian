@@ -10,7 +10,7 @@ assert.ok(html.includes("from './nebula-local.js?env=preview';"), "V3-A must loa
 assert.ok(!html.includes("from './nebula-local.js';"), "V3-A must not import the production local database module.");
 assert.ok(html.includes("from './nebula-local.js?env=preview';"), "V3-A must load its isolated preview data environment.");
 assert.ok(html.includes("import('./nebula-local.js?env=source')"), "Preview snapshot import must read the production DB through the non-migrating source module.");
-assert.ok(html.includes("restoreFullBackup(raw,{mode:'merge'})"), "Preview snapshot import must merge into the isolated preview DB without replacing existing preview data.");
+assert.ok(html.includes("restoreFullBackup(raw,{mode:'merge',preferIncoming:true})"), "Preview snapshot import must merge into the isolated preview DB, refresh matching production records, and preserve preview-only records.");
 assert.ok(html.includes("localGraphNodes[selected]?.id??window.__guanfuSelectedNodeId??null"), "The archive must resolve the selected formal node ID directly, not depend only on a mutable global.");
 
 for (const [index, [, attributes, source]] of scripts.entries()) {

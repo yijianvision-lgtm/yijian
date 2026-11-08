@@ -1556,7 +1556,7 @@ document.getElementById('syncProductionSnapshot')?.addEventListener('click',asyn
   const graphRecords=Number(manifest.graph?.records||0);
   if(!graphRecords)throw new Error('正式版本机数据库中没有可复制的知识图谱记录；预览数据未改变。');
   button.textContent='正在合并到独立预览库…';
-  const result=await NEBULA_LOCAL.restoreFullBackup(raw,{mode:'merge'});
+  const result=await NEBULA_LOCAL.restoreFullBackup(raw,{mode:'merge',preferIncoming:true});
   await connectLocalKnowledgeUniverse();
   const graph=await NEBULA_LOCAL.loadGraph();
   const count=graph?.nodes?.length||0;

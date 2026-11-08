@@ -458,6 +458,7 @@ async function restoreFullBackup(fileOrObject, options={}) {
   const raw=typeof fileOrObject?.text==="function"?await fileOrObject.text():fileOrObject;
   const parsed=await validateFullBackup(raw);
   const mode=options.mode||"merge";
+  const preferIncoming=options.preferIncoming===true;
   if(!["replace","merge"].includes(mode)) throw new Error("恢复模式只能是 replace 或 merge。");
   const storeNames=mode==="replace"?STORES:Object.keys(parsed.stores).filter(n=>STORES.includes(n));
   const db=await openDB();
@@ -479,14 +480,14 @@ async function restoreFullBackup(fileOrObject, options={}) {
           get.onsuccess=()=>{
             const current=get.result;
             if(!current) { store.put(value,key); restored[name].imported++; return; }
-            const unique=(a,b)=>{const map=new Map();for(const item of [...(a||[]),...(b||[])])if(item?.id!=null&&!map.has(String(item.id)))map.set(String(item.id),item);return [...map.values()];};
+            const unique=(currentRows,incomingRows)=>{const map=new Map();const ordered=preferIncoming?[...(incomingRows||[]),...(currentRows||[])]:[...(currentRows||[]),...(incomingRows||[])];for(const item of ordered)if(item?.id!=null&&!map.has(String(item.id)))map.set(String(item.id),item);return [...map.values()];};
             store.put({...value,...current,nodes:unique(current.nodes,value.nodes),links:unique(current.links,value.links),savedAt:Date.now()},key);
             restored[name].imported++;
           };
         } else {
           const lookup=store.keyPath?store.get(value?.[store.keyPath]):store.get(key);
           lookup.onsuccess=()=>{
-            if(lookup.result===undefined) {
+            if(lookup.result===undefined || preferIncoming) {
               if(store.keyPath)store.put(value);else store.put(value,key);
               restored[name].imported++;
             } else restored[name].skipped++;
