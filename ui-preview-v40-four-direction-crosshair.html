@@ -1526,8 +1526,8 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
 
 <section class="overlay" id="nodeDetail"><div class="overlay-head"><div><div class="eyebrow">KNOWLEDGE OBJECT · NODE PROFILE</div><div class="overlay-title" id="detailTitle">系统思维</div><div class="overlay-sub">知识对象详情 · 正式知识、来源记录与认知状态分层呈现</div></div><button class="close" data-close>返回知识宇宙</button></div>
 <div class="node-detail-grid"><div class="detail-card"><h3>核心解释 · CORE DEFINITION</h3><p id="detailDefinition">理解复杂系统中结构、反馈与演化之间的关系。此处为界面演示内容，真实版本应支持编辑、版本比较与来源引用。</p><div class="detail-meta" id="detailStatusMeta"><span class="status">演示节点 · 非正式知识</span><span class="status">没有正式来源证据</span><span class="status">不会写入个人框架</span></div></div><div class="detail-card"><h3>结构位置 · STRUCTURE</h3><p id="detailPath">系统思维 · 根主题</p><div class="detail-meta"><span class="status" id="detailParentMeta">父级：读取中</span><span class="status" id="detailChildMeta">子级：读取中</span><span class="status" id="detailHorizontalMeta">横向关系：读取中</span></div></div></div>
-<div class="section-label">四向思考 · FOUR-DIRECTION EXPLORATION</div><div class="direction-grid">
-<div class="direction-card"><b>瞻前 · 时间回溯</b><p>历史起源、前序事件、时代背景与形成条件。追问这个对象从何而来。</p></div><div class="direction-card"><b>顾后 · 时间延展</b><p>后续影响、继承关系、演化过程与历史结果。追问它如何继续发展。</p></div><div class="direction-card"><b>向内 · 深入本质</b><p>核心定义、基本原理、组成部分、结构、材料与运行机制。</p></div><div class="direction-card"><b>向外 · 外部世界</b><p>人物、社会、政治、经济、文化、艺术、技术与文明之间的外部关系。</p></div></div>
+<div class="section-label">瞻前、顾后、左顾、右盼 · FOUR-DIRECTION EXPLORATION</div><div class="direction-grid">
+<div class="direction-card"><b>瞻前 · 时间回溯</b><p>历史起源、前序事件、时代背景与形成条件。追问这个对象从何而来。</p></div><div class="direction-card"><b>顾后 · 时间延展</b><p>后续影响、继承关系、演化过程与历史结果。追问它如何继续发展。</p></div><div class="direction-card"><b>左顾 · 本质与内部结构</b><p>核心定义、基本原理、组成部分、结构、材料与运行机制。</p></div><div class="direction-card"><b>右盼 · 外部关系与应用</b><p>人物、社会、政治、经济、文化、艺术、技术与文明之间的外部关系。</p></div></div>
 <div class="section-label">来源与历史 · PROVENANCE</div><div class="panel-grid"><div class="work-card"><h3>关联来源 · 原件回溯</h3><div id="nodeEvidenceList"><p>选择一个正式知识节点后，系统会读取其真实来源与原文定位。</p></div></div><div class="work-card"><h3>知识版本</h3><p>正式版本由审核确认后生成；历史快照保留在本地框架版本中。</p></div><div class="work-card"><h3>认知记录</h3><p>学习记录独立保存，记录回忆、解释、应用和迁移表现。</p></div></div>
 <div class="action-row"><button class="action-btn" data-go="sources">查看原始来源</button><button class="action-btn" data-go="lab">进入知识研究</button><button class="action-btn" data-go="learning">测试掌握程度</button></div></section>
 <section class="overlay" id="directionDetail"><div class="overlay-head"><div><div class="eyebrow">FOUR-DIRECTION THINKING</div><div class="overlay-title" id="directionTitle">瞻前 · 时间回溯</div><div class="overlay-sub">四向思考是可编辑、可追溯的知识分支，不是装饰性快捷按钮。</div></div><button class="close" data-close>返回节点详情</button></div><div class="panel-grid"><div class="work-card"><h3>核心问题</h3><p id="directionQuestion">这个概念从哪里产生？它依赖哪些前置知识？</p></div><div class="work-card"><h3>已有内容</h3><p>当前预览未连接真实知识数据。正式版本应显示该方向下的知识节点、关系与来源证据。</p></div><div class="work-card"><h3>下一步</h3><p>创建新分支、关联现有知识、添加来源，或标记为待验证问题。</p></div></div><div class="action-row"><button class="action-btn primary" id="directionDraft">添加思考草稿</button><button class="action-btn" data-go="filter-workbench">提交审核建议</button></div></section>
@@ -1579,7 +1579,7 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
   <p class="choice-panel-note">这些是待探索的问题入口，不是系统替你确认的知识事实。选择后生成独立演示节点；正式知识须经来源核验。</p>
  </section>
  <section class="continuum-position-strip" aria-label="四维全局定位">
-  <div class="position-strip-head"><span class="source-tag">GLOBAL POSITION · 四维全局定位</span><span>与四向探索分离</span></div>
+  <div class="position-strip-head"><span class="source-tag">GLOBAL POSITION · 四维全局定位</span><span>框架与层级贯穿四向观察</span></div>
   <div class="position-dimensions">
    <div><small>谱系</small><b id="positionLineage">待证据定位</b></div>
    <div><small>时间</small><b id="positionTime">待证据定位</b></div>
@@ -1588,7 +1588,7 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
   </div>
  </section>
  <div class="continuum-bottom"><span>连续探索路径</span><div class="continuum-trail" id="continuumTrail"></div><span id="continuumTrailCount">1 个位置</span></div>
- <div class="continuum-footnote">四向探索负责持续生发，四维定位负责全局定位。当前虚拟层级仅用于检查递归、路径与导航，不写入正式知识；正式关系须有来源证据。</div>
+ <div class="continuum-footnote">中心题眼是交互起点；瞻前、顾后、左顾、右盼围绕同一题眼展开。关联对象经用户选择后可成为新中心，并保留原位置与探索路径。当前虚拟层级仅用于检查递归、路径与导航，不写入正式知识；正式关系须有来源证据。</div>
 </section><div class="toast" id="toast"></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
