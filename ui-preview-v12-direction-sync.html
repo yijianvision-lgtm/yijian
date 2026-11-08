@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>观复 Mind｜四向一体 UI 同步预览</title>
+<style>
+:root{color-scheme:dark;--bg:#080b10;--panel:rgba(16,21,27,.78);--line:rgba(204,218,228,.13);--line2:rgba(204,218,228,.24);--text:#e5ebef;--muted:#929da7;--dim:#65717c;--glow:rgba(205,221,232,.12)}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif}
+body{overflow:hidden;background:radial-gradient(ellipse at 50% 48%,#172029 0,#0d131a 35%,#080b10 76%)}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.36;background-image:radial-gradient(1px 1px at 12% 19%,#c9d4dc 45%,transparent 70%),radial-gradient(1px 1px at 77% 23%,#c9d4dc 45%,transparent 70%),radial-gradient(1px 1px at 34% 72%,#c9d4dc 45%,transparent 70%),radial-gradient(1px 1px at 89% 78%,#c9d4dc 45%,transparent 70%),radial-gradient(1px 1px at 61% 13%,#c9d4dc 45%,transparent 70%),radial-gradient(1px 1px at 19% 86%,#c9d4dc 45%,transparent 70%)}
+header{height:66px;position:fixed;inset:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 28px;border-bottom:1px solid var(--line);background:rgba(7,10,14,.64);backdrop-filter:blur(18px);z-index:5}
+.brand{display:flex;align-items:center;gap:12px}.mark{width:23px;height:23px;border:1px solid #aebdc7;border-radius:50%;box-shadow:0 0 18px #dce7ee19;position:relative}.mark:after{content:"";position:absolute;width:4px;height:4px;border-radius:50%;background:#dce6ec;left:5px;top:5px;box-shadow:0 0 8px #dce6ec88}.brand b{font-size:12px;letter-spacing:.24em;font-weight:550}.brand small{display:block;color:var(--dim);font-size:8px;letter-spacing:.16em;margin-top:4px}
+.head-note{font-size:9px;color:#7f8c97;letter-spacing:.12em}
+main{position:fixed;inset:66px 0 0;display:grid;grid-template-columns:220px minmax(440px,1fr) 250px;gap:20px;padding:24px 24px 22px}
+aside{min-height:0}.panel{border:1px solid var(--line);border-radius:9px;background:linear-gradient(145deg,rgba(20,26,33,.72),rgba(10,14,19,.7));backdrop-filter:blur(16px);padding:16px}
+.eyebrow{font-size:8px;letter-spacing:.18em;color:#788691}.framework{margin-top:12px;font-size:12px;line-height:1.8;color:#d5dde3}.framework small{display:block;color:#7e8b96;font-size:9px;margin-top:7px}
+.path{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}.path div{font-size:9px;color:#9ba7b0;line-height:2.1}.path strong{color:#e2e8ec;font-weight:500}
+.left-foot{position:absolute;bottom:24px;left:24px;width:220px;font-size:8px;line-height:1.8;color:#65717c}
+.center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;position:relative}
+.context{font-size:9px;color:#82909b;letter-spacing:.12em;margin-bottom:18px;text-align:center}
+.focus{width:min(470px,86%);padding:24px 28px;text-align:center;border-top:1px solid #b9c8d233;border-bottom:1px solid #b9c8d233;background:linear-gradient(90deg,transparent,#ffffff06,transparent);position:relative}
+.focus:before,.focus:after{content:"";position:absolute;left:50%;width:34px;height:1px;background:#c6d4dc66;transform:translateX(-50%)}
+.focus:before{top:-1px}.focus:after{bottom:-1px}
+.focus small{font-size:8px;letter-spacing:.2em;color:#7e8b95}.focus h1{font-size:clamp(23px,3vw,34px);font-weight:400;letter-spacing:.08em;margin:13px 0 8px}.focus p{font-size:10px;color:#929ea8;margin:0;line-height:1.8}
+.directions{width:min(650px,100%);display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:28px}
+.direction{min-height:116px;text-align:left;border:1px solid var(--line);border-radius:8px;padding:16px 18px;background:linear-gradient(140deg,rgba(255,255,255,.045),rgba(255,255,255,.012));color:var(--text);cursor:pointer;transition:border-color .2s,background .2s,transform .2s}
+.direction:hover,.direction.active{border-color:#c0d0da66;background:linear-gradient(140deg,rgba(196,213,224,.09),rgba(255,255,255,.02));transform:translateY(-1px)}
+.direction .dir-top{display:flex;justify-content:space-between;align-items:center}.direction b{font-size:14px;font-weight:500;letter-spacing:.08em}.direction em{font-style:normal;color:#73818c;font-size:8px;letter-spacing:.1em}.direction p{font-size:9px;line-height:1.8;color:#8996a0;margin:10px 0 0}
+.note{font-size:8px;color:#687580;margin-top:18px;letter-spacing:.06em;text-align:center}
+.right{display:flex;flex-direction:column;gap:12px}.selected h2{font-size:14px;font-weight:500;margin:11px 0 8px}.selected p{font-size:9px;line-height:1.9;color:#9aa6af;margin:0}.selected .detail{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}.detail div{font-size:9px;color:#9aa6af;line-height:2}.detail b{font-weight:500;color:#d3dce2}
+.map{height:180px;position:relative;overflow:hidden;background:radial-gradient(ellipse,#1b252e,#0c1117 72%);border:1px solid var(--line);border-radius:7px;margin-top:12px}
+.map:before,.map:after{content:"";position:absolute;border:1px solid #aebfca24;border-radius:50%;left:50%;top:50%;transform:translate(-50%,-50%)}.map:before{width:145px;height:145px}.map:after{width:90px;height:90px}
+.map-dot{position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;background:#d9e3e9;box-shadow:0 0 10px #d9e3e9;transform:translate(-50%,-50%)}
+.map-label{position:absolute;left:calc(50% + 12px);top:calc(50% - 17px);font-size:8px;color:#b9c5cd}
+.footer{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);font-size:8px;color:#5f6b76;letter-spacing:.1em;white-space:nowrap}
+@media(max-width:1050px){main{grid-template-columns:180px minmax(380px,1fr);padding:18px;gap:14px}.right{display:none}.left-foot{left:18px;width:180px}}
+@media(max-width:700px){body{overflow:auto}header{padding:0 16px}.head-note{display:none}main{position:relative;inset:auto;padding:90px 14px 45px;display:block}.left{display:none}.center{min-height:calc(100vh - 130px)}.directions{grid-template-columns:1fr;width:100%;margin-top:22px}.focus{width:100%}.footer{position:static;transform:none;text-align:center;padding:10px}}
+</style>
+</head>
+<body>
+<header><div class="brand"><span class="mark"></span><div><b>MIND</b><small>观复 · 认知空间</small></div></div><div class="head-note">聚焦一点 · 仍知全局</div></header>
+<main>
+<aside class="left">
+ <section class="panel">
+  <div class="eyebrow">GLOBAL FRAMEWORK</div>
+  <div class="framework">中国思想史
+   <small>哲学思想 · 先秦时期 · 核心概念层</small>
+  </div>
+  <div class="path"><div class="eyebrow">当前位置</div><div>中国思想史</div><div>↳ 先秦思想</div><div>↳ <strong>仁</strong></div></div>
+ </section>
+ <div class="left-foot">框架层级始终作为全局锚点。切换观察方向，不离开当前题眼；进入新题眼，保留来路。</div>
+</aside>
+<section class="center">
+ <div class="context">当前题眼 · 框架位置持续保留</div>
+ <div class="focus"><small>FOCUS / 当前聚焦</small><h1>仁</h1><p>一个题眼，四侧观察；方向不同，仍是同一个知识对象。</p></div>
+ <div class="directions">
+  <button class="direction active" data-dir="瞻前"><div class="dir-top"><b>瞻前</b><em>回溯 · 来处</em></div><p>追溯来源、前置条件、时代背景与初始矛盾；可回到具体历史时点。</p></button>
+  <button class="direction" data-dir="顾后"><div class="dir-top"><b>顾后</b><em>延展 · 去向</em></div><p>查看后续演变、继承、传播、影响与后世评价；预测与已发生历史分开。</p></button>
+  <button class="direction" data-dir="左顾"><div class="dir-top"><b>左顾</b><em>内察 · 本身</em></div><p>深入对象自身：定义、本质、组成、结构、属性、机制与内部演进。</p></button>
+  <button class="direction" data-dir="右盼"><div class="dir-top"><b>右盼</b><em>外观 · 关联</em></div><p>查看外部世界中的关联对象、同时代知识、人物、制度、作品与跨界应用。</p></button>
+ </div>
+ <div class="note">四个方向不是四套系统，也不是四个独立维度；它们共同围绕当前题眼展开。</div>
+</section>
+<aside class="right">
+ <section class="panel selected"><div class="eyebrow">DIRECTION DETAIL</div><h2 id="detailTitle">瞻前 · 回溯来处</h2><p id="detailText">从当前题眼向前追溯，查看它如何发生、依赖哪些条件，以及当时所处的历史世界。</p><div class="detail"><div><b>观察内容</b>　来源 / 背景 / 前置条件</div><div><b>时间方式</b>　可定位并回到历史时点</div><div><b>证据状态</b>　来源与不确定性可追溯</div></div></section>
+ <section class="panel"><div class="eyebrow">GLOBAL POSITION</div><div class="map"><span class="map-dot"></span><span class="map-label">仁 · 当前焦点</span></div><div style="font-size:8px;color:#788590;margin-top:9px">小地图仅提示当前位置，不替代知识关系。</div></section>
+</aside>
+</main>
+<div class="footer">MIND · FOUR DIRECTIONS / ONE FOCUS</div>
+<script>
+const detail={
+"瞻前":["瞻前 · 回溯来处","从当前题眼向前追溯，查看它如何发生、依赖哪些条件，以及当时所处的历史世界。","来源 / 背景 / 前置条件","可定位并回到历史时点"],
+"顾后":["顾后 · 追踪去向","查看题眼此后发生的演变、继承、传播、影响和后世评价；尚未发生的预测单独标识。","演变 / 继承 / 传播 / 后续影响","已发生历史与未来预测分开"],
+"左顾":["左顾 · 深入本身","向内观察当前对象，理解它是什么、由什么构成、如何组织与运行，以及内部如何变化。","定义 / 本质 / 组成 / 结构 / 机制","区分对象事实与解释"],
+"右盼":["右盼 · 查看关联","向外查看题眼所处的世界，以及与它相关的人物、事件、制度、作品、技术和学科对象。","外部对象 / 同时代 / 同级对照 / 应用","共存、对照不自动等于影响或因果"]
+};
+document.querySelectorAll(".direction").forEach(button=>button.addEventListener("click",()=>{
+ document.querySelectorAll(".direction").forEach(item=>item.classList.toggle("active",item===button));
+ const [title,body,content,time]=detail[button.dataset.dir];
+ document.getElementById("detailTitle").textContent=title;
+ document.getElementById("detailText").textContent=body;
+ const rows=document.querySelector(".detail");
+ rows.innerHTML="<div><b>观察内容</b>　"+content+"</div><div><b>关系边界</b>　"+time+"</div><div><b>证据状态</b>　来源与不确定性可追溯</div>";
+}));
+</script>
+</body>
+</html>
