@@ -1294,6 +1294,9 @@ document.getElementById('continuumBack').onclick=()=>{if(focusCursor>0){focusCur
  document.getElementById('continuumFocus')?.classList.remove('open');
  return true;
 }
+// The classic-script overlay controller cannot access ES-module lexical bindings.
+// Expose a narrow bridge for archive close actions and keyboard Escape.
+window.__guanfuCloseKnowledgeArchive=closeKnowledgeArchive;
 async function loadKnowledgeArchiveEvidence(nodeId,host){
  const archive=document.getElementById('nodeDetail');
  const requestId=String((Number(archive?.dataset.evidenceRequest||0)+1));
@@ -1611,8 +1614,8 @@ document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Ent
  document.querySelectorAll('[data-review-action]').forEach(b=>b.addEventListener('click',()=>toast('审核操作：'+b.dataset.reviewAction+'（预览演示，不修改正式知识）')));
  document.getElementById('exportBackup').addEventListener('click',()=>toast('备份导出流程示意：当前版本尚未连接真实数据导出'));
  document.getElementById('restoreBackup').addEventListener('click',()=>toast('恢复流程示意：当前版本尚未连接文件解析与冲突预览'));
- document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{if(b.closest('#nodeDetail'))closeKnowledgeArchive();else closeAll();}));
- window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!closeKnowledgeArchive())closeAll();}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();open('globalSearch');document.getElementById('globalSearchInput').focus();}});
+ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{if(b.closest('#nodeDetail'))window.__guanfuCloseKnowledgeArchive?.();else closeAll();}));
+ window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!window.__guanfuCloseKnowledgeArchive?.())closeAll();}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();open('globalSearch');document.getElementById('globalSearchInput').focus();}});
 })();
 </script>
 <script>
