@@ -952,14 +952,19 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
 </style>
 <style id="mastery-status-and-soft-glow">
 .continuum-core{position:relative}
-#masteryStatusToggle{display:inline-flex;align-items:center;gap:5px;margin:8px 0 0!important;padding:3px 6px!important;border:1px solid #d7e2eb18!important;border-radius:20px;background:#dce8f00a!important;color:#9eabb5!important;font-size:8px!important;line-height:1!important;cursor:pointer}
-.mastery-status-dot{width:5px;height:5px;border-radius:50%;background:#84919b;box-shadow:0 0 5px #dce8f033}
+#masteryStatusToggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:30px;margin:7px 0 0!important;padding:6px 12px!important;border:1px solid rgba(202,216,226,.22)!important;border-radius:999px;background:rgba(22,29,36,.88)!important;color:#c5d0d8!important;font-size:10px!important;font-weight:500;letter-spacing:.025em;line-height:1!important;cursor:pointer;box-shadow:0 5px 18px #0005,inset 0 1px rgba(255,255,255,.035);transition:background .2s,border-color .2s,box-shadow .2s}
+.mastery-status-dot{flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:#84919b;box-shadow:0 0 0 2px rgba(190,207,220,.08)}
 .mastery-status-dot[data-status="学习中"]{background:#aabac6}.mastery-status-dot[data-status="复习中"]{background:#c4d0d9}.mastery-status-dot[data-status="已掌握"]{background:#e2edf5;box-shadow:0 0 7px #e2edf577}.mastery-status-dot[data-status="未掌握"]{background:#78818a}
-.mastery-status-menu{position:absolute;z-index:20;left:50%;top:calc(100% - 5px);transform:translateX(-50%);min-width:94px;padding:5px;border:1px solid #d4e0e51e;border-radius:8px;background:rgba(13,18,23,.97);box-shadow:0 8px 28px #0009;backdrop-filter:blur(16px)}
+.mastery-status-menu{position:absolute;z-index:40;left:50%;top:calc(100% + 8px);transform:translateX(-50%) translateY(-3px);min-width:142px;padding:7px;border:1px solid rgba(192,210,222,.25);border-radius:12px;background:rgba(12,17,23,.985);box-shadow:0 18px 46px rgba(0,0,0,.68),inset 0 1px rgba(255,255,255,.055);backdrop-filter:blur(22px) saturate(125%);transform-origin:top center;animation:masteryMenuIn .18s ease-out both}
 .mastery-status-menu[hidden]{display:none}
-.mastery-status-menu button{display:block;width:100%;margin:0!important;padding:7px 9px!important;border:0!important;border-radius:5px;background:transparent!important;color:#c3cdd4!important;text-align:left;font-size:9px!important;cursor:pointer}
-.mastery-status-menu button:hover{background:#dbe7ef12!important;color:#f0f4f7!important}
-.mastery-status-menu button[data-mastery-cancel]{margin-top:3px!important;border-top:1px solid #dbe7ef16!important;color:#87939c!important}
+.mastery-status-menu button{display:flex;align-items:center;gap:9px;width:100%;min-height:31px;margin:0!important;padding:6px 9px!important;border:0!important;border-radius:7px;background:transparent!important;color:#c3cdd4!important;text-align:left;font-size:10px!important;letter-spacing:.02em;cursor:pointer;transition:background .16s,color .16s}
+.mastery-status-menu button:hover{background:rgba(205,222,234,.10)!important;color:#f0f4f7!important}
+.mastery-status-menu button[data-mastery-cancel]{justify-content:center;min-height:28px;margin-top:5px!important;padding-top:7px!important;border-top:1px solid rgba(210,225,236,.13)!important;border-radius:0 0 7px 7px;color:#8f9ba5!important;font-size:9px!important}
+.mastery-status-menu button[data-mastery-status]::before{content:"";width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:#788691;box-shadow:0 0 0 2px rgba(190,207,220,.07)}
+.mastery-status-menu button[data-mastery-status="学习中"]::before{background:#aabac6}.mastery-status-menu button[data-mastery-status="复习中"]::before{background:#c4d0d9}.mastery-status-menu button[data-mastery-status="已掌握"]::before{background:#e2edf5}.mastery-status-menu button[data-mastery-status="未掌握"]::before{background:#78818a}
+.mastery-status-menu button[aria-checked="true"]{background:rgba(205,222,234,.10)!important;color:#eef3f6!important}
+.mastery-status-menu button[aria-checked="true"]::after{content:"✓";margin-left:auto;color:#dce7ed;font-size:11px}
+@keyframes masteryMenuIn{to{opacity:1;transform:translateX(-50%) translateY(0)}from{opacity:0;transform:translateX(-50%) translateY(-3px)}}
 </style><style id="v31-micro-status-and-muted-halo">
 /* V31: status is a tiny indicator; details appear only on demand */
 #masteryStatusToggle{width:17px!important;height:17px!important;min-width:17px!important;min-height:17px!important;padding:0!important;margin:7px auto 0!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;border:1px solid rgba(205,220,230,.12)!important;border-radius:50%!important;background:rgba(220,232,240,.025)!important;box-shadow:none!important;font-size:0!important;line-height:0!important;opacity:.72}
@@ -1165,7 +1170,7 @@ scene.add(new THREE.AmbientLight(0xb9c9d8,.48));const key=new THREE.PointLight(0
 const core=new THREE.Group();scene.add(core);
 let nodes=[['系统思维',0,0,0,.38],['反馈机制',-4,2,-2,.19],['系统结构',3,2,-1,.21],['复杂性',-2,-3,1,.23],['涌现',4,-2,2,.17],['因果回路',-6,-1,2,.15],['边界与环境',6,1,-3,.16],['系统演化',1,4,2,.19],['适应性',-3,4,3,.14],['非线性',5,-4,-1,.14],['延迟效应',-5,-4,-2,.13],['整体与部分',2,0,4,.16],['自组织',-7,3,-1,.14],['适应性循环',7,3,1,.15],['约束条件',-7,-2,-3,.13],['信息流',6,-1,4,.14],['路径依赖',-1,6,-2,.14],['系统动力学',3,-5,3,.16],['复杂适应系统',-4,1,5,.15],['临界点',7,-3,-3,.13],['结构变化',0,-6,-3,.14],['环境扰动',-8,0,1,.12],['协同效应',5,5,-2,.13],['反馈延迟',-2,-5,4,.12]];
 let positions=nodes.map(n=>new THREE.Vector3(n[1],n[2],n[3]));const spheres=[];
-nodes.forEach((n,i)=>{const g=new THREE.SphereGeometry(n[4]*.70,48,32);const m=new THREE.MeshStandardMaterial({color:i===0?0xd5dde2:0x9aa8b1,roughness:.44,metalness:.2,emissive:i===0?0x626d75:0x303a42,emissiveIntensity:i===0?.19:.12});const s=new THREE.Mesh(g,m);s.position.copy(positions[i]);s.userData.index=i;core.add(s);spheres.push(s);const halo=createSoftHalo(n[4]*.94);s.userData.halo=halo;s.userData.targetHaloOpacity=.025;core.add(halo)});
+nodes.forEach((n,i)=>{const g=new THREE.SphereGeometry(n[4]*.60,48,32);const m=new THREE.MeshStandardMaterial({color:i===0?0xd5dde2:0x9aa8b1,roughness:.44,metalness:.2,emissive:i===0?0x626d75:0x303a42,emissiveIntensity:i===0?.19:.12});const s=new THREE.Mesh(g,m);s.position.copy(positions[i]);s.userData.index=i;core.add(s);spheres.push(s);const halo=createSoftHalo(n[4]*.94);s.userData.halo=halo;s.userData.targetHaloOpacity=.025;core.add(halo)});
 function createSoftHalo(radius){
  const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
  const ctx=canvas.getContext('2d'),gradient=ctx.createRadialGradient(128,128,18,128,128,126);
@@ -1359,7 +1364,7 @@ function createExplorationNode(direction,choiceIndex,customTitle=''){
  const offset=lane.clone().multiplyScalar(3.7+choiceIndex*.42).add(new THREE.Vector3(siblingOffset,0,-1.15));
  const title=directionNames[direction]+' · '+prompt[0]+'（待探索）',target=nodes.length,pos=base.clone().add(offset);
  nodes.push([title,pos.x,pos.y,pos.z,.15]);positions.push(pos);
- const geometry=new THREE.SphereGeometry(.115,40,28),material=new THREE.MeshStandardMaterial({color:0xaab8c2,roughness:.48,metalness:.16,emissive:0x35434d,emissiveIntensity:.13,transparent:true});
+ const geometry=new THREE.SphereGeometry(.095,40,28),material=new THREE.MeshStandardMaterial({color:0xaab8c2,roughness:.48,metalness:.16,emissive:0x35434d,emissiveIntensity:.13,transparent:true});
  const sphere=new THREE.Mesh(geometry,material);sphere.position.copy(pos);sphere.userData.index=target;sphere.userData.targetOpacity=1;sphere.userData.targetScale=1;sphere.userData.targetGlow=.035;const halo=createSoftHalo(.155);sphere.userData.halo=halo;sphere.userData.targetHaloOpacity=.025;core.add(halo);core.add(sphere);spheres.push(sphere);
  edges.push([parent,target]);core.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([base,pos]),lineMat));
  links[direction]=targets.concat(target);directionalMap[target]={};continuationDescriptions[target]=prompt[1]+'。这是待探索的抽象节点，不代表已经核实的事实或个人知识。';
@@ -1682,7 +1687,7 @@ async function connectLocalKnowledgeUniverse(){
   const liveLineMat=new THREE.LineBasicMaterial({color:0x9aa8b1,transparent:true,opacity:.15});
   nodes.forEach((n,i)=>{
    const size=n[4]||.13;
-   const mesh=new THREE.Mesh(new THREE.SphereGeometry(size*.72,48,32),new THREE.MeshStandardMaterial({color:0x9aa8b1,roughness:.44,metalness:.18,emissive:0x303a42,emissiveIntensity:.1}));
+   const mesh=new THREE.Mesh(new THREE.SphereGeometry(size*.62,48,32),new THREE.MeshStandardMaterial({color:0x9aa8b1,roughness:.44,metalness:.18,emissive:0x303a42,emissiveIntensity:.1}));
    mesh.position.copy(positions[i]);mesh.userData.index=i;core.add(mesh);spheres.push(mesh);
    const halo=createSoftHalo(size);mesh.userData.halo=halo;mesh.userData.targetHaloOpacity=.025;core.add(halo);
   });
