@@ -950,7 +950,17 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
 .core-mastery-btn[hidden]{display:none!important}
 .core-mastery-btn:disabled{opacity:.82;color:#d3e0e8!important;border-color:rgba(205,224,237,.24)!important;cursor:default}
 </style>
-</head>
+<style id="mastery-status-and-soft-glow">
+.continuum-core{position:relative}
+#masteryStatusToggle{display:inline-flex;align-items:center;gap:5px;margin:8px 0 0!important;padding:3px 6px!important;border:1px solid #d7e2eb18!important;border-radius:20px;background:#dce8f00a!important;color:#9eabb5!important;font-size:8px!important;line-height:1!important;cursor:pointer}
+.mastery-status-dot{width:5px;height:5px;border-radius:50%;background:#84919b;box-shadow:0 0 5px #dce8f033}
+.mastery-status-dot[data-status="学习中"]{background:#aabac6}.mastery-status-dot[data-status="复习中"]{background:#c4d0d9}.mastery-status-dot[data-status="已掌握"]{background:#e2edf5;box-shadow:0 0 7px #e2edf577}.mastery-status-dot[data-status="未掌握"]{background:#78818a}
+.mastery-status-menu{position:absolute;z-index:20;left:50%;top:calc(100% - 5px);transform:translateX(-50%);min-width:94px;padding:5px;border:1px solid #d4e0e51e;border-radius:8px;background:rgba(13,18,23,.97);box-shadow:0 8px 28px #0009;backdrop-filter:blur(16px)}
+.mastery-status-menu[hidden]{display:none}
+.mastery-status-menu button{display:block;width:100%;margin:0!important;padding:7px 9px!important;border:0!important;border-radius:5px;background:transparent!important;color:#c3cdd4!important;text-align:left;font-size:9px!important;cursor:pointer}
+.mastery-status-menu button:hover{background:#dbe7ef12!important;color:#f0f4f7!important}
+.mastery-status-menu button[data-mastery-cancel]{margin-top:3px!important;border-top:1px solid #dbe7ef16!important;color:#87939c!important}
+</style></head>
 <body>
 <div id="space"></div><div class="grain"></div>
 <div id="entry-screen"><div class="entry-content"><div class="entry-kicker">V3-A · 纯宇宙画布 · MIND V2.0</div><div class="entry-wordmark">观复 <span>Mind</span></div><div class="entry-rule"></div><div class="entry-subtitle">聚焦一点，仍知全局</div><div class="entry-copy">定其位 · 联其缘 · 生其相 · 归其一<br>一切为了框架建立。</div><button class="entry-button" id="enterNebula">进入知识宇宙&nbsp; ↗</button><div class="entry-foot">PRIVATE KNOWLEDGE SPACE · EST. 2026</div></div></div>
@@ -1089,7 +1099,7 @@ body.focus-active .right-panel .mini-map{border-color:rgba(205,222,233,.24);box-
   <button class="continuum-quadrant q-backward" data-continuum="backward"><span class="cq-kicker">FUTURE · 向未来延伸</span><b>顾后</b><small>影响、演变、继承、转化、后世</small><i>展开多个探索入口 ↗</i></button>
   <button class="continuum-quadrant q-left" data-continuum="left"><span class="cq-kicker">ESSENCE · 向本质深入</span><b>向内</b><small>本质、定义、原理、组成、结构</small><i>展开多个探索入口 ↗</i></button>
   <button class="continuum-quadrant q-right" data-continuum="right"><span class="cq-kicker">CONTEXT · 向外部关联</span><b>向外</b><small>同时代、人物、领域、文明、跨域</small><i>展开多个探索入口 ↗</i></button>
-  <div class="continuum-core" id="continuumCoreCard"><span class="continuum-core-label">CURRENT CORE · 当前核心知识</span><div class="continuum-core-title" id="continuumCoreTitle">系统思维</div><p id="continuumCoreDefinition">理解复杂系统中结构、反馈与演化之间的关系。</p><div class="continuum-core-meta"><span id="continuumCoreDepth">NODE 01</span><span id="coreMasteryState">中心轴 · 当前认知位置</span></div><button id="markCoreMastered" class="core-mastery-btn" type="button" hidden>确认已复习 · 点亮知识微光</button><button id="continuumOpenDetail">打开完整知识档案 ↗</button></div>
+  <div class="continuum-core" id="continuumCoreCard"><span class="continuum-core-label">CURRENT CORE · 当前核心知识</span><div class="continuum-core-title" id="continuumCoreTitle">系统思维</div><p id="continuumCoreDefinition">理解复杂系统中结构、反馈与演化之间的关系。</p><div class="continuum-core-meta"><span id="continuumCoreDepth">NODE 01</span><span id="coreMasteryState">中心轴 · 当前认知位置</span></div><button id="masteryStatusToggle" class="mastery-status-toggle" type="button" aria-label="设置学习状态" aria-expanded="false"><span class="mastery-status-dot"></span><span id="masteryStatusLabel">未学习</span></button><div id="masteryStatusMenu" class="mastery-status-menu" hidden role="menu"><button type="button" data-mastery-status="未学习">未学习</button><button type="button" data-mastery-status="学习中">学习中</button><button type="button" data-mastery-status="复习中">复习中</button><button type="button" data-mastery-status="已掌握">已掌握</button><button type="button" data-mastery-status="未掌握">未掌握</button><button type="button" data-mastery-cancel>取消</button></div><button id="continuumOpenDetail">打开完整知识档案 ↗</button></div>
  </div>
  <section class="continuum-choice-panel" id="continuumChoicePanel" hidden aria-live="polite">
   <div class="choice-panel-head"><div><span class="source-tag" id="choiceDirectionLabel">探索方向</span><b id="choicePanelTitle">选择一个探索入口</b></div><button class="continuum-quiet" id="closeChoicePanel">收起</button></div>
@@ -1138,7 +1148,16 @@ scene.add(new THREE.AmbientLight(0xb9c9d8,.48));const key=new THREE.PointLight(0
 const core=new THREE.Group();scene.add(core);
 let nodes=[['系统思维',0,0,0,.38],['反馈机制',-4,2,-2,.19],['系统结构',3,2,-1,.21],['复杂性',-2,-3,1,.23],['涌现',4,-2,2,.17],['因果回路',-6,-1,2,.15],['边界与环境',6,1,-3,.16],['系统演化',1,4,2,.19],['适应性',-3,4,3,.14],['非线性',5,-4,-1,.14],['延迟效应',-5,-4,-2,.13],['整体与部分',2,0,4,.16],['自组织',-7,3,-1,.14],['适应性循环',7,3,1,.15],['约束条件',-7,-2,-3,.13],['信息流',6,-1,4,.14],['路径依赖',-1,6,-2,.14],['系统动力学',3,-5,3,.16],['复杂适应系统',-4,1,5,.15],['临界点',7,-3,-3,.13],['结构变化',0,-6,-3,.14],['环境扰动',-8,0,1,.12],['协同效应',5,5,-2,.13],['反馈延迟',-2,-5,4,.12]];
 let positions=nodes.map(n=>new THREE.Vector3(n[1],n[2],n[3]));const spheres=[];
-nodes.forEach((n,i)=>{const g=new THREE.IcosahedronGeometry(n[4]*.70,1);const m=new THREE.MeshStandardMaterial({color:i===0?0xd5dde2:0x9aa8b1,roughness:.44,metalness:.2,emissive:i===0?0x626d75:0x303a42,emissiveIntensity:i===0?.19:.12});const s=new THREE.Mesh(g,m);s.position.copy(positions[i]);s.userData.index=i;core.add(s);spheres.push(s);const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(n[4]*.94,1),new THREE.MeshBasicMaterial({color:0xe0e9ef,transparent:true,opacity:.032,side:THREE.BackSide}));s.userData.halo=halo;s.userData.targetHaloOpacity=.025;s.add(halo)});
+nodes.forEach((n,i)=>{const g=new THREE.SphereGeometry(n[4]*.70,48,32);const m=new THREE.MeshStandardMaterial({color:i===0?0xd5dde2:0x9aa8b1,roughness:.44,metalness:.2,emissive:i===0?0x626d75:0x303a42,emissiveIntensity:i===0?.19:.12});const s=new THREE.Mesh(g,m);s.position.copy(positions[i]);s.userData.index=i;core.add(s);spheres.push(s);const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(n[4]*.94,1),new THREE.MeshBasicMaterial({color:0xe0e9ef,transparent:true,opacity:.032,side:THREE.BackSide}));s.userData.halo=halo;s.userData.targetHaloOpacity=.025;core.add(halo)});
+function createSoftHalo(radius){
+ const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
+ const ctx=canvas.getContext('2d'),gradient=ctx.createRadialGradient(128,128,4,128,128,126);
+ gradient.addColorStop(0,'rgba(245,250,255,0.30)');gradient.addColorStop(.22,'rgba(226,238,248,0.16)');gradient.addColorStop(.52,'rgba(210,226,240,0.055)');gradient.addColorStop(1,'rgba(200,220,238,0)');
+ ctx.fillStyle=gradient;ctx.fillRect(0,0,256,256);
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+ const material=new THREE.SpriteMaterial({map:texture,color:0xffffff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true});
+ const sprite=new THREE.Sprite(material);sprite.scale.set(radius*4.8,radius*4.8,1);sprite.renderOrder=3;return sprite;
+}
 const lineMat=new THREE.LineBasicMaterial({color:0x83919a,transparent:true,opacity:.19});let edges=[[0,1],[0,2],[0,3],[0,4],[0,7],[1,5],[1,8],[2,6],[2,11],[3,10],[3,9],[4,9],[7,8],[7,11],[2,7],[1,3],[4,11]];edges.forEach(([a,b])=>{const geo=new THREE.BufferGeometry().setFromPoints([positions[a],positions[b]]);core.add(new THREE.Line(geo,lineMat))});
 // V22: deterministic, layered deep-space field. Three depth bands create scale without decorative clutter.
 function seededField(seed){let x=seed>>>0;return()=>{x=(x*1664525+1013904223)>>>0;return x/4294967296}}
@@ -1182,7 +1201,8 @@ function enterFormalDirectionTarget(targetIndex,direction,panel){
   pendingExplorationTrailEntry=null;
  }).catch(error=>toast('知识档案已打开；探索路径保存失败，可继续查看：'+error.message));
 }
-function updateFocusTrail(){const box=document.getElementById('continuumTrail');box.innerHTML='';focusHistory.forEach((idx,k)=>{if(k){const sep=document.createElement('span');sep.textContent='›';box.appendChild(sep)}const b=document.createElement('button');b.textContent=nodes[idx][0];b.classList.toggle('current',k===focusCursor);b.onclick=()=>{focusCursor=k;const entry=focusExplorationTrail[k];activeExplorationPathId=entry?.pathId||null;activeExplorationStepId=entry?.stepId||null;selectNode(idx,false)};box.appendChild(b)});document.getElementById('continuumTrailCount').textContent=(focusCursor+1)+' / '+focusHistory.length+' 个位置';document.getElementById('continuumBack').disabled=focusCursor<=0;document.getElementById('continuumForward').disabled=focusCursor>=focusHistory.length-1;document.getElementById('continuumPath').textContent='知识宇宙 / '+focusHistory.slice(0,focusCursor+1).map(i=>nodes[i][0]).join(' / ')}const masteredNodeIds=new Set();
+function updateFocusTrail(){const box=document.getElementById('continuumTrail');box.innerHTML='';focusHistory.forEach((idx,k)=>{if(k){const sep=document.createElement('span');sep.textContent='›';box.appendChild(sep)}const b=document.createElement('button');b.textContent=nodes[idx][0];b.classList.toggle('current',k===focusCursor);b.onclick=()=>{focusCursor=k;const entry=focusExplorationTrail[k];activeExplorationPathId=entry?.pathId||null;activeExplorationStepId=entry?.stepId||null;selectNode(idx,false)};box.appendChild(b)});document.getElementById('continuumTrailCount').textContent=(focusCursor+1)+' / '+focusHistory.length+' 个位置';document.getElementById('continuumBack').disabled=focusCursor<=0;document.getElementById('continuumForward').disabled=focusCursor>=focusHistory.length-1;document.getElementById('continuumPath').textContent='知识宇宙 / '+focusHistory.slice(0,focusCursor+1).map(i=>nodes[i][0]).join(' / ')}const masteryStatuses=new Map();
+const masteryStatusNames=['未学习','学习中','复习中','已掌握','未掌握'];
 function masteryKeyForNode(index){
  const node=(!isDemoUniverse&&localGraphNodes[index])?localGraphNodes[index]:null;
  if(node?.id)return 'formal:'+String(node.id);
@@ -1190,27 +1210,46 @@ function masteryKeyForNode(index){
  return 'demo:'+(meta?.identity||('seed:'+String(nodes[index]?.[0]||index)));
 }
 function updateCoreMasteryUI(){
- const i=selected,formal=!isDemoUniverse&&!!localGraphNodes[i],key=masteryKeyForNode(i),mastered=masteredNodeIds.has(key);
- const card=document.getElementById('continuumCoreCard'),button=document.getElementById('markCoreMastered'),state=document.getElementById('coreMasteryState');
- card?.classList.toggle('is-mastered',mastered);
- if(button){button.hidden=false;button.disabled=mastered;button.textContent=mastered?'已完成复习 · 知识微光已点亮':'确认已复习 · 点亮知识微光';}
- if(state)state.textContent=mastered?'已确认掌握 · 微光常亮':(formal?'尚未确认复习完成':'演示节点 · 可体验复习状态');
- spheres.forEach((sphere,index)=>{const done=masteredNodeIds.has(masteryKeyForNode(index)),active=index===i;sphere.userData.targetGlow=active?(done ? .52 : .34):(done ? .14 : .045);sphere.userData.targetHaloOpacity=active?(done ? .24 : .105):(done ? .065 : .018);sphere.userData.targetHaloScale=active?(done ? 1.95 : 1.55):(done ? 1.38 : 1);});
+ const i=selected,key=masteryKeyForNode(i),status=masteryStatuses.get(key)||'未学习';
+ const label=document.getElementById('masteryStatusLabel'),toggle=document.getElementById('masteryStatusToggle'),dot=toggle?.querySelector('.mastery-status-dot');
+ if(label)label.textContent=status;
+ if(toggle){toggle.setAttribute('aria-label','当前状态：'+status+'，点击更改');toggle.classList.toggle('is-open',!document.getElementById('masteryStatusMenu')?.hidden);}
+ if(dot)dot.dataset.status=status;
+ const card=document.getElementById('continuumCoreCard');
+ card?.classList.toggle('is-mastered',status==='已掌握');
+ if(spheres[i])spheres[i].userData.currentKnowledgeStatus=status;
+ spheres.forEach((sphere,index)=>{
+  const current=masteryStatuses.get(masteryKeyForNode(index))||'未学习',active=index===i,mastered=current==='已掌握';
+  const intensity=active?(mastered?.095:current==='未掌握'?.012:current==='复习中'?.052:current==='学习中'?.034:.022):(mastered?.026:.008);
+  sphere.userData.targetGlow=intensity;
+  sphere.userData.targetHaloOpacity=active?(mastered?.105:current==='未掌握'?.012:current==='复习中'?.052:current==='学习中'?.034:.022):(mastered?.026:.008);
+  sphere.userData.targetHaloScale=active?(mastered?1.48:1.24):1.12;
+ });
 }
 async function loadMasteryStates(){
- try{const records=await NEBULA_LOCAL.listLearningRecords();masteredNodeIds.clear();records.filter(x=>x.activityType==='mastery-confirmed'&&x.assessmentMode==='user_confirmed').forEach(x=>masteredNodeIds.add(String(x.nodeId)));updateCoreMasteryUI();}
- catch(error){console.warn('[GUANFU_MASTERY] Could not load persisted mastery states.',error);}
-}
-document.getElementById('markCoreMastered')?.addEventListener('click',async()=>{
- const node=nodes[selected];
- if(!node){toast('请先选择一个核心知识点。');return;}
- const button=document.getElementById('markCoreMastered');if(button.disabled)return;
- button.disabled=true;button.textContent='正在保存复习状态…';
  try{
-  await NEBULA_LOCAL.saveLearningRecord({nodeId:masteryKeyForNode(selected),activityType:'mastery-confirmed',assessmentMode:'user_confirmed',quality:5,score:5,prompt:'用户确认该核心知识点已完成复习并内化。',answer:'用户主动确认复习完成；此状态不是系统自动推断。'});
-  masteredNodeIds.add(masteryKeyForNode(selected));updateCoreMasteryUI();toast('已保存：该知识点的微光已点亮。');
- }catch(error){button.disabled=false;button.textContent='确认已复习 · 点亮知识微光';toast('保存失败：'+error.message);}
+  const records=await NEBULA_LOCAL.listLearningRecords(),latest=new Map();
+  records.filter(x=>x.activityType==='knowledge-status'&&x.assessmentMode==='user_selected'&&masteryStatusNames.includes(x.status)).forEach(x=>{const key=String(x.nodeId);if(!latest.has(key))latest.set(key,x);});
+  records.filter(x=>x.activityType==='mastery-confirmed'&&x.assessmentMode==='user_confirmed').forEach(x=>{const key=String(x.nodeId);if(!latest.has(key))latest.set(key,{status:'已掌握'});});
+  masteryStatuses.clear();latest.forEach((record,key)=>masteryStatuses.set(key,record.status));
+  updateCoreMasteryUI();
+ }catch(error){console.warn('[GUANFU_MASTERY] Could not load persisted knowledge statuses.',error);}
+}
+const masteryToggle=document.getElementById('masteryStatusToggle'),masteryMenu=document.getElementById('masteryStatusMenu');
+masteryToggle?.addEventListener('click',()=>{const opening=masteryMenu.hidden;masteryMenu.hidden=!opening;masteryToggle.setAttribute('aria-expanded',String(opening));});
+masteryMenu?.addEventListener('click',async event=>{
+ const choice=event.target.closest('[data-mastery-status],[data-mastery-cancel]');if(!choice)return;
+ if(choice.hasAttribute('data-mastery-cancel')){masteryMenu.hidden=true;masteryToggle?.setAttribute('aria-expanded','false');return;}
+ const status=choice.dataset.masteryStatus,key=masteryKeyForNode(selected);
+ choice.disabled=true;
+ try{
+  await NEBULA_LOCAL.saveLearningRecord({nodeId:key,activityType:'knowledge-status',assessmentMode:'user_selected',status,prompt:'用户手动设置知识学习状态。',answer:status});
+  masteryStatuses.set(key,status);masteryMenu.hidden=true;masteryToggle?.setAttribute('aria-expanded','false');updateCoreMasteryUI();toast('状态已更新：'+status);
+ }catch(error){toast('保存失败：'+error.message);}
+ finally{choice.disabled=false;}
 });
+document.addEventListener('click',event=>{if(masteryMenu&&!masteryMenu.hidden&&!masteryMenu.contains(event.target)&&!masteryToggle?.contains(event.target)){masteryMenu.hidden=true;masteryToggle?.setAttribute('aria-expanded','false');}});
+
 function renderContinuum(){const i=selected,formal=!isDemoUniverse&&!!localGraphNodes[i],path=formal?localNodePath(localGraphNodes[i].id).map(n=>n.name||n.coreWord||'未命名知识'):[],lineage=document.getElementById('positionLineage'),timePosition=document.getElementById('positionTime'),world=document.getElementById('positionWorld'),relations=document.getElementById('positionRelations');
 if(lineage)lineage.textContent=formal?(path.join(' / ')||'根节点'):'演示路径 · '+Math.max(1,focusCursor+1)+' 层';
 if(timePosition)timePosition.textContent=formal&&localGraphNodes[i].knowledgeTime?String(localGraphNodes[i].knowledgeTime):'待证据定位';
@@ -1303,8 +1342,8 @@ function createExplorationNode(direction,choiceIndex,customTitle=''){
  const offset=lane.clone().multiplyScalar(3.7+choiceIndex*.42).add(new THREE.Vector3(siblingOffset,0,-1.15));
  const title=directionNames[direction]+' · '+prompt[0]+'（待探索）',target=nodes.length,pos=base.clone().add(offset);
  nodes.push([title,pos.x,pos.y,pos.z,.15]);positions.push(pos);
- const geometry=new THREE.IcosahedronGeometry(.115,1),material=new THREE.MeshStandardMaterial({color:0xaab8c2,roughness:.48,metalness:.16,emissive:0x35434d,emissiveIntensity:.13,transparent:true});
- const sphere=new THREE.Mesh(geometry,material);sphere.position.copy(pos);sphere.userData.index=target;sphere.userData.targetOpacity=1;sphere.userData.targetScale=1;sphere.userData.targetGlow=.035;const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(.155,1),new THREE.MeshBasicMaterial({color:0xe8f1f7,transparent:true,opacity:.025,side:THREE.BackSide,depthWrite:false}));sphere.userData.halo=halo;sphere.userData.targetHaloOpacity=.025;sphere.add(halo);core.add(sphere);spheres.push(sphere);
+ const geometry=new THREE.SphereGeometry(.115,40,28),material=new THREE.MeshStandardMaterial({color:0xaab8c2,roughness:.48,metalness:.16,emissive:0x35434d,emissiveIntensity:.13,transparent:true});
+ const sphere=new THREE.Mesh(geometry,material);sphere.position.copy(pos);sphere.userData.index=target;sphere.userData.targetOpacity=1;sphere.userData.targetScale=1;sphere.userData.targetGlow=.035;const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(.155,1),new THREE.MeshBasicMaterial({color:0xe8f1f7,transparent:true,opacity:.025,side:THREE.BackSide,depthWrite:false}));sphere.userData.halo=halo;sphere.userData.targetHaloOpacity=.025;core.add(halo);core.add(sphere);spheres.push(sphere);
  edges.push([parent,target]);core.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([base,pos]),lineMat));
  links[direction]=targets.concat(target);directionalMap[target]={};continuationDescriptions[target]=prompt[1]+'。这是待探索的抽象节点，不代表已经核实的事实或个人知识。';
  continuationMeta[target]={virtual:true,parent,direction,choiceIndex,identity:'demo:'+parent+':'+direction+':'+choiceIndex+':'+target};
@@ -1425,7 +1464,7 @@ renderer.domElement.addEventListener('pointerup',e=>{if(!nodePointerStart||nodeP
 renderer.domElement.addEventListener('pointercancel',()=>{nodePointerStart=null;},{passive:true});
 const mini=document.getElementById('miniMap'),ctx=mini.getContext('2d');const minimapQuadrantReturn=document.getElementById('minimapQuadrantReturn');minimapQuadrantReturn?.addEventListener('click',event=>{event.stopPropagation();document.getElementById('continuumFocus')?.classList.add('open');restoreFocusFromMinimap();toast('四向探索已重新展开')});let mapCenterX=0,mapCenterY=0,mapScale=8,mapPulse=0;
 mini.style.cursor='crosshair';mini.addEventListener('click',e=>{const rect=mini.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;let best=-1,dist=Infinity;positions.forEach((p,i)=>{const px=rect.width/2+(p.x+p.z*.34-mapCenterX)*mapScale,py=rect.height/2-(p.y-p.z*.22-mapCenterY)*mapScale,d=Math.hypot(px-x,py-y);if(d<dist){dist=d;best=i}});if(best>=0&&dist<22)selectNode(best)});function drawMini(){const d=mini.getBoundingClientRect(),ww=d.width,hh=d.height;if(!ww||!hh)return;const ratio=Math.min(devicePixelRatio||1,2),w=Math.round(ww*ratio),h=Math.round(hh*ratio);if(mini.width!==w||mini.height!==h){mini.width=w;mini.height=h}ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,ww,hh);const xs=positions.map(p=>p.x),ys=positions.map(p=>p.y),zs=positions.map(p=>p.z),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),minZ=Math.min(...zs),maxZ=Math.max(...zs);const targetScale=Math.max(5,Math.min(ww/(maxX-minX+Math.max(0,maxZ-minZ)*.34+5),hh/(maxY-minY+Math.max(0,maxZ-minZ)*.22+5)));mapScale+=(targetScale-mapScale)*.055;const targetX3=positions[selected]?.x||0,targetY3=positions[selected]?.y||0,targetZ3=positions[selected]?.z||0;const targetPX=targetX3+targetZ3*.34,targetPY=targetY3-targetZ3*.22;mapCenterX+=(targetPX-mapCenterX)*.095;mapCenterY+=(targetPY-mapCenterY)*.095;const point=p=>({x:ww/2+(p.x+p.z*.34-mapCenterX)*mapScale,y:hh/2-(p.y-p.z*.22-mapCenterY)*mapScale});ctx.save();ctx.beginPath();ctx.rect(0,0,ww,hh);ctx.clip();ctx.strokeStyle='rgba(185,199,208,.18)';ctx.lineWidth=.8;edges.forEach(([a,b])=>{if(!positions[a]||!positions[b])return;const A=point(positions[a]),B=point(positions[b]);ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke()});if(focusHistory.length>1){ctx.beginPath();focusHistory.slice(0,focusCursor+1).forEach((idx,k)=>{const p=point(positions[idx]);if(k===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y)});ctx.strokeStyle='rgba(215,225,232,.52)';ctx.lineWidth=1.2;ctx.stroke()}positions.forEach((p,i)=>{const q=point(p);if(q.x<-5||q.x>ww+5||q.y<-5||q.y>hh+5)return;ctx.beginPath();ctx.arc(q.x,q.y,i===selected?3.3:1.9,0,Math.PI*2);ctx.fillStyle=i===selected?'rgba(229,237,242,.98)':'rgba(135,149,159,.65)';ctx.fill();if(i===selected){ctx.beginPath();ctx.arc(q.x,q.y,7+Math.sin(mapPulse)*1.5,0,Math.PI*2);ctx.strokeStyle='rgba(218,229,236,.5)';ctx.lineWidth=.8;ctx.stroke()}});const viewW=Math.min(ww*.7,mapScale*5.8),viewH=Math.min(hh*.68,mapScale*4.2);ctx.strokeStyle='rgba(211,224,232,.26)';ctx.lineWidth=.8;ctx.setLineDash([3,3]);ctx.strokeRect(ww/2-viewW/2,hh/2-viewH/2,viewW,viewH);ctx.setLineDash([]);ctx.restore();mapPulse+=.055}
-function animate(){requestAnimationFrame(animate);if(focusGoal&&focusActive){core.rotation.x+=(focusRotationGoal.x-core.rotation.x)*.055;core.rotation.y+=(focusRotationGoal.y-core.rotation.y)*.055;core.rotation.z+=(focusRotationGoal.z-core.rotation.z)*.055;const targetWorld=core.localToWorld(positions[selected].clone());const orbitOffset=new THREE.Vector3(0,0,9.2).applyAxisAngle(new THREE.Vector3(0,1,0),focusRotationGoal.y*.72).applyAxisAngle(new THREE.Vector3(1,0,0),focusRotationGoal.x*.72);const desired=targetWorld.clone().add(orbitOffset);camera.position.lerp(desired,.065);controls.target.lerp(targetWorld,.065);const rollNow=focusRollGoal;camera.up.lerp(new THREE.Vector3(Math.sin(rollNow),Math.cos(rollNow),0),.06)}spheres.forEach(s=>{if(!s.userData.targetOpacity)return;s.material.opacity+=(s.userData.targetOpacity-s.material.opacity)*.075;s.material.emissiveIntensity+=(s.userData.targetGlow-s.material.emissiveIntensity)*.075;const halo=s.userData.halo;if(halo){const targetHalo=s.userData.targetHaloOpacity??.025;halo.material.opacity+=(targetHalo-halo.material.opacity)*.065;const haloScale=s.userData.targetHaloScale||1;halo.scale.lerp(new THREE.Vector3(haloScale,haloScale,haloScale),.045);}const target=s.userData.targetScale||1;s.scale.lerp(new THREE.Vector3(target,target,target),.032)});controls.update();renderer.render(scene,camera)}animate();
+function animate(){requestAnimationFrame(animate);if(focusGoal&&focusActive){core.rotation.x+=(focusRotationGoal.x-core.rotation.x)*.055;core.rotation.y+=(focusRotationGoal.y-core.rotation.y)*.055;core.rotation.z+=(focusRotationGoal.z-core.rotation.z)*.055;const targetWorld=core.localToWorld(positions[selected].clone());const orbitOffset=new THREE.Vector3(0,0,9.2).applyAxisAngle(new THREE.Vector3(0,1,0),focusRotationGoal.y*.72).applyAxisAngle(new THREE.Vector3(1,0,0),focusRotationGoal.x*.72);const desired=targetWorld.clone().add(orbitOffset);camera.position.lerp(desired,.065);controls.target.lerp(targetWorld,.065);const rollNow=focusRollGoal;camera.up.lerp(new THREE.Vector3(Math.sin(rollNow),Math.cos(rollNow),0),.06)}spheres.forEach(s=>{if(!s.userData.targetOpacity)return;s.material.opacity+=(s.userData.targetOpacity-s.material.opacity)*.075;s.material.emissiveIntensity+=(s.userData.targetGlow-s.material.emissiveIntensity)*.075;const halo=s.userData.halo;if(halo){const targetHalo=s.userData.targetHaloOpacity??.008;halo.material.opacity+=(targetHalo-halo.material.opacity)*.065;const haloScale=s.userData.targetHaloScale||1.12;const base=(nodes[s.userData.index]?.[4]||.15)*.94*4.8;halo.scale.set(base*haloScale,base*haloScale,1);halo.position.copy(s.position);}const target=s.userData.targetScale||1;s.scale.lerp(new THREE.Vector3(target,target,target),.032)});controls.update();renderer.render(scene,camera)}animate();
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(pixelRatioForViewport());renderer.setSize(innerWidth,innerHeight);drawMini()}addEventListener('resize',resize);drawMini();loadMasteryStates();const observer=new ResizeObserver(drawMini);observer.observe(mini);
 document.getElementById('enterNebula').addEventListener('click',()=>{document.body.classList.add('entered');setTimeout(()=>window.dispatchEvent(new Event('resize')),650)});
 function toast(s){const t=document.getElementById('toast');t.textContent=s;t.classList.add('show');clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.classList.remove('show'),1800)}
@@ -1626,9 +1665,9 @@ async function connectLocalKnowledgeUniverse(){
   const liveLineMat=new THREE.LineBasicMaterial({color:0x9aa8b1,transparent:true,opacity:.15});
   nodes.forEach((n,i)=>{
    const size=n[4]||.13;
-   const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(size*.72,1),new THREE.MeshStandardMaterial({color:0x9aa8b1,roughness:.44,metalness:.18,emissive:0x303a42,emissiveIntensity:.1}));
+   const mesh=new THREE.Mesh(new THREE.SphereGeometry(size*.72,48,32),new THREE.MeshStandardMaterial({color:0x9aa8b1,roughness:.44,metalness:.18,emissive:0x303a42,emissiveIntensity:.1}));
    mesh.position.copy(positions[i]);mesh.userData.index=i;core.add(mesh);spheres.push(mesh);
-   const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(size,1),new THREE.MeshBasicMaterial({color:0xe0e9ef,transparent:true,opacity:.026,side:THREE.BackSide}));mesh.userData.halo=halo;mesh.userData.targetHaloOpacity=.025;mesh.add(halo);
+   const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(size,1),new THREE.MeshBasicMaterial({color:0xe0e9ef,transparent:true,opacity:.026,side:THREE.BackSide}));mesh.userData.halo=halo;mesh.userData.targetHaloOpacity=.025;core.add(halo);
   });
   edges.forEach(([a,b])=>core.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([positions[a],positions[b]]),liveLineMat)));
   selected=Math.max(0,ordered.findIndex(n=>String(n.id)===String(root?.id)));focusActive=false;focusGoal=null;focusHistory=[];focusExplorationTrail=[];focusCursor=-1;activeExplorationPathId=null;activeExplorationStepId=null;pendingExplorationTrailEntry=null;
