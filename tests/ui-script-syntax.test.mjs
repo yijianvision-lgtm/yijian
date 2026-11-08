@@ -42,7 +42,7 @@ assert.ok(html.includes("function retractFocusToMinimap(){"), "Both archive entr
 assert.ok(html.includes("#continuumFocus.quadrants-retracting .continuum-core{"), "The central core point must retract with the four-direction guide.");
 assert.ok(html.includes("var(--core-minimap-dx,0px)") && html.includes("var(--core-minimap-dy,0px)"), "The core point must travel toward the minimap center rather than merely disappear.");
 assert.ok(html.includes("corePoint.style.setProperty('--core-minimap-dx'") && html.includes("corePoint.style.setProperty('--core-minimap-dy'"), "The core-to-minimap movement must use measured on-screen positions.");
-assert.ok(html.includes("async function openKnowledgeArchive(){"), "Both archive entry points must share a single archive-opening flow.");
+assert.ok(html.includes("function openKnowledgeArchive(){"), "Both archive entry points must share a single archive-opening flow.");
 
 assert.ok(/document\.querySelectorAll\('\.overlay\.open'\)\.forEach\(panel=>\{if\(panel!==archive\)panel\.classList\.remove\('open'\)\}\);\s*archive\.scrollTop=0;\s*host\.replaceChildren\(safeText\('p','正在打开知识档案…'\)\);\s*archive\.classList\.add\('open'\);\s*retractFocusToMinimap\(\);\s*loadKnowledgeArchiveEvidence\(nodeId,host\);/.test(html), "The archive must open immediately while quadrant retraction and evidence loading continue without blocking.");
 assert.ok(html.includes("renderContinuum();\n const archive=document.getElementById('nodeDetail');"), "The selected knowledge object's title, definition and structure must be refreshed before its archive opens.");
