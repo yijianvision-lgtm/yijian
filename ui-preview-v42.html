@@ -2910,48 +2910,45 @@ document.addEventListener('click',function(event){
 
 
 <style id="v42-core-point-alignment">
-/* V42: the core word and luminous core share one exact geometric center. */
+/* V42 correction: align the word to the actual luminous point, not the card box. */
 #continuumFocus .continuum-stage>.continuum-core{
-  position:relative!important;
-  display:block!important;
+  position:relative!important;display:block!important;
   align-self:center!important;justify-self:center!important;
-  width:100%!important;max-width:320px!important;min-height:190px!important;
-  height:190px!important;margin:0!important;padding:0!important;
-  border:0!important;border-radius:0!important;
-  background:transparent!important;backdrop-filter:none!important;
-  box-shadow:none!important;text-align:center!important;
-  overflow:visible!important;z-index:8!important;
+  width:100%!important;max-width:320px!important;height:190px!important;min-height:190px!important;
+  margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
+  background:transparent!important;backdrop-filter:none!important;box-shadow:none!important;
+  text-align:center!important;overflow:visible!important;z-index:8!important;
 }
-/* Keep the existing soft core light behind the title, never over its strokes. */
+/* Preserve the approved glow appearance; place its center point at the true shared origin. */
 #continuumFocus .continuum-core:before{
+  top:50%!important;left:50%!important;
+  transform:translate(-50%,-50%)!important;
   z-index:0!important;pointer-events:none!important;
 }
+#continuumFocus .continuum-core:after{z-index:0!important;pointer-events:none!important}
 #continuumFocus .continuum-core-heading-row{
   position:absolute!important;left:50%!important;top:50%!important;
   transform:translate(-50%,-50%)!important;
   display:block!important;width:max-content!important;max-width:100%!important;
-  margin:0!important;padding:0!important;gap:0!important;
-  z-index:10!important;
+  margin:0!important;padding:0!important;gap:0!important;z-index:10!important;
 }
 #continuumFocus .continuum-core-title{
-  position:relative!important;z-index:11!important;
-  display:block!important;margin:0!important;padding:0!important;
-  width:max-content!important;max-width:100%!important;
-  font-size:clamp(18px,1.55vw,21px)!important;
-  line-height:1.2!important;font-weight:500!important;
-  letter-spacing:.035em!important;text-align:center!important;
-  color:rgba(245,249,252,.99)!important;
+  position:relative!important;z-index:11!important;display:block!important;
+  margin:0!important;padding:0!important;width:max-content!important;max-width:100%!important;
+  font-size:clamp(25px,2.05vw,29px)!important;
+  line-height:1.2!important;font-weight:500!important;letter-spacing:.035em!important;
+  text-align:center!important;color:rgba(245,249,252,.99)!important;
   text-shadow:0 1px 8px rgba(3,7,11,.96),0 0 2px rgba(3,7,11,.9)!important;
   white-space:nowrap!important;
 }
 #continuumFocus .continuum-core-heading-row #masteryStatusToggle{
   position:absolute!important;left:calc(100% + 7px)!important;right:auto!important;
   top:50%!important;transform:translateY(-50%)!important;
-  z-index:13!important;
+  margin:0!important;z-index:13!important;
 }
 #continuumFocus .continuum-core-heading-row #masteryStatusMenu{
   position:absolute!important;left:calc(100% + 34px)!important;right:auto!important;
-  top:50%!important;transform:translateY(-50%)!important;z-index:20!important;
+  top:50%!important;transform:translateY(-50%)!important;margin:0!important;z-index:20!important;
 }
 #continuumFocus .continuum-core-heading-row #masteryStatusMenu.opens-left{
   left:auto!important;right:calc(100% + 8px)!important;
@@ -2960,7 +2957,7 @@ document.addEventListener('click',function(event){
   #continuumFocus .continuum-stage>.continuum-core{
     width:100%!important;max-width:260px!important;height:190px!important;min-height:190px!important;
   }
-  #continuumFocus .continuum-core-title{font-size:clamp(17px,4.5vw,20px)!important}
+  #continuumFocus .continuum-core-title{font-size:clamp(23px,5.5vw,26px)!important}
   #continuumFocus .continuum-core-heading-row #masteryStatusToggle{left:calc(100% + 5px)!important}
   #continuumFocus .continuum-core-heading-row #masteryStatusMenu{left:calc(100% + 29px)!important}
 }
