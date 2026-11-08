@@ -1542,7 +1542,7 @@ document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Ent
 
 <script>
 (function(){
- const ids=['dashboard','hierarchy','sources','lab','learning','review','filter-workbench','backup','globalSearch','overview'];
+ const ids=['dashboard','hierarchy','sources','lab','learning','review','filter-workbench','backup','globalSearch','overview','nodeDetail'];
  function closeAll(){ids.forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open')});}
  function open(id){closeAll();const el=document.getElementById(id);if(el)el.classList.add('open');document.querySelectorAll('.nav,.rail-item[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===id || (id==='universe'&&b.dataset.view==='universe')));}
  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.view;if(['dashboard','lab','learning','hierarchy','sources'].includes(v))open(v);else if(v==='universe'){closeAll();document.querySelectorAll('.nav,.rail-item[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view==='universe'));}}));
