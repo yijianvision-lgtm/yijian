@@ -105,3 +105,12 @@ V4 的 A/B/C 已全部否决；V5 不沿用其布局作为选择结论。三版�
 - **V4-B｜轨道工作台：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v4-b-orbit-workbench.html) · [源文件](ui-preview-v4-b-orbit-workbench.html) — 三维视口占据主体，左侧导航折叠为窄轨道，右侧检查器按需查看，操作围绕空间展开。
 - **V4-C｜谱系透镜：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v4-c-lineage-lens.html) · [源文件](ui-preview-v4-c-lineage-lens.html) — 纵向知识树作为阅读主面，右上保留小型三维全局定位窗，兼顾局部结构与整体位置。
 
+
+
+## MIND V3.1｜最新架构审议与设计任务书
+
+- [V3.1 正式架构审议变更清单](docs/MIND-V3.1-ARCHITECTURE-DECISIONS.md) — 逐项记录 13 项 old / merge / new / later 决定及本轮边界。
+- [V3.1 统一产品架构与 UI 设计任务书](docs/MIND-DESIGN-TASKBOOK-V3.1.md) — 先统一架构，再进入 UI 设计。
+- [最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md) — 已增加 V3.1 用户审议决议。
+
+**当前状态：文档已提交；架构统一阶段待审阅。未修改网站代码、UI、数据库或后台，也未启动 UI 改版。**
