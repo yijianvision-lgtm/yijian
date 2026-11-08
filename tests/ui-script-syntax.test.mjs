@@ -54,7 +54,7 @@ assert.ok(!html.includes(".#nodeDetail{z-index:40}"), "The archive z-index rule 
 assert.ok(html.includes(".overlay-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:22px}"), "The archive header class must have a valid class selector.");
 assert.ok(html.includes("document.querySelectorAll('.overlay.open').forEach(panel=>{if(panel!==archive)panel.classList.remove('open')});"), "Opening the archive must close any previously open overlay so it cannot cover the archive.");
 assert.ok(html.includes("const ids=['dashboard','hierarchy','sources','lab','learning','review','filter-workbench','backup','globalSearch','overview','nodeDetail'];"), "The shared close action must include the knowledge archive so its Return button and Escape key both work.");
-assert.ok(html.includes("host.append(safeText('p','正在读取关联来源…'));"), "The archive must show a visible loading state while original sources are resolved.");
+assert.ok(html.includes("host.replaceChildren(safeText('p','正在读取关联来源…'));"), "The archive must show a visible loading state while original sources are resolved.");
 assert.ok(html.includes("corePoint.addEventListener('transitionend',onTransitionEnd);"), "The core-to-minimap transition must remain event-driven.");
 assert.ok(html.includes("function closeKnowledgeArchive(){") && html.includes("if(b.closest('#nodeDetail'))closeKnowledgeArchive();else closeAll();"), "The archive Return button must close only the archive and preserve the collapsed universe state.");
 assert.ok(html.includes("if(!closeKnowledgeArchive())closeAll();"), "Escape must close the archive first without closing or resetting the underlying universe.");
