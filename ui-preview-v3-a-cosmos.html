@@ -2087,4 +2087,48 @@ refreshLearningWorkspace();
 refreshResearchWorkspace();
 </script>
 
+
+<script>
+// V26 — archive entry must remain operable even if the 3D ES module fails before binding.
+(function(){
+ const archiveIds=new Set(['openNodeDetail','continuumOpenDetail']);
+ document.addEventListener('click',function(event){
+  const button=event.target&&event.target.closest?event.target.closest('#openNodeDetail,#continuumOpenDetail'):null;
+  if(!button)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const archive=document.getElementById('nodeDetail');
+  const evidence=document.getElementById('nodeEvidenceList');
+  if(!archive||!evidence){
+   console.error('[GUANFU_ARCHIVE_FALLBACK] Archive DOM missing.',{archive:!!archive,evidence:!!evidence});
+   window.alert('知识档案界面组件缺失，请刷新页面并反馈此错误。');
+   return;
+  }
+  if(typeof window.__guanfuOpenKnowledgeArchive==='function'){
+   try{
+    const opened=window.__guanfuOpenKnowledgeArchive();
+    if(opened!==false)return;
+   }catch(error){
+    console.error('[GUANFU_ARCHIVE_FALLBACK] Main archive opener failed.',error);
+   }
+  }
+  // Do not silently no-op when the module never initialized: show the archive shell.
+  document.querySelectorAll('.overlay.open').forEach(panel=>{if(panel!==archive)panel.classList.remove('open')});
+  const title=document.getElementById('selectedName')?.textContent||document.getElementById('continuumCoreTitle')?.textContent||'当前知识';
+  const definition=document.getElementById('selectedDesc')?.textContent||document.getElementById('continuumCoreDefinition')?.textContent||'当前节点暂无定义。';
+  const detailTitle=document.getElementById('detailTitle');
+  const detailDefinition=document.getElementById('detailDefinition');
+  if(detailTitle)detailTitle.textContent=title;
+  if(detailDefinition)detailDefinition.textContent=definition;
+  archive.dataset.openState='fallback';
+  archive.classList.add('open');
+  evidence.replaceChildren();
+  const status=document.createElement('p');
+  status.textContent='知识档案界面已打开。三维交互模块尚未完成初始化，因此本次无法读取本地知识来源；请查看浏览器控制台中的 [GUANFU_ARCHIVE_FALLBACK] 或模块加载错误。刷新后再次尝试，若仍出现此提示，说明模块启动链路仍有故障。';
+  evidence.append(status);
+  console.error('[GUANFU_ARCHIVE_FALLBACK] Main module bridge unavailable; archive shell opened.');
+ },true);
+})();
+</script>
+
 </body></html>
