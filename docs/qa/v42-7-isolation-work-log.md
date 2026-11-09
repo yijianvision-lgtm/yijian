@@ -73,3 +73,9 @@ Natural fog remains locked. The title weight choice is an implementation judgmen
 - Attempted headless Chromium desktop/mobile verification in the working environment, but browser navigation was blocked by the environment policy (`ERR_BLOCKED_BY_ADMINISTRATOR`). Therefore no browser-rendering, screenshot, click-to-visible latency, or visual acceptance result is claimed.
 - Menu source inspection still shows one direct toggle click listener, one menu-choice listener, one outside-click closer, and one Escape closer. This rules out an obvious duplicate-handler cause in the inspected source, but does not identify the user's observed delay. Next diagnostic remains a real-browser click-to-visible Performance API measurement and hit-testing/style-paint profile.
 - V42.7 is now available as a real downloadable preview artifact, not a hosted live URL. Do not call it a Pages deployment or conflate it with the older V3-A hosted preview.
+
+
+## V42.7 menu instant-open follow-up
+
+- Added an isolated final CSS override in `ui-preview-v42-7.html`: the learning-status menu now has no entrance animation, opacity transition, backdrop blur, or opacity compositing hint. The existing click handler, option list, persistence flow, and menu geometry are unchanged.
+- This is a targeted response to the reported slow menu appearance. It is a source-level mitigation only; click-to-visible latency still requires a real browser measurement. Do not mark the menu bug fully resolved until that measurement and user acceptance pass.
