@@ -44,3 +44,13 @@ Natural fog remains locked. The title weight choice is an implementation judgmen
 - This confirms the size setting only; it is not full visual acceptance of V42.7.
 - Static source inspection confirms the final V42.7 style block does not override font size. No V42.7 Actions workflow runs were returned for the core-weight choice commit or the latest recovery-log commit. Browser visual and click-latency tests remain outstanding.
 - Next: test the isolated preview in a real browser at desktop and mobile widths; measure learning-status click-to-visible latency with Performance API; verify the title remains centered and the fog layer is visually preserved. Do not merge or deploy to the formal entry before user acceptance.
+
+
+## User confirmation update — rear glow direction (V42.7)
+
+- The user explicitly selected **A** for the rear glow: keep the central highlight clear, make the surrounding halo diffuse softly, and avoid a hard-edged ring.
+- This authorization applies only to the rear glow. Preserve the selected core-word size (desktop 20–23px; mobile 18–20px), weight 450, common-center anchor, natural fog, four-direction layout, learning-status behavior, and all previously approved items.
+- This is a confirmed design direction, not evidence that the visual change has been implemented or visually accepted.
+- The repository README documents the existing V3-A Pages preview at https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-a-cosmos.html. The V42.7 isolated file is not documented as a deployed preview. Do not present the V3-A URL as V42.7, and do not claim either URL was browser-verified in this run.
+- The V42.7 commit f0e8c9fb09eaa2e0ffa0be5941fa3c9217fa5099 returned no workflow runs and no combined status entries. A live V42.7 deployment remains unverified.
+- Next: implement only the rear-glow softness in the isolated V42.7 file; preserve fog and approved geometry; run static regression checks; then establish a separate, actually accessible V42.7 preview before requesting visual acceptance.
