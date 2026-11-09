@@ -158,23 +158,14 @@ const merge = await api.createProposal({
   proposedSnapshot: { name: "Merged target" },
   reasoning: "Explicit merge mapping"
 });
-await api.applyProposal(merge.id, "accept", "runtime test");
+const graphBeforeMerge = await api.loadGraph();
+await assert.rejects(() => api.applyProposal(merge.id, "accept", "runtime test"), /知识合并\/拆分尚未完成原子事务改造/);
 graph = await api.loadGraph();
-assert.ok(!graph.nodes.some(node => node.id === "source"));
-assert.equal(graph.nodes.find(node => node.id === "child").parentId, "target");
-assert.ok((await api.listNodeSources("target")).some(link => link.sourceId === "evidence-1"));
-assert.ok((await api.listKnowledgeRelations("target")).some(link => link.targetNodeId === "child"));
-const remappedPlacements = await api.listFrameworkPlacements(mergeFramework.id, "target");
-assert.ok(remappedPlacements.some(x => x.originalNodeId === "source"), "Merge must preserve framework placement context and record the original object ID.");
-const remappedPath = await api.getExplorationPathSnapshot(mergePath.id);
-assert.equal(remappedPath.path.rootNodeId, "target");
-assert.equal(remappedPath.path.originalRootNodeId, "source");
-assert.equal(remappedPath.steps[0].fromNodeId, "target");
-assert.equal(remappedPath.steps[0].originalFromNodeId, "source", "Merge must remap active path references while preserving traversal provenance.");
-const collapsedPathSnapshot = await api.getExplorationPathSnapshot(collapsePath.id);
-assert.equal(collapsedPathSnapshot.steps[0].relationId, null, "A self-collapsed relation must not remain as a dangling path reference.");
-assert.equal(collapsedPathSnapshot.steps[0].originalRelationId, collapsingRelation.id, "The removed relation identity must remain in the path audit trail.");
-assert.equal(collapsedPathSnapshot.steps[0].relationInvalidatedByMerge, "merged_endpoints_collapsed");
+assert.deepEqual(graph, graphBeforeMerge, "Blocked merge must leave every graph node and edge unchanged.");
+assert.equal((await api.listProposals("pending")).some(item => item.id === merge.id), true, "Blocked merge must remain pending for later atomic implementation.");
+assert.ok((await api.listNodeSources("source")).some(link => link.sourceId === "evidence-1"), "Blocked merge must preserve source evidence.");
+assert.ok((await api.listKnowledgeRelations("source")).some(link => link.targetNodeId === "target"), "Blocked merge must preserve original relations.");
+assert.equal((await api.getExplorationPathSnapshot(mergePath.id)).path.rootNodeId, "source", "Blocked merge must preserve original exploration paths.");
 
 const split = await api.createProposal({
   proposalType: "split",
@@ -182,14 +173,11 @@ const split = await api.createProposal({
   proposedNodes: [{ name: "Part A" }, { name: "Part B" }],
   reasoning: "Explicit split mapping"
 });
-await api.applyProposal(split.id, "accept", "runtime test");
+const graphBeforeSplit = await api.loadGraph();
+await assert.rejects(() => api.applyProposal(split.id, "accept", "runtime test"), /知识合并\/拆分尚未完成原子事务改造/);
 graph = await api.loadGraph();
-assert.ok(graph.nodes.some(node => node.id === "target" && node.name === "Part A"));
-assert.ok(graph.nodes.some(node => node.name === "Part B"));
-const splitA = graph.nodes.find(node => node.id === "target");
-const splitB = graph.nodes.find(node => node.name === "Part B");
-assert.equal(splitA.splitGroupId, splitB.splitGroupId, "Split nodes must retain a shared split provenance group.");
-assert.equal((await api.getExplorationPathSnapshot(mergePath.id)).path.rootNodeId, "target", "Existing paths remain attached to the retained stable identity after split.");
+assert.deepEqual(graph, graphBeforeSplit, "Blocked split must leave every graph node and edge unchanged.");
+assert.equal((await api.listProposals("pending")).some(item => item.id === split.id), true, "Blocked split must remain pending until atomic transaction support is complete.");
 
 const batch = await api.createExtractionBatch({ sourceId: "evidence-1", parserVersion: "test-parser" });
 assert.equal(batch.status, "received");
