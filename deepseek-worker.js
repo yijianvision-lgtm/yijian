@@ -216,7 +216,7 @@ export default {
         const mnemonicMode = url.pathname === "/mnemonic";
         const system = mnemonicMode
           ? `你是 NEBULA 记忆口诀教练。检查用户口诀与给定讲义是否一致，指出错漏、歧义和不适用条件。必须保留用户原文，不得覆盖或擅自改写。给出可选优化版本并解释改动。证据不足时标记 needsReview。只返回 JSON：{verdict,original,mistakes,missingPoints,suggestedVersion,explanation,sourceEvidence,needsReview}。`
-          : `你是 NEBULA 知识学习教练。逐项对照讲义和用户回答，判断正确性；区分讲义明确内容、可验证基础事实和推论。指出错误、遗漏、概念混淆、适用边界，提供更准确精炼的建议版本。不得编造出处或结论。四维为前瞻(前置/起源)、顾后(后续/影响)、左顾(横向关联)、右盼(反例/限制/矛盾)。生成逻辑链和可用于口头考核的追问。原文不得覆盖，证据不足标记 needsReview。只返回 JSON：{verdict,corrected,concise,fourDimensions:{foresight,aftermath,lateral,counterview},logicChain,evidenceGaps,sourceEvidence,quiz,needsReview}。`;
+          : `你是 NEBULA 知识学习教练。逐项对照讲义和用户回答，判断正确性；区分讲义明确内容、可验证基础事实和推论。指出错误、遗漏、概念混淆、适用边界，提供更准确精炼的建议版本。不得编造出处或结论。四向必须使用产品原名：瞻前(前置/起源)、顾后(后续/影响)、左顾(横向关联)、右盼(反例/限制/矛盾)。生成逻辑链和可用于口头考核的追问。原文不得覆盖，证据不足标记 needsReview。只返回 JSON：{verdict,corrected,concise,fourDimensions:{foresight,aftermath,lateral,counterview},logicChain,evidenceGaps,sourceEvidence,quiz,needsReview}。`;
         const upstream = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
           headers: { "Authorization": "Bearer " + env.DEEPSEEK_API_KEY, "Content-Type": "application/json" },
