@@ -16,7 +16,17 @@
 
 A persistent, interactive 3D personal knowledge system.
 
-## MIND V2.0 architecture and design deliverables\n\n- **MIND V2.0 architecture:** [Overall architecture and core interaction design](docs/MIND-V2-ARCHITECTURE.md) — information architecture, tree/network/map boundaries, spatial levels and acceptance gates.\n- **Highest design charter:** [观复 Mind｜最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md).\n\n## Open the product and UI preview
+## 当前工作状态与正确入口（2026-11-09）
+
+- **当前工作基线：** V42.6（提交 `81875376d3fc1acff5202e8efcd7d271cd7eff24`）。
+- **当前迭代：** V42.7，仅在隔离分支 `isolation/v42-7-core-menu-fixes`；[V42.7 源码](ui-preview-v42-7.html) · [隔离工作日志](docs/qa/v42-7-isolation-work-log.md)。
+- **运行预览：** V42.7 运行预览尚未生成。源码链接不是运行网站。
+- **历史基线：** [V3-A 旧版预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-a-cosmos.html) 仅供查看历史视觉基线，不是 V42.7。
+- **版本/任务证据矩阵：** [当前版本、预览与 P0–P13 任务核对](docs/PROJECT-RELEASE-AND-TASK-MATRIX.md)。
+- **历史导航说明：** 下方 V1–V7 及 V2/V3/V4 等入口为历史版本目录，不代表当前发布版本；旧 V7-A Cloudflare Worker 内容仅保留为历史记录，不属于当前路线。
+
+
+## MIND V2.0 architecture and design deliverables\n\n- **MIND V2.0 architecture:** [Overall architecture and core interaction design](docs/MIND-V2-ARCHITECTURE.md) — information architecture, tree/network/map boundaries, spatial levels and acceptance gates.\n- **Highest design charter:** [观复 Mind｜最高设计总纲](docs/GUANFU-MIND-DESIGN-CHARTER.md).\n\n## 历史产品与 UI 预览索引（非当前 V42.7 运行入口）
 
 - **Formal page:** [index.html](index.html) — legacy production entry; it has not yet been migrated to the newer Mind workspace.
 - **Independent UI preview:** [Open 观复 Mind preview](https://yijianvision-lgtm.github.io/yijian/ui-preview-v1.html) — latest committed preview source; confirm Pages deployment before treating it as the live release.
@@ -25,7 +35,7 @@ A persistent, interactive 3D personal knowledge system.
 - **V2-B｜认知舰桥版：** [打开独立预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v2-b-bridge.html) · [GitHub 源文件](ui-preview-v2-b-bridge.html)
 - **V2-C｜谱系导航版：** [打开独立预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v2-c-lineage.html) · [GitHub 源文件](ui-preview-v2-c-lineage.html)
 
-### V3 三套明显不同的完整布局（本轮供选择）
+### V3 三套历史布局候选（非当前版本）
 
 - **V3-A｜纯宇宙画布：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-a-cosmos.html) · [源文件](ui-preview-v3-a-cosmos.html) — 隐藏常驻侧栏，以全屏三维空间为主，信息收进底部浮动控制区。
 - **V3-B｜认知控制台：** [打开预览](https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-b-command.html) · [源文件](ui-preview-v3-b-command.html) — 左侧工作导航、中间三维工作区、右侧知识详情，固定三栏。
@@ -66,9 +76,9 @@ The preview uses Three.js / WebGL for the spatial scene. When a local IndexedDB 
 See [NEBULA Skill 1.0](docs/NEBULA-SKILL.md) for detailed product and implementation requirements.
 
 
-### V7-A｜深空主线 · 对话学习与连续四向延伸（当前迭代）
+### V7-A｜深空主线 · 对话学习与连续四向延伸（历史方案，非当前路线）
 
-当前只沿 A「深空纯宇宙」继续迭代，不再制作新的 B/C 方案。V7-A（历史预览记录）保留 V6-A 的画布优先布局、角落默认小地图与明确的左右面板入口，并集中处理三项体验：
+该段记录 V7-A 历史预览方案，不代表当前迭代或部署路线。V7-A 保留 V6-A 的画布优先布局、角落默认小地图与明确的左右面板入口，并集中处理三项体验：
 
 - **学习页 AI 对话：** 学习页加入一对一对话工作区，可围绕当前题眼按前源、左体、右用、后流四侧一体展开学习；仅在用户主动选择后附带当前知识节点；对话可由用户保存到本机资料库，不会自动修改正式知识。
 - **四向视野排布：** 四向文字固定在右侧上方的独立区域，中央核心知识不再与左右文字叠压。
