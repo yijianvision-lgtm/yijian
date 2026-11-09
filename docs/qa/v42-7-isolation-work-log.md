@@ -54,3 +54,11 @@ Natural fog remains locked. The title weight choice is an implementation judgmen
 - The repository README documents the existing V3-A Pages preview at https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-a-cosmos.html. The V42.7 isolated file is not documented as a deployed preview. Do not present the V3-A URL as V42.7, and do not claim either URL was browser-verified in this run.
 - The V42.7 commit f0e8c9fb09eaa2e0ffa0be5941fa3c9217fa5099 returned no workflow runs and no combined status entries. A live V42.7 deployment remains unverified.
 - Next: implement only the rear-glow softness in the isolated V42.7 file; preserve fog and approved geometry; run static regression checks; then establish a separate, actually accessible V42.7 preview before requesting visual acceptance.
+
+
+## V42.7 rear-glow implementation update
+
+- Implemented the user's confirmed A direction in the isolated UI file only (commit 0f5bb77a3e998636c1c7734958b2705989707a75): tightened the central point to a restrained highlight and replaced the multi-radius bright halo with a broader, lower-contrast diffuse field using a 44px blur. Mobile halo dimensions remain separately constrained.
+- Preserved the existing natural-fog/halo pseudo-element layer, V42.7 title weight 450, inherited desktop/mobile size rules, common-center anchor, four-direction layout, and learning-status menu rules.
+- This is a source implementation, not browser-verified visual acceptance. Static regression checks are recorded separately; actual desktop/mobile rendering and menu latency still require browser testing.
+- Preview delivery: README currently documents the existing V3-A Pages preview (https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-a-cosmos.html), but that is not V42.7. The isolated V42.7 file has no verified live Pages URL. Do not conflate the baseline preview with this V42.7 build.
