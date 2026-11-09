@@ -27,3 +27,9 @@ Safety/isolation:
 - No change to index.html or formal entry.
 - No backend, user knowledge data, or privacy behavior changed.
 - V42.6 remains the current baseline.
+
+
+## User confirmation update
+The user selected E for core-word weight: assistant should judge from the overall visual direction. V42.7 now uses a refined medium weight of 450, aiming for a precise, premium balance rather than bold or hairline. Only font weight is changed; size, spacing, center anchor and positioning remain unchanged.
+
+Natural fog remains locked. The title weight choice is an implementation judgment pending user visual acceptance, not yet a user-approved visual result.
