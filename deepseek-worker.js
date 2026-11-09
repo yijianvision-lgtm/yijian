@@ -4,6 +4,36 @@
  * Optional vars: DEEPSEEK_MODEL=deepseek-v4-pro
  * Endpoint: POST /analyze  { text, existingNodes? }
  */
+async function limitRequestBody(request, maxBytes) {
+  const declaredLength = Number(request.headers.get("Content-Length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return null;
+  if (!request.body) return request;
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body
+  });
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
@@ -22,6 +52,11 @@ export default {
     };
     if (!allowed) return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: cors });
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
+    if (request.method === "POST") {
+      const boundedRequest = await limitRequestBody(request, 1024 * 1024);
+      if (!boundedRequest) return new Response(JSON.stringify({ error: "Request body exceeds the 1 MiB limit." }), { status: 413, headers: cors });
+      request = boundedRequest;
+    }
     const url = new URL(request.url);
     if (url.pathname === "/health" && request.method === "GET") {
       return new Response(JSON.stringify({
