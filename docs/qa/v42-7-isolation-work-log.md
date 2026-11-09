@@ -62,3 +62,14 @@ Natural fog remains locked. The title weight choice is an implementation judgmen
 - Preserved the existing natural-fog/halo pseudo-element layer, V42.7 title weight 450, inherited desktop/mobile size rules, common-center anchor, four-direction layout, and learning-status menu rules.
 - This is a source implementation, not browser-verified visual acceptance. Static regression checks are recorded separately; actual desktop/mobile rendering and menu latency still require browser testing.
 - Preview delivery: README currently documents the existing V3-A Pages preview (https://yijianvision-lgtm.github.io/yijian/ui-preview-v3-a-cosmos.html), but that is not V42.7. The isolated V42.7 file has no verified live Pages URL. Do not conflate the baseline preview with this V42.7 build.
+
+
+## V42.7 isolated preview artifact — 2026-11-09
+
+- Added `.github/workflows/v42-7-preview-artifact.yml` on `isolation/v42-7-core-menu-fixes` only. It packages `ui-preview-v42-7.html` as a downloadable GitHub Actions artifact; it does not publish Pages, change deployment settings, merge to `main`, or touch the formal entry/backend/data.
+- Workflow run: [42619559436](https://github.com/yijianvision-lgtm/yijian/actions/runs/42619559436) — completed successfully. The packaging job passed HTML integrity checks and Node 22 syntax checks for all 7 inline JavaScript blocks.
+- Artifact: `guanfu-mind-v42-7-ui-preview` (artifact ID `13674950371`), expires 2026-11-23. The artifact contains the HTML preview and an `OPEN-ME.txt` guide.
+- The downloaded artifact was extracted and the exact HTML file was verified locally (324,024 Unicode characters; 7 inline script blocks; 0 Node syntax failures).
+- Attempted headless Chromium desktop/mobile verification in the working environment, but browser navigation was blocked by the environment policy (`ERR_BLOCKED_BY_ADMINISTRATOR`). Therefore no browser-rendering, screenshot, click-to-visible latency, or visual acceptance result is claimed.
+- Menu source inspection still shows one direct toggle click listener, one menu-choice listener, one outside-click closer, and one Escape closer. This rules out an obvious duplicate-handler cause in the inspected source, but does not identify the user's observed delay. Next diagnostic remains a real-browser click-to-visible Performance API measurement and hit-testing/style-paint profile.
+- V42.7 is now available as a real downloadable preview artifact, not a hosted live URL. Do not call it a Pages deployment or conflate it with the older V3-A hosted preview.
