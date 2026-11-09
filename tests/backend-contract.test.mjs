@@ -32,8 +32,8 @@ assert.match(worker, /DEEPSEEK_API_KEY/);
 assert.match(worker, /NEBULA_SYNC_TOKEN/);
 assert.match(worker, /url\.pathname === "\/chat"/);
 assert.match(worker, /Unauthorized: invalid NEBULA access token/);
-assert.match(worker, /async function limitRequestBody\\(request, maxBytes\\)/, "Worker must enforce a streaming request-body ceiling.");
-assert.match(worker, /limitRequestBody\\(request, 1024 \\* 1024\\)/, "Worker POST routes must enforce the 1 MiB body ceiling.");
+assert.ok(worker.includes("async function limitRequestBody(request, maxBytes)"), "Worker must enforce a streaming request-body ceiling.");
+assert.ok(worker.includes("limitRequestBody(request, 1024 * 1024)"), "Worker POST routes must enforce the 1 MiB body ceiling.");
 assert.match(worker, /status: 413/, "Oversized Worker requests must be rejected before JSON parsing.");
 const coachRouteStart = worker.indexOf('if (url.pathname === "/coach" || url.pathname === "/mnemonic") {');
 const coachAuthBlock = worker.slice(coachRouteStart, worker.indexOf("if (!env.DEEPSEEK_API_KEY)", coachRouteStart));
@@ -67,7 +67,7 @@ assert.ok(preview.includes("background:transparent!important"), "Focus core shou
 // The retired V7 learning preview was intentionally removed; do not test a deleted artifact.
 
 
-const currentPreviewScripts = [...currentPreview.matchAll(/<script(?:\\s+type="module")?>([\\s\\S]*?)<\\/script>/g)];
+const currentPreviewScripts = [...currentPreview.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
 assert.ok(currentPreviewScripts.length >= 5, "Expected V42.7 preview scripts.");
 for (const match of currentPreviewScripts) {
   const isModule = match[0].startsWith('<script type="module">');
