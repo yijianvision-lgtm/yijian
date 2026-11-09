@@ -199,6 +199,12 @@ export default {
     }
 
     if (url.pathname === "/coach" || url.pathname === "/mnemonic") {
+      if (request.method !== "POST")
+        return new Response(JSON.stringify({ error: "POST required" }), { status: 405, headers: cors });
+      if (!env.NEBULA_SYNC_TOKEN)
+        return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
+      if (request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
+        return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
       if (!env.DEEPSEEK_API_KEY)
         return new Response(JSON.stringify({ error: "Worker secret DEEPSEEK_API_KEY is missing." }), { status: 503, headers: cors });
       try {
