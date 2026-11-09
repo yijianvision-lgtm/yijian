@@ -84,12 +84,7 @@ for (const match of currentPreviewExecutableScripts) {
   assert.equal(checked.status, 0, "V42.7 inline script syntax error: " + checked.stderr);
 }
 assert.ok(currentPreviewScripts.length >= 5, "Expected V42.7 preview scripts.");
-for (const match of currentPreviewScripts) {
-  const isModule = match[0].startsWith('<script type="module">');
-  const args = isModule ? ["--input-type=module", "--check"] : ["--check"];
-  const checked = spawnSync(process.execPath, args, { input: match[1], encoding: "utf8" });
-  assert.equal(checked.status, 0, "V42.7 inline script syntax error: " + checked.stderr);
-}
+// Import Maps are JSON and were validated above; executable script bodies are checked separately.
 assert.ok(currentPreview.includes("nebula-local.js?env=preview"), "V42.7 must use its isolated IndexedDB environment.");
 assert.ok(currentPreview.includes("updateCoreScreenAnchor"), "V42.7 must retain the approved core-screen anchoring mechanism.");
 assert.ok(currentPreview.includes("blur(9px)") && currentPreview.includes("brightness(.48)") && currentPreview.includes("1.9s"), "V42.7 must retain the approved A4 reveal baseline.");
