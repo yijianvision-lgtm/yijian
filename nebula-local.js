@@ -460,6 +460,14 @@ async function restoreFullBackup(fileOrObject, options={}) {
   const mode=options.mode||"merge";
   const preferIncoming=options.preferIncoming===true;
   if(!["replace","merge"].includes(mode)) throw new Error("恢复模式只能是 replace 或 merge。");
+  // A replace restore must be a complete snapshot. Never clear a live store merely
+  // because an older/partial backup omitted it; merge remains available for partial imports.
+  if(mode==="replace") {
+    const missingStores=STORES.filter(name=>!Object.prototype.hasOwnProperty.call(parsed.stores,name));
+    if(missingStores.length) {
+      throw new Error("已阻止完整替换恢复：备份缺少数据表（"+missingStores.join("、")+"）。当前数据未被修改。请使用“合并恢复”，或先导出当前完整备份。");
+    }
+  }
   const storeNames=mode==="replace"?STORES:Object.keys(parsed.stores).filter(n=>STORES.includes(n));
   const db=await openDB();
   const restored={};
@@ -521,6 +529,11 @@ async function applyKnowledgeProposal(id, decision, reviewerNote="") {
   if(!proposal) throw new Error("找不到这条待审核建议。");
   if(proposal.status!=="pending") throw new Error("这条建议已经审核过。");
   if(decision!=="accept"&&decision!=="reject") throw new Error("审核决定无效。");
+  // Merge/split currently span multiple IndexedDB transactions. Keep them pending
+  // until they are moved into a single atomic transaction with rollback coverage.
+  if(decision==="accept"&&["merge","split"].includes(proposal.proposalType)) {
+    throw new Error("安全保护：知识合并/拆分尚未完成原子事务改造，当前建议保持待审核状态，未修改任何正式知识。");
+  }
   if(decision==="reject") {
     proposal.status="rejected";proposal.reviewerNote=reviewerNote;proposal.reviewedAt=Date.now();
     await putRecord("reviewProposals",proposal);return proposal;
