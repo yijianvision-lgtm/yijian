@@ -63,6 +63,21 @@ try {
   });
   assert.equal(deniedOrigin.status, 403, "Unapproved browser origins must be rejected.");
   assert.equal(upstreamCalls, 0, "Negative-path checks must never call external AI or import providers.");
+
+  globalThis.fetch = async () => {
+    upstreamCalls += 1;
+    return new Response("x", {
+      headers: { "Content-Type": "application/json", "Content-Length": String(8 * 1024 * 1024 + 1) }
+    });
+  };
+  const oversizedUpstream = await call("/analyze", {
+    token: "correct",
+    env: { NEBULA_SYNC_TOKEN: "correct", DEEPSEEK_API_KEY: "test-only-key" },
+    body: JSON.stringify({ text: "response-size boundary test" })
+  });
+  assert.equal(oversizedUpstream.status, 500, "Analyze must reject an upstream response whose declared size exceeds 8 MiB.");
+  assert.match(await oversizedUpstream.text(), /Upstream response exceeds the 8 MiB limit/);
+  assert.equal(upstreamCalls, 1, "The oversized upstream response test should make exactly one mocked provider call.");
   console.log("NEBULA Worker runtime security checks passed.");
 } finally {
   globalThis.fetch = originalFetch;
