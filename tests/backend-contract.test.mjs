@@ -35,7 +35,9 @@ assert.match(worker, /Unauthorized: invalid NEBULA access token/);
 assert.match(worker, /async function limitRequestBody\\(request, maxBytes\\)/, "Worker must enforce a streaming request-body ceiling.");
 assert.match(worker, /limitRequestBody\\(request, 1024 \\* 1024\\)/, "Worker POST routes must enforce the 1 MiB body ceiling.");
 assert.match(worker, /status: 413/, "Oversized Worker requests must be rejected before JSON parsing.");
-assert.match(worker, /if \(url\.pathname === "\/coach" \|\| url\.pathname === "\/mnemonic"\) \{[\\s\\S]*?request\.method !== "POST"[\\s\\S]*?NEBULA_SYNC_TOKEN[\\s\\S]*?Unauthorized: invalid NEBULA access token/, "Coach and mnemonic routes must require POST and the shared access token before calling the AI provider.");
+const coachRouteStart = worker.indexOf('if (url.pathname === "/coach" || url.pathname === "/mnemonic") {');
+const coachAuthBlock = worker.slice(coachRouteStart, worker.indexOf("if (!env.DEEPSEEK_API_KEY)", coachRouteStart));
+assert.ok(coachRouteStart >= 0 && coachAuthBlock.includes('request.method !== "POST"') && coachAuthBlock.includes("NEBULA_SYNC_TOKEN") && coachAuthBlock.includes("Unauthorized: invalid NEBULA access token"), "Coach and mnemonic routes must require POST and the shared access token before calling the AI provider.");
 
 const inlineScripts = [...html.matchAll(/<script(?:\s+type="module")?>([\s\S]*?)<\/script>/g)];
 assert.ok(inlineScripts.length >= 2, "Expected the app bootstrap and main module scripts.");
