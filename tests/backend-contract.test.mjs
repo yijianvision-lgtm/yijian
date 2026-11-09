@@ -31,6 +31,9 @@ assert.match(worker, /DEEPSEEK_API_KEY/);
 assert.match(worker, /NEBULA_SYNC_TOKEN/);
 assert.match(worker, /url\.pathname === "\/chat"/);
 assert.match(worker, /Unauthorized: invalid NEBULA access token/);
+assert.match(worker, /async function limitRequestBody\\(request, maxBytes\\)/, "Worker must enforce a streaming request-body ceiling.");
+assert.match(worker, /limitRequestBody\\(request, 1024 \\* 1024\\)/, "Worker POST routes must enforce the 1 MiB body ceiling.");
+assert.match(worker, /status: 413/, "Oversized Worker requests must be rejected before JSON parsing.");
 
 const inlineScripts = [...html.matchAll(/<script(?:\s+type="module")?>([\s\S]*?)<\/script>/g)];
 assert.ok(inlineScripts.length >= 2, "Expected the app bootstrap and main module scripts.");
