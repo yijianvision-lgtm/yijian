@@ -1,0 +1,69 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+// Load the Cloudflare module as an isolated ESM data URL; no package.json or live secrets required.
+const source = await readFile(new URL("../deepseek-worker.js", import.meta.url), "utf8");
+const { default: worker } = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
+
+let upstreamCalls = 0;
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async () => {
+  upstreamCalls += 1;
+  throw new Error("Unexpected upstream request in a negative-path Worker test.");
+};
+
+async function call(path, { method = "POST", token, env = {}, body = "{}", headers = {} } = {}) {
+  const requestHeaders = new Headers(headers);
+  if (token !== undefined) requestHeaders.set("Authorization", "Bearer " + token);
+  if (body !== undefined && method !== "GET" && method !== "HEAD") {
+    if (!requestHeaders.has("Content-Type")) requestHeaders.set("Content-Type", "application/json");
+  }
+  const request = new Request("https://worker.test" + path, {
+    method,
+    headers: requestHeaders,
+    ...(body === undefined || method === "GET" || method === "HEAD" ? {} : { body })
+  });
+  return worker.fetch(request, env);
+}
+
+try {
+  assert.equal((await call("/health", { method: "GET" })).status, 200, "Health check should remain public.");
+  assert.equal((await call("/coach", { method: "GET", token: "valid" })).status, 405, "Coach must reject non-POST methods.");
+  assert.equal((await call("/mnemonic", { method: "GET", token: "valid" })).status, 405, "Mnemonic must reject non-POST methods.");
+  assert.equal((await call("/coach", { env: {} })).status, 503, "Coach must fail closed when the shared token is not configured.");
+  assert.equal((await call("/mnemonic", { env: {} })).status, 503, "Mnemonic must fail closed when the shared token is not configured.");
+  assert.equal((await call("/coach", { token: "wrong", env: { NEBULA_SYNC_TOKEN: "correct" } })).status, 401, "Coach must reject an invalid token.");
+  assert.equal((await call("/mnemonic", { token: "wrong", env: { NEBULA_SYNC_TOKEN: "correct" } })).status, 401, "Mnemonic must reject an invalid token.");
+  assert.equal((await call("/coach", { token: "correct", env: { NEBULA_SYNC_TOKEN: "correct" } })).status, 503, "Coach must not call AI when its server-side API key is missing.");
+  assert.equal((await call("/mnemonic", { token: "correct", env: { NEBULA_SYNC_TOKEN: "correct" } })).status, 503, "Mnemonic must not call AI when its server-side API key is missing.");
+  assert.equal((await call("/share", { env: {} })).status, 401, "Share import must require the shared token.");
+  assert.equal((await call("/analyze", { env: {} })).status, 503, "Analyze must fail closed when the shared token is not configured.");
+  assert.equal((await call("/chat", { env: {} })).status, 503, "Chat must fail closed when the shared token is not configured.");
+  assert.equal((await call("/research", { method: "GET", env: {} })).status, 503, "Research must fail closed when the shared token is not configured.");
+
+  const declaredOversize = await call("/coach", {
+    token: "correct",
+    env: { NEBULA_SYNC_TOKEN: "correct" },
+    body: "{}",
+    headers: { "Content-Length": String(1024 * 1024 + 1) }
+  });
+  assert.equal(declaredOversize.status, 413, "Declared bodies above 1 MiB must be rejected.");
+
+  const streamedOversize = await call("/mnemonic", {
+    token: "correct",
+    env: { NEBULA_SYNC_TOKEN: "correct" },
+    body: "x".repeat(1024 * 1024 + 1)
+  });
+  assert.equal(streamedOversize.status, 413, "Actual streamed bodies above 1 MiB must be rejected.");
+
+  const deniedOrigin = await call("/coach", {
+    token: "correct",
+    env: { NEBULA_SYNC_TOKEN: "correct" },
+    headers: { Origin: "https://untrusted.example" }
+  });
+  assert.equal(deniedOrigin.status, 403, "Unapproved browser origins must be rejected.");
+  assert.equal(upstreamCalls, 0, "Negative-path checks must never call external AI or import providers.");
+  console.log("NEBULA Worker runtime security checks passed.");
+} finally {
+  globalThis.fetch = originalFetch;
+}
