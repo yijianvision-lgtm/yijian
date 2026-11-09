@@ -25,5 +25,7 @@ jobs:
         run: node tests/ui-script-syntax.test.mjs
       - name: Check backend contracts
         run: node tests/backend-contract.test.mjs
+      - name: Test Worker authentication and request limits
+        run: node tests/worker-runtime.test.mjs
       - name: Test local database workflows
         run: node tests/backend-runtime.test.mjs
