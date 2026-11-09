@@ -56,6 +56,16 @@ Durable Objects 只在需要按用户/资源进行强一致协调或限流时引
 - 历史 V1 测试暂时保留，避免误删历史兼容检查；V42.7 作为当前验收对象另行检查。
 - 合同测试与本地数据库运行时测试均已在 `4c667ae` 对应 CI 运行中通过。
 
+## 4.6 Cloudflare Worker 限流门禁（本轮新增）
+
+- `wrangler.toml` 已声明 `NEBULA_RATE_LIMITER` binding：每个 Cloudflare location、每个 IP + 路由键每 60 秒 30 次。
+- Worker 对 `/share`、`/analyze`、`/research`、`/chat`、`/coach`、`/mnemonic` 在身份令牌检查后执行限流；缺少 binding 或限流服务异常时返回 503，超过阈值返回 429。
+- 当前尚无经验证的用户身份，因此 IP + 路由仅是临时粗粒度滥用防护，不是用户配额或租户隔离；共享网络/NAT 用户可能共用限额。
+- Cloudflare 原生 Rate Limiting API 是按 location 的近似限流，计数异步同步，可能暂时超过阈值；若将来要求跨区域严格限额，需改用 Durable Objects 等强一致协调方案。
+- 配置使用 namespace_id `82640731`。该 ID 尚未在 Cloudflare 账户内核实是否被其他 Worker 使用；部署前必须确认唯一性。
+- 已新增运行时测试覆盖 binding 缺失、超限 429、限流服务异常 503，以及 share/research 路由限流；2026-11-09 的后台 CI `2c71d03` 全项通过。
+- 本轮只提交代码和 Wrangler 配置，没有部署 Cloudflare Worker；线上限流尚未生效验证。
+
 ## 4.5 Worker 上游响应体大小保护（本轮新增）
 
 - Worker 不再直接对第三方上游响应调用 `response.json()`；统一经 `readJsonLimited` 流式读取并解析 JSON。
@@ -110,7 +120,7 @@ Durable Objects 只在需要按用户/资源进行强一致协调或限流时引
 | 缺表替换恢复保护 | 已写入，待 CI/运行时验证 |
 | 非原子合并/拆分安全门禁 | 已写入，原子事务重构待完成 |
 | Worker 共享令牌门禁 | 六个业务路由共享令牌门禁；运行时负向测试已通过 CI；不是用户身份认证 |
-| Worker 请求体大小限制 | 1 MiB 流式门禁；声明长度和实际流长度负向测试已通过 CI |
+| Worker 请求体大小限制 | 1 MiB 流式门禁；声明长度和实际流长度负向测试已通过 CI |\n| Worker 上游响应大小限制 | 8 MiB 声明长度与流读取门禁；mock 上游超限测试已通过 CI |\n| Worker 限流 | 已接入 30 次/分钟/IP+路由的 Cloudflare binding；运行时测试通过；namespace 唯一性与部署待验证 |
 | Worker 速率限制 | 待在独立测试环境配置并验证 |
 | D1/R2 测试资源 | 未创建/未验证 |
 | 最终用户身份与租户隔离 | 未完成 |
