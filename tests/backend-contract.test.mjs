@@ -22,6 +22,11 @@ assert.match(local, /lectureFolder/);
 assert.match(local, /getAllStoresSnapshot/);
 assert.match(local, /protocol!==\"https:\"/);
 assert.match(local, /BACKUP_LOCAL_STORAGE_KEYS/);
+assert.match(local, /const missingStores=STORES\.filter/ , "Replace restore must reject incomplete backups before opening a write transaction.");
+assert.match(local, /当前数据未被修改/ , "Incomplete replace restore must explicitly guarantee no current data was modified.");
+assert.match(local, /安全保护：知识合并\/拆分尚未完成原子事务改造/ , "Non-atomic merge/split must remain blocked until transaction safety is implemented.");
+assert.ok(preview.includes("import { NEBULA_LOCAL } from './nebula-local.js?env=preview'"), "The current isolated preview must use its own IndexedDB environment.");
+
 assert.match(worker, /DEEPSEEK_API_KEY/);
 assert.match(worker, /NEBULA_SYNC_TOKEN/);
 assert.match(worker, /url\.pathname === "\/chat"/);
