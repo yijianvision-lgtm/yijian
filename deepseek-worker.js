@@ -66,6 +66,23 @@ async function readJsonLimited(response, maxBytes = 8 * 1024 * 1024) {
   }
 }
 
+async function checkRateLimit(request, env, cors) {
+  if (!env.NEBULA_RATE_LIMITER || typeof env.NEBULA_RATE_LIMITER.limit !== "function") {
+    return new Response(JSON.stringify({ error: "Worker rate-limit binding NEBULA_RATE_LIMITER is not configured." }), { status: 503, headers: cors });
+  }
+  // Temporary abuse-control key until verified user identities exist.
+  // IP + route is intentionally coarse and is not a per-account quota.
+  const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
+  const route = new URL(request.url).pathname;
+  try {
+    const { success } = await env.NEBULA_RATE_LIMITER.limit({ key: clientIp + ":" + route });
+    if (!success) return new Response(JSON.stringify({ error: "Rate limit exceeded. Please retry later." }), { status: 429, headers: cors });
+    return null;
+  } catch {
+    return new Response(JSON.stringify({ error: "Worker rate-limit service is unavailable." }), { status: 503, headers: cors });
+  }
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
@@ -102,6 +119,8 @@ export default {
     if (url.pathname === "/share" && request.method === "POST") {
       if (!env.NEBULA_SYNC_TOKEN || request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
         return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
+      const rateLimitResponse = await checkRateLimit(request, env, cors);
+      if (rateLimitResponse) return rateLimitResponse;
       try {
         const body = await request.json();
         const match = String(body.url || "").match(/^https:\/\/chat\.deepseek\.com\/share\/([a-z0-9]+)\/?$/i);
@@ -134,6 +153,8 @@ export default {
       return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
     if (request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
       return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
+    const rateLimitResponse = await checkRateLimit(request, env, cors);
+    if (rateLimitResponse) return rateLimitResponse;
 
     if (url.pathname === "/research") {
       try {
