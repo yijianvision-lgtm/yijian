@@ -28,6 +28,8 @@ async function call(path, { method = "POST", token, env = {}, body = "{}", heade
 
 try {
   assert.equal((await call("/health", { method: "GET" })).status, 200, "Health check should remain public.");
+  const healthPayload = await (await call("/health", { method: "GET", env: { DEEPSEEK_API_KEY: "secret-a", CLAUDE_API_KEY: "secret-b", NEBULA_SYNC_TOKEN: "secret-c" } })).json();
+  assert.equal(Object.hasOwn(healthPayload, "configured"), false, "Public health must not disclose configured secret presence.");
   assert.equal((await call("/coach", { method: "GET", token: "valid" })).status, 405, "Coach must reject non-POST methods.");
   assert.equal((await call("/mnemonic", { method: "GET", token: "valid" })).status, 405, "Mnemonic must reject non-POST methods.");
   assert.equal((await call("/coach", { env: {} })).status, 503, "Coach must fail closed when the shared token is not configured.");
