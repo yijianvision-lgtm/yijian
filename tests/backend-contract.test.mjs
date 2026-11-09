@@ -67,7 +67,18 @@ assert.ok(preview.includes("background:transparent!important"), "Focus core shou
 // The retired V7 learning preview was intentionally removed; do not test a deleted artifact.
 
 
-const currentPreviewScripts = [...currentPreview.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
+const currentPreviewScripts = [...currentPreview.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)];
+const currentPreviewImportMaps = currentPreviewScripts.filter(match => /\btype=["']importmap["']/.test(match[1]));
+assert.ok(currentPreviewImportMaps.length >= 1, "V42.7 must retain its Three.js import map.");
+for (const match of currentPreviewImportMaps) assert.doesNotThrow(() => JSON.parse(match[2]), "V42.7 import map must be valid JSON.");
+const currentPreviewExecutableScripts = currentPreviewScripts.filter(match => !/\btype=["']importmap["']/.test(match[1]));
+assert.ok(currentPreviewExecutableScripts.length >= 5, "Expected V42.7 executable scripts.");
+for (const match of currentPreviewExecutableScripts) {
+  const isModule = /\btype=["']module["']/.test(match[1]);
+  const args = isModule ? ["--input-type=module", "--check"] : ["--check"];
+  const checked = spawnSync(process.execPath, args, { input: match[2], encoding: "utf8" });
+  assert.equal(checked.status, 0, "V42.7 inline script syntax error: " + checked.stderr);
+}
 assert.ok(currentPreviewScripts.length >= 5, "Expected V42.7 preview scripts.");
 for (const match of currentPreviewScripts) {
   const isModule = match[0].startsWith('<script type="module">');
