@@ -10,3 +10,14 @@ DEEPSEEK_MODEL = "deepseek-v4-pro"
 # npx wrangler secret put DEEPSEEK_API_KEY
 # npx wrangler secret put NEBULA_SYNC_TOKEN
 # npx wrangler secret put CLAUDE_API_KEY
+
+# Temporary per-IP/per-route abuse protection until verified user identities
+# and per-account quotas are implemented. Confirm namespace_id is unused
+# in this Cloudflare account before deploying.
+[[ratelimits]]
+name = "NEBULA_RATE_LIMITER"
+namespace_id = "82640731"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60
