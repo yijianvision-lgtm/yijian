@@ -34,6 +34,38 @@ async function limitRequestBody(request, maxBytes) {
   });
 }
 
+async function readJsonLimited(response, maxBytes = 8 * 1024 * 1024) {
+  const declaredLength = Number(response.headers.get("Content-Length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    throw new Error("Upstream response exceeds the 8 MiB limit.");
+  }
+  if (!response.body) throw new Error("Upstream returned an empty response body.");
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new Error("Upstream response exceeds the 8 MiB limit.");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    throw new Error("Upstream returned invalid JSON.");
+  }
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
@@ -79,7 +111,7 @@ export default {
           headers: { "Accept":"application/json", "Referer":"https://chat.deepseek.com/share/"+shareId, "User-Agent":"Mozilla/5.0", "X-Client-Platform":"web", "X-Client-Locale":"zh-CN" }
         });
         if (!upstream.ok) return new Response(JSON.stringify({ error:"DeepSeek 分享接口请求失败", upstreamStatus:upstream.status }), { status:502, headers:cors });
-        const payload = await upstream.json();
+        const payload = await readJsonLimited(upstream);
         const data = payload?.data?.biz_data || payload?.data;
         const messages = data?.messages || data?.chat_messages || [];
         if (!Array.isArray(messages) || !messages.length) return new Response(JSON.stringify({ error:"分享接口没有返回可识别的消息。可能链接权限、接口结构或分享内容发生变化。", upstreamCode:payload?.data?.biz_code ?? payload?.code }), { status:422, headers:cors });
@@ -111,7 +143,7 @@ export default {
           headers: { "Accept": "application/json", "User-Agent": "NEBULA-Knowledge/1.0" }
         });
         if (!upstream.ok) return new Response(JSON.stringify({ error: "Crossref unavailable", status: upstream.status }), { status: 502, headers: cors });
-        const payload = await upstream.json();
+        const payload = await readJsonLimited(upstream);
         const items = (payload.message?.items || []).map(x => ({
           title: x.title?.[0] || "",
           authors: (x.author || []).slice(0, 8).map(a => [a.given, a.family].filter(Boolean).join(" ")),
@@ -176,7 +208,7 @@ export default {
             headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
             body: JSON.stringify({ model, system, messages, max_tokens: 2800, stream: false })
           });
-          data = await upstream.json();
+          data = await readJsonLimited(upstream);
           reply = (Array.isArray(data.content) ? data.content.filter(part => part.type === "text").map(part => part.text).join("\n") : "").trim();
         } else {
           model = env.DEEPSEEK_MODEL || "deepseek-v4-pro";
@@ -185,7 +217,7 @@ export default {
             headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
             body: JSON.stringify({ model, messages: [{ role: "system", content: system }, ...messages], max_tokens: 2800, stream: false })
           });
-          data = await upstream.json();
+          data = await readJsonLimited(upstream);
           reply = String(data.choices?.[0]?.message?.content || "").trim();
         }
         if (!upstream.ok)
@@ -228,7 +260,7 @@ export default {
             response_format: { type: "json_object" }, max_tokens: 7000, stream: false
           })
         });
-        const data = await upstream.json();
+        const data = await readJsonLimited(upstream);
         if (!upstream.ok) return new Response(JSON.stringify({ error: data.error?.message || "DeepSeek request failed" }), { status: 502, headers: cors });
         const result = JSON.parse(data.choices?.[0]?.message?.content || "{}");
         return new Response(JSON.stringify({ ok: true, result, usage: data.usage || null }), { headers: cors });
@@ -267,7 +299,7 @@ export default {
           stream: false
         })
       });
-      const data = await response.json();
+      const data = await readJsonLimited(response);
       if (!response.ok) return new Response(JSON.stringify({ error: data.error?.message || "DeepSeek API request failed", status:response.status }), { status:502, headers:cors });
       const raw = data.choices?.[0]?.message?.content || "{}";
       let result;
