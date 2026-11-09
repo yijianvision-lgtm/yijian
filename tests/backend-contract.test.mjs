@@ -7,6 +7,7 @@ const worker = await readFile(new URL("../deepseek-worker.js", import.meta.url),
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const preview = await readFile(new URL("../ui-preview-v1.html", import.meta.url), "utf8");
 const currentPreview = await readFile(new URL("../ui-preview-v42-7.html", import.meta.url), "utf8");
+const performancePreview = await readFile(new URL("../ui-preview-v42-8.html", import.meta.url), "utf8");
 
 for (const store of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence","frameworkPlacements","explorationPaths","explorationSteps"]) {
   assert.match(local, new RegExp('"'+store+'"'), "Missing IndexedDB store: "+store);
@@ -88,6 +89,24 @@ assert.ok(currentPreviewScripts.length >= 5, "Expected V42.7 preview scripts.");
 assert.ok(currentPreview.includes("nebula-local.js?env=preview"), "V42.7 must use its isolated IndexedDB environment.");
 assert.ok(currentPreview.includes("updateCoreScreenAnchor"), "V42.7 must retain the approved core-screen anchoring mechanism.");
 assert.ok(currentPreview.includes("blur(9px)") && currentPreview.includes("brightness(.48)") && currentPreview.includes("1.9s"), "V42.7 must retain the approved A4 reveal baseline.");
+
+const performancePreviewScripts = [...performancePreview.matchAll(/<script([^>]*)>([\\s\\S]*?)<\\/script>/g)];
+assert.ok(performancePreviewScripts.length >= 5, "V42.8 must retain the full preview script set.");
+for (const match of performancePreviewScripts) {
+  if (/\\btype=["']importmap["']/.test(match[1])) {
+    assert.doesNotThrow(() => JSON.parse(match[2]), "V42.8 import map must be valid JSON.");
+    continue;
+  }
+  const isModule = /\\btype=["']module["']/.test(match[1]);
+  const args = isModule ? ["--input-type=module", "--check"] : ["--check"];
+  const checked = spawnSync(process.execPath, args, { input: match[2], encoding: "utf8" });
+  assert.equal(checked.status, 0, "V42.8 inline script syntax error: " + checked.stderr);
+}
+assert.ok(performancePreview.includes("updateCoreScreenAnchor"), "V42.8 must preserve the approved center-anchor mechanism.");
+assert.ok(performancePreview.includes("blur(9px)") && performancePreview.includes("brightness(.48)") && performancePreview.includes("1.9s"), "V42.8 must preserve the approved A4 visual baseline.");
+assert.ok(performancePreview.includes("scale.x+=(target-scale.x)*.032"), "V42.8 must retain equivalent X-axis scale interpolation.");
+assert.ok(performancePreview.includes("scale.y+=(target-scale.y)*.032") && performancePreview.includes("scale.z+=(target-scale.z)*.032"), "V42.8 must retain equivalent Y/Z scale interpolation.");
+assert.ok(!performancePreview.includes("s.scale.lerp(new THREE.Vector3(target,target,target),.032)"), "V42.8 must not allocate a new Vector3 for every node on every animation frame.");
 
 console.log("NEBULA backend contract checks passed.");
 
