@@ -112,7 +112,7 @@ export default {
         ok: true,
         service: "NEBULA Cognitive OS Bridge",
         version: "2026-11",
-        configured: { deepseekApiKey: !!env.DEEPSEEK_API_KEY, claudeApiKey: !!env.CLAUDE_API_KEY, syncToken: !!env.NEBULA_SYNC_TOKEN },
+        // Do not disclose whether server-side credentials or sync secrets are configured.
         capabilities: ["conversation-analysis","knowledge-coach","mnemonic-review","crossref-research","deepseek-share-import"]
       }), { headers: cors });
     }
