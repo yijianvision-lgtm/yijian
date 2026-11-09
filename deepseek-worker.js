@@ -101,11 +101,6 @@ export default {
     };
     if (!allowed) return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: cors });
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
-    if (request.method === "POST") {
-      const boundedRequest = await limitRequestBody(request, 1024 * 1024);
-      if (!boundedRequest) return new Response(JSON.stringify({ error: "Request body exceeds the 1 MiB limit." }), { status: 413, headers: cors });
-      request = boundedRequest;
-    }
     const url = new URL(request.url);
     if (url.pathname === "/health" && request.method === "GET") {
       return new Response(JSON.stringify({
@@ -119,6 +114,9 @@ export default {
     if (url.pathname === "/share" && request.method === "POST") {
       if (!env.NEBULA_SYNC_TOKEN || request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
         return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
+      const boundedRequest = await limitRequestBody(request, 1024 * 1024);
+      if (!boundedRequest) return new Response(JSON.stringify({ error: "Request body exceeds the 1 MiB limit." }), { status: 413, headers: cors });
+      request = boundedRequest;
       const rateLimitResponse = await checkRateLimit(request, env, cors);
       if (rateLimitResponse) return rateLimitResponse;
       try {
@@ -153,6 +151,11 @@ export default {
       return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
     if (request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
       return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
+    if (request.method === "POST") {
+      const boundedRequest = await limitRequestBody(request, 1024 * 1024);
+      if (!boundedRequest) return new Response(JSON.stringify({ error: "Request body exceeds the 1 MiB limit." }), { status: 413, headers: cors });
+      request = boundedRequest;
+    }
     const rateLimitResponse = await checkRateLimit(request, env, cors);
     if (rateLimitResponse) return rateLimitResponse;
 
