@@ -153,6 +153,13 @@ assert.ok(preview.includes("renderer.setPixelRatio(pixelRatioForViewport())"), "
 
 const charter = await readFile(new URL("../docs/GUANFU-MIND-DESIGN-CHARTER.md", import.meta.url), "utf8");
 const mindArchitecture = await readFile(new URL("../docs/MIND-V2-ARCHITECTURE.md", import.meta.url), "utf8");
+const identityContract = await readFile(new URL("../docs/NEBULA-IDENTITY-ISOLATION-CONTRACT.md", import.meta.url), "utf8");
+assert.ok(identityContract.includes("不得把客户端提交的 `userId`、`ownerId`、`tenantId`") || identityContract.includes("不得把客户端提交的 `userId`"), "Identity contract must reject client-supplied owner identity.");
+assert.ok(identityContract.includes("精确匹配受信任的 `issuer (iss)`") && identityContract.includes("`audience (aud)`"), "Identity contract must require issuer and audience validation.");
+assert.ok(identityContract.includes("每个读取、更新、删除和关联查询都必须把 `owner_id` 放入 SQL 条件"), "D1 access must be owner-scoped in every operation.");
+assert.ok(identityContract.includes("owners/{owner_id}/"), "R2 objects must use a server-derived owner namespace.");
+assert.ok(identityContract.includes("两个独立测试用户 A、B"), "Cross-tenant negative tests must cover two independent users.");
+assert.ok(identityContract.includes("不可接正式后台"), "Production backend activation must remain gated.");
 assert.ok(charter.includes("稳定知识身份"), "The current charter must require stable knowledge identity.");
 assert.ok(charter.includes("同一个知识对象可从多条路径抵达"), "The current charter must support the same object across multiple exploration paths.");
 assert.ok(charter.includes("不同框架可为同一对象提供不同上下文位置"), "The current charter must support multiple framework contexts for one object.");
