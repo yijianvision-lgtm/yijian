@@ -4,10 +4,6 @@ on:
   push:
     branches:
       - isolation/v42-7-core-menu-fixes
-    paths:
-      - ui-preview-v42-7.html
-      - .github/workflows/v42-7-preview-artifact.yml
-      - tests/check-v42-7-preview.py
 
 permissions:
   contents: read
