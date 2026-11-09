@@ -34,12 +34,41 @@ try {
   assert.equal((await call("/mnemonic", { env: {} })).status, 503, "Mnemonic must fail closed when the shared token is not configured.");
   assert.equal((await call("/coach", { token: "wrong", env: { NEBULA_SYNC_TOKEN: "correct" } })).status, 401, "Coach must reject an invalid token.");
   assert.equal((await call("/mnemonic", { token: "wrong", env: { NEBULA_SYNC_TOKEN: "correct" } })).status, 401, "Mnemonic must reject an invalid token.");
-  assert.equal((await call("/coach", { token: "correct", env: { NEBULA_SYNC_TOKEN: "correct" } })).status, 503, "Coach must not call AI when its server-side API key is missing.");
-  assert.equal((await call("/mnemonic", { token: "correct", env: { NEBULA_SYNC_TOKEN: "correct" } })).status, 503, "Mnemonic must not call AI when its server-side API key is missing.");
+  assert.equal((await call("/coach", { token: "correct", env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) } } })).status, 503, "Coach must not call AI when its server-side API key is missing.");
+  assert.equal((await call("/mnemonic", { token: "correct", env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) } } })).status, 503, "Mnemonic must not call AI when its server-side API key is missing.");
   assert.equal((await call("/share", { env: {} })).status, 401, "Share import must require the shared token.");
   assert.equal((await call("/analyze", { env: {} })).status, 503, "Analyze must fail closed when the shared token is not configured.");
   assert.equal((await call("/chat", { env: {} })).status, 503, "Chat must fail closed when the shared token is not configured.");
   assert.equal((await call("/research", { method: "GET", env: {} })).status, 503, "Research must fail closed when the shared token is not configured.");
+
+  const missingLimiter = await call("/coach", {
+    token: "correct",
+    env: { NEBULA_SYNC_TOKEN: "correct" }
+  });
+  assert.equal(missingLimiter.status, 503, "Authenticated AI routes must fail closed when the rate-limit binding is missing.");
+  assert.match(await missingLimiter.text(), /NEBULA_RATE_LIMITER is not configured/);
+
+  const deniedLimiter = await call("/coach", {
+    token: "correct",
+    env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => ({ success: false }) } }
+  });
+  assert.equal(deniedLimiter.status, 429, "Authenticated AI routes must reject rate-limited requests.");
+
+  const failedLimiter = await call("/coach", {
+    token: "correct",
+    env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => { throw new Error("binding unavailable"); } } }
+  });
+  assert.equal(failedLimiter.status, 503, "Rate-limit service errors must fail closed.");
+
+  assert.equal((await call("/share", {
+    token: "correct",
+    env: { NEBULA_SYNC_TOKEN: "correct" }
+  })).status, 503, "Share import must also require the rate-limit binding.");
+  assert.equal((await call("/research", {
+    method: "GET",
+    token: "correct",
+    env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => ({ success: false }) } }
+  })).status, 429, "Research requests must be rate limited after authentication.");
 
   const declaredOversize = await call("/coach", {
     token: "correct",
@@ -72,7 +101,7 @@ try {
   };
   const oversizedUpstream = await call("/analyze", {
     token: "correct",
-    env: { NEBULA_SYNC_TOKEN: "correct", DEEPSEEK_API_KEY: "test-only-key" },
+    env: { NEBULA_SYNC_TOKEN: "correct", DEEPSEEK_API_KEY: "test-only-key", NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) } },
     body: JSON.stringify({ text: "response-size boundary test" })
   });
   assert.equal(oversizedUpstream.status, 500, "Analyze must reject an upstream response whose declared size exceeds 8 MiB.");
