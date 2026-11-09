@@ -33,3 +33,14 @@ Safety/isolation:
 The user selected E for core-word weight: assistant should judge from the overall visual direction. V42.7 now uses a refined medium weight of 450, aiming for a precise, premium balance rather than bold or hairline. Only font weight is changed; size, spacing, center anchor and positioning remain unchanged.
 
 Natural fog remains locked. The title weight choice is an implementation judgment pending user visual acceptance, not yet a user-approved visual result.
+
+
+## User confirmation update — core-word size (V42.7)
+
+- The user explicitly selected **A**: retain the current reduced core-word size; do not shrink it further.
+- Keep the V42.6 size rule inherited by the V42.7 isolated preview: desktop `clamp(20px,1.55vw,23px)`; mobile `clamp(18px,4.2vw,20px)` at the existing max-width breakpoint. No new size override is added in V42.7.
+- Keep the V42.7 selected weight `450`; size and weight are separate decisions. The weight choice does not authorize moving the common center, changing letter spacing, or changing the approved fog.
+- Natural fog, common-center anchor, four-direction layout, learning-status behavior and all other user-approved items remain locked.
+- This confirms the size setting only; it is not full visual acceptance of V42.7.
+- Static source inspection confirms the final V42.7 style block does not override font size. No V42.7 Actions workflow runs were returned for the core-weight choice commit or the latest recovery-log commit. Browser visual and click-latency tests remain outstanding.
+- Next: test the isolated preview in a real browser at desktop and mobile widths; measure learning-status click-to-visible latency with Performance API; verify the title remains centered and the fog layer is visually preserved. Do not merge or deploy to the formal entry before user acceptance.
