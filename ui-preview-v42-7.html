@@ -3387,3 +3387,14 @@ document.addEventListener('click',function(event){
 </style>
 
 </body></html>
+
+<style id="v42-7-menu-instant-open">
+/* V42.7 follow-up: remove the remaining fade delay from the learning-status menu.
+   The menu opens synchronously; no blur, opacity animation, or transition is needed. */
+#continuumFocus #masteryStatusMenu:not([hidden]){
+  animation:none!important;
+  transition:none!important;
+  opacity:1!important;
+  will-change:auto!important;
+}
+</style>
