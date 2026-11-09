@@ -36,6 +36,18 @@ try {
   assert.equal((await call("/mnemonic", { env: {} })).status, 503, "Mnemonic must fail closed when the shared token is not configured.");
   assert.equal((await call("/coach", { token: "wrong", env: { NEBULA_SYNC_TOKEN: "correct" } })).status, 401, "Coach must reject an invalid token.");
   assert.equal((await call("/mnemonic", { token: "wrong", env: { NEBULA_SYNC_TOKEN: "correct" } })).status, 401, "Mnemonic must reject an invalid token.");
+  const unauthenticatedOversize = await call("/coach", {
+    token: "wrong",
+    env: { NEBULA_SYNC_TOKEN: "correct" },
+    body: "x".repeat(1024 * 1024 + 1)
+  });
+  assert.equal(unauthenticatedOversize.status, 401, "Unauthenticated requests must be rejected before request-body buffering.");
+  const unauthenticatedShareOversize = await call("/share", {
+    token: "wrong",
+    env: { NEBULA_SYNC_TOKEN: "correct" },
+    body: "x".repeat(1024 * 1024 + 1)
+  });
+  assert.equal(unauthenticatedShareOversize.status, 401, "Share requests must authenticate before request-body buffering.");
   assert.equal((await call("/coach", { token: "correct", env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) } } })).status, 503, "Coach must not call AI when its server-side API key is missing.");
   assert.equal((await call("/mnemonic", { token: "correct", env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) } } })).status, 503, "Mnemonic must not call AI when its server-side API key is missing.");
   assert.equal((await call("/share", { env: {} })).status, 401, "Share import must require the shared token.");
