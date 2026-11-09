@@ -1,0 +1,58 @@
+name: V42.7 isolated UI preview artifact
+
+on:
+  push:
+    branches:
+      - isolation/v42-7-core-menu-fixes
+    paths:
+      - ui-preview-v42-7.html
+      - .github/workflows/v42-7-preview-artifact.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out isolated V42.7 source
+        uses: actions/checkout@v4
+
+      - name: Verify preview file exists and is self-contained HTML
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("ui-preview-v42-7.html")
+          html = p.read_text(encoding="utf-8")
+          assert html.lower().lstrip().startswith("<!doctype html>"), "Missing HTML doctype"
+          assert "<title>" in html.lower(), "Missing page title"
+          assert "</html>" in html.lower(), "HTML document is incomplete"
+          assert len(html) > 100_000, "Unexpectedly small preview file"
+          print(f"V42.7 preview source verified: {len(html):,} characters")
+          print(f"Inline script blocks: {len(re.findall(r'<script\\b', html, re.I))}")
+          PY
+
+      - name: Package the preview for local browser review
+        run: |
+          mkdir -p v42-7-preview-artifact
+          cp ui-preview-v42-7.html v42-7-preview-artifact/
+          cat > v42-7-preview-artifact/OPEN-ME.txt <<'EOF'
+          GUANFU MIND V42.7 isolated UI preview
+
+          1. Extract this ZIP archive.
+          2. Open ui-preview-v42-7.html in a modern desktop browser.
+          3. For a mobile layout check, use the browser's responsive device mode.
+
+          This is an isolated UI preview only. It does not connect to or modify the formal backend,
+          production knowledge data, the main branch, or the production website.
+          Some visual/3D resources may require an internet connection.
+          EOF
+
+      - name: Upload downloadable V42.7 preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: guanfu-mind-v42-7-ui-preview
+          path: v42-7-preview-artifact/
+          if-no-files-found: error
+          retention-days: 14
