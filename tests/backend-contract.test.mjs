@@ -90,14 +90,14 @@ assert.ok(currentPreview.includes("nebula-local.js?env=preview"), "V42.7 must us
 assert.ok(currentPreview.includes("updateCoreScreenAnchor"), "V42.7 must retain the approved core-screen anchoring mechanism.");
 assert.ok(currentPreview.includes("blur(9px)") && currentPreview.includes("brightness(.48)") && currentPreview.includes("1.9s"), "V42.7 must retain the approved A4 reveal baseline.");
 
-const performancePreviewScripts = [...performancePreview.matchAll(/<script([^>]*)>([\\s\\S]*?)<\\/script>/g)];
+const performancePreviewScripts = [...performancePreview.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)];
 assert.ok(performancePreviewScripts.length >= 5, "V42.8 must retain the full preview script set.");
 for (const match of performancePreviewScripts) {
-  if (/\\btype=["']importmap["']/.test(match[1])) {
+  if (/\btype=["']importmap["']/.test(match[1])) {
     assert.doesNotThrow(() => JSON.parse(match[2]), "V42.8 import map must be valid JSON.");
     continue;
   }
-  const isModule = /\\btype=["']module["']/.test(match[1]);
+  const isModule = /\btype=["']module["']/.test(match[1]);
   const args = isModule ? ["--input-type=module", "--check"] : ["--check"];
   const checked = spawnSync(process.execPath, args, { input: match[2], encoding: "utf8" });
   assert.equal(checked.status, 0, "V42.8 inline script syntax error: " + checked.stderr);
