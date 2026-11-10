@@ -153,7 +153,7 @@ try {
   assert.equal((await listRecords.json()).records[0].recordId, "root-1");
 
   const deniedCategory = await call("/sync/records?type=private-notes");
-  assert.equal(deniedCategory.status, 400, "Unconsented record categories must be rejected.");
+  assert.equal(deniedCategory.status, 403, "Unconsented record categories must be rejected.");
 
   const uploaded = await call("/sync/objects?category=private-files", {
     method: "POST", body: "private file body", contentType: "text/plain"
@@ -165,11 +165,18 @@ try {
   assert.equal(downloaded.status, 200);
   assert.equal(await downloaded.text(), "private file body");
 
+  const enableB = await call("/sync/consent", {
+    token: tokenB, method: "POST",
+    body: JSON.stringify({ status: "enabled", confirm: true, categories: ["graph", "private-files"] })
+  });
+  assert.equal(enableB.status, 200, "A second account must be able to grant its own independent consent.");
+
   const foreignDownload = await call(objectPath, { token: tokenB });
-  assert.equal(foreignDownload.status, 404, "A second authenticated user must not download the first user's object.");
+  assert.equal(foreignDownload.status, 404, "A second authenticated user with matching consent must not download the first user's object.");
 
   const foreignList = await call("/sync/records?type=graph", { token: tokenB });
-  assert.equal(foreignList.status, 403, "A second user without consent must not list the first user's records.");
+  assert.equal(foreignList.status, 200);
+  assert.deepEqual((await foreignList.json()).records, [], "A second account with matching consent must see only its own records.");
 
   const paused = await call("/sync/consent", { method: "POST", body: JSON.stringify({ status: "paused" }) });
   assert.equal(paused.status, 200);
