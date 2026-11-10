@@ -25,6 +25,8 @@ jobs:
         run: node tests/ui-script-syntax.test.mjs
       - name: Check backend contracts
         run: node tests/backend-contract.test.mjs
+      - name: Test provider-neutral auth and explicit sync consent
+        run: node tests/auth-adapter.test.mjs
       - name: Test Worker authentication and request limits
         run: node tests/worker-runtime.test.mjs
       - name: Test local database workflows
