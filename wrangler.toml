@@ -31,3 +31,14 @@ namespace_id = "82640731"
 # NEBULA_JWKS_URL = "https://<verified-clerk-jwks-endpoint>"
 # NEBULA_AUTHORIZED_PARTIES = '["https://<approved-app-origin>"]'
 # Configure NEBULA_OWNER_NAMESPACE_SECRET as a Worker secret (32+ random chars).
+
+# Private sync bindings are intentionally not active until a separate test
+# Cloudflare environment is approved and provisioned.
+# [[d1_databases]]
+# binding = "NEBULA_DB"
+# database_name = "nebula-private-test"
+# database_id = "<test-d1-database-id>"
+#
+# [[r2_buckets]]
+# binding = "NEBULA_BUCKET"
+# bucket_name = "nebula-private-test"
