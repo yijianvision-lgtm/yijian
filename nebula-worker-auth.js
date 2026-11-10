@@ -35,14 +35,13 @@ export function createNebulaWorkerAuthenticator({
 } = {}) {
   return async function authenticateNebulaRequest(request, env = {}) {
     const mode = env.NEBULA_AUTH_MODE || "shared";
-    const token = bearerToken(request);
-    if (!token) return { ok: false, status: 401, error: "Unauthorized." };
 
     if (mode === "shared") {
       if (typeof env.NEBULA_SYNC_TOKEN !== "string" || !env.NEBULA_SYNC_TOKEN) {
         return { ok: false, status: 503, error: "Worker shared-token authentication is not configured." };
       }
-      if (!constantTimeEqual(token, env.NEBULA_SYNC_TOKEN)) {
+      const token = bearerToken(request);
+      if (!token || !constantTimeEqual(token, env.NEBULA_SYNC_TOKEN)) {
         return { ok: false, status: 401, error: "Unauthorized." };
       }
       // A deployment-wide secret authenticates a service caller, never a user.
@@ -52,6 +51,8 @@ export function createNebulaWorkerAuthenticator({
     if (mode !== "clerk-jwt") {
       return { ok: false, status: 503, error: "Unsupported NEBULA_AUTH_MODE." };
     }
+    const token = bearerToken(request);
+    if (!token) return { ok: false, status: 401, error: "Unauthorized." };
 
     const { NEBULA_JWT_ISSUER: issuer, NEBULA_JWT_AUDIENCE: audience,
       NEBULA_JWKS_URL: jwksUrl, NEBULA_OWNER_NAMESPACE_SECRET: namespaceSecret } = env;
