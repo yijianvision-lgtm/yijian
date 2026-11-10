@@ -65,7 +65,8 @@ async function limitRequestBody(request, maxBytes, maxReadMs = 15000) {
   return { request: new Request(request.url, {
     method: request.method,
     headers: request.headers,
-    body
+    body,
+    signal: request.signal
   }) };
 }
 
