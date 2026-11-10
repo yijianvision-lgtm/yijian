@@ -89,3 +89,19 @@
 ## 估时口径
 
 在身份提供方和测试环境权限明确后，测试后台仍需多个独立交付与验收阶段；不能把代码提交或 CI 通过等同于可接入。实际工期取决于身份提供方账号配置、Cloudflare 测试资源权限及双用户 E2E 结果。本计划不承诺未经验证的上线日期。
+
+
+## 2026-11-10 后续推进：Worker 身份中间件
+
+- [x] 新增 nebula-worker-auth.js，统一处理 Worker 路由身份认证。
+- [x] 保留共享令牌兼容模式，但其上下文明确标记为 shared-service，不生成 owner ID。
+- [x] 增加可选 clerk-jwt 验证模式：固定 issuer/audience/JWKS、authorized party allowlist、服务端 HMAC owner 派生。
+- [x] JWT 配置缺失、错误或验证服务不可用时 fail closed；JWT 模式不会回退到共享令牌。
+- [x] /share 与受保护 AI/研究路由统一经过中间件；移除重复的路由级共享令牌判断。
+- [x] 新增中间件测试和 Worker 真实 RSA/JWKS 合成验签集成测试。
+- [ ] 真实 Clerk 测试实例及 session token claims 验证（尚未获授权创建第三方实例）。
+- [ ] 通过 D1/R2 owner-scoped repository 层把认证上下文的 ownerId 强制用于每一条私有资源操作。
+- [ ] 两个独立合成用户 A/B 的越权读写、搜索、导出、下载、备份/恢复负向测试。
+- [ ] 真实浏览器 E2E、撤销窗口和线上运行时安全验证。
+
+当前身份中间件尚未启用 Clerk 模式；未部署 Worker、未创建 Cloudflare 资源、未迁移数据。不能将身份上下文原型等同于完成多用户数据隔离。
