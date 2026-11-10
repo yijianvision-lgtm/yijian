@@ -40,29 +40,22 @@ function createJwksResolver({ jwksUrl, fetchImpl, cacheTtlMs, now, timeoutMs, ma
     if (!force && cached && cached.expiresAt > now()) return cached.keys;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    let response;
     try {
-      response = await fetchImpl(jwksUrl, {
+      const response = await fetchImpl(jwksUrl, {
         method: "GET",
         headers: { Accept: "application/json" },
         redirect: "error",
         signal: controller.signal
       });
-    } catch {
-      throw new Error("JWKS unavailable.");
-    } finally {
-      clearTimeout(timeout);
-    }
-    if (!response || !response.ok || !response.body) throw new Error("JWKS unavailable.");
-    const declaredLength = Number(response.headers.get("Content-Length") || 0);
-    if (Number.isFinite(declaredLength) && declaredLength > maxJwksBytes) {
-      await response.body.cancel();
-      throw new Error("JWKS document exceeds size limit.");
-    }
-    const reader = response.body.getReader();
-    const chunks = [];
-    let total = 0;
-    try {
+      if (!response || !response.ok || !response.body) throw new Error("JWKS unavailable.");
+      const declaredLength = Number(response.headers.get("Content-Length") || 0);
+      if (Number.isFinite(declaredLength) && declaredLength > maxJwksBytes) {
+        await response.body.cancel();
+        throw new Error("JWKS document exceeds size limit.");
+      }
+      const reader = response.body.getReader();
+      const chunks = [];
+      let total = 0;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -73,27 +66,29 @@ function createJwksResolver({ jwksUrl, fetchImpl, cacheTtlMs, now, timeoutMs, ma
         }
         chunks.push(value);
       }
+      const bytes = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      let body;
+      try {
+        body = JSON.parse(new TextDecoder().decode(bytes));
+      } catch {
+        throw new Error("Invalid JWKS document.");
+      }
+      if (!body || !Array.isArray(body.keys) || body.keys.length > 100) {
+        throw new Error("Invalid JWKS document.");
+      }
+      cached = { keys: body.keys, expiresAt: now() + cacheTtlMs };
+      return cached.keys;
     } catch (error) {
-      try { await reader.cancel(); } catch {}
+      if (controller.signal.aborted) throw new Error("JWKS request timed out.");
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
-    const bytes = new Uint8Array(total);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    let body;
-    try {
-      body = JSON.parse(new TextDecoder().decode(bytes));
-    } catch {
-      throw new Error("Invalid JWKS document.");
-    }
-    if (!body || !Array.isArray(body.keys) || body.keys.length > 100) {
-      throw new Error("Invalid JWKS document.");
-    }
-    cached = { keys: body.keys, expiresAt: now() + cacheTtlMs };
-    return cached.keys;
   }
 
   return async function resolve(kid) {
