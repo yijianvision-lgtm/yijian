@@ -22,16 +22,21 @@ class FakeD1 {
 
 const ownerA = "own_" + "a".repeat(64);
 const ownerB = "own_" + "b".repeat(64);
+const syncConsent = { enabled: true, categories: ["graph"], confirmedAt: "2026-11-10T00:00:00.000Z" };
 const db = new FakeD1();
 const repoA = createNebulaD1Repository({
   db,
-  authContext: { kind: "user", ownerId: ownerA }
+  authContext: { kind: "user", ownerId: ownerA },
+  syncConsent
 });
 assert.equal(await repoA.getRecord("graph", "node-1"), null);
 assert.deepEqual(await repoA.listRecords("graph"), []);
 assert.deepEqual(await repoA.listRecords("graph", { after: "node-0", limit: 1000 }), []);
 assert.equal((await repoA.putRecord("graph", "node-1", { name: "A-owned", owner_id: ownerB })).ok, true);
 assert.deepEqual(await repoA.deleteRecord("graph", "node-1"), { deleted: true });
+
+await assert.rejects(repoA.getRecord("sources", "source-1"), /does not cover this record category/);
+assert.equal(db.calls.length, 5, "A category without explicit consent must not reach D1.");
 
 assert.equal(db.calls.length, 5);
 for (const call of db.calls) {
@@ -50,14 +55,16 @@ assert.match(db.calls[4].sql, /DELETE FROM nebula_records WHERE owner_id = \?/);
 assert.equal(db.calls[3].values[0], ownerA, "A client-supplied owner_id inside payload must not change the row owner.");
 
 const dbB = new FakeD1();
-const repoB = createNebulaD1Repository({ db: dbB, authContext: { kind: "user", ownerId: ownerB } });
+const repoB = createNebulaD1Repository({ db: dbB, authContext: { kind: "user", ownerId: ownerB }, syncConsent });
 await repoB.getRecord("graph", "node-1");
 assert.equal(dbB.calls[0].values[0], ownerB, "User B must be scoped to B's server-derived owner ID.");
 
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "shared-service" } }), /verified user identity/);
+assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA } }), /explicit cloud-sync consent/);
+assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA }, syncConsent: { enabled: false, categories: ["graph"], confirmedAt: "2026-11-10T00:00:00.000Z" } }), /explicit cloud-sync consent/);
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerB + "x" } }), /verified user identity/);
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: "own_" + "g".repeat(64) } }), /verified user identity/);
-await assert.rejects(createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA } }).putRecord("graph", "node-1", []), /payload must be an object/);
+await assert.rejects(createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA }, syncConsent }).putRecord("graph", "node-1", []), /payload must be an object/);
 await assert.rejects(repoA.getRecord("bad type", "node-1"), /Invalid record type/);
 await assert.rejects(repoA.deleteRecord("graph", "../other-user"), /Invalid record ID/);
 
