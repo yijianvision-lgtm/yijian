@@ -29,6 +29,12 @@ assert.match(local, /当前数据未被修改/ , "Incomplete replace restore mus
 assert.match(local, /安全保护：知识合并\/拆分尚未完成原子事务改造/ , "Non-atomic merge/split must remain blocked until transaction safety is implemented.");
 assert.ok(currentPreview.includes("import { NEBULA_LOCAL } from './nebula-local.js?env=preview'"), "V42.7 must use its own IndexedDB environment.");
 
+const timelineStart = html.indexOf("function renderTimeline()");
+const timelineEnd = html.indexOf("\\nfunction ", timelineStart + 1);
+const timelineRenderer = html.slice(timelineStart, timelineEnd > timelineStart ? timelineEnd : timelineStart + 1000);
+assert.match(timelineRenderer, /label\\.textContent=String\\(n\\.date\\)/, "Timeline dates from imported/local data must be rendered as text, not HTML.");
+assert.doesNotMatch(timelineRenderer, /innerHTML=.*n\\.date/, "Timeline must not interpolate untrusted date values into HTML.");
+
 assert.match(worker, /DEEPSEEK_API_KEY/);
 assert.match(worker, /NEBULA_SYNC_TOKEN/);
 assert.match(worker, /url\.pathname === "\/chat"/);
