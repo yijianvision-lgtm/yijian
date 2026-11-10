@@ -3,7 +3,9 @@ import { readFile } from "node:fs/promises";
 
 // Load the Cloudflare module as an isolated ESM data URL; no package.json or live secrets required.
 const source = await readFile(new URL("../deepseek-worker.js", import.meta.url), "utf8");
-const { default: worker } = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
+const workerAuthUrl = new URL("../nebula-worker-auth.js", import.meta.url).href;
+const runnableSource = source.replace('"./nebula-worker-auth.js"', JSON.stringify(workerAuthUrl));
+const { default: worker } = await import("data:text/javascript;base64," + Buffer.from(runnableSource).toString("base64"));
 
 let upstreamCalls = 0;
 const originalFetch = globalThis.fetch;
