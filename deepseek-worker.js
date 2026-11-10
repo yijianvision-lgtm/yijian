@@ -1,4 +1,7 @@
 import { authenticateNebulaRequest } from "./nebula-worker-auth.js";
+import { createNebulaSyncConsentRepository } from "./nebula-sync-consent.js";
+import { createNebulaD1Repository } from "./nebula-d1-repository.js";
+import { createNebulaR2Repository } from "./nebula-r2-repository.js";
 
 /**
  * NEBULA × DeepSeek bridge — deploy as a Cloudflare Worker.
@@ -140,6 +143,133 @@ async function checkRateLimit(request, env, cors) {
   }
 }
 
+
+function jsonResponse(payload, status, cors) {
+  return new Response(JSON.stringify(payload), { status, headers: cors });
+}
+
+async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
+  if (authContext?.kind !== "user") {
+    return jsonResponse({ error: "Verified individual user authentication is required for private cloud data." }, 403, cors);
+  }
+  if (!env.NEBULA_DB || typeof env.NEBULA_DB.prepare !== "function") {
+    return jsonResponse({ error: "Private sync storage is not configured." }, 503, cors);
+  }
+
+  const consentRepository = createNebulaSyncConsentRepository({ db: env.NEBULA_DB, authContext });
+  const path = url.pathname;
+
+  if (path === "/sync/consent") {
+    if (request.method === "GET") {
+      return jsonResponse({ ok: true, consent: await consentRepository.getConsent() }, 200, cors);
+    }
+    let body;
+    try { body = await request.json(); }
+    catch { return jsonResponse({ error: "A valid JSON consent action is required." }, 400, cors); }
+    if (body.status === "enabled") {
+      if (body.confirm !== true) return jsonResponse({ error: "Explicit confirmation is required to enable cloud sync." }, 400, cors);
+      if (!Array.isArray(body.categories) || !body.categories.length) {
+        return jsonResponse({ error: "Choose at least one cloud-sync category." }, 400, cors);
+      }
+      const consent = await consentRepository.setConsent({
+        status: "enabled",
+        categories: body.categories,
+        confirmedAt: new Date().toISOString()
+      });
+      return jsonResponse({ ok: true, consent }, 200, cors);
+    }
+    if (body.status === "paused" || body.status === "revoked") {
+      const current = await consentRepository.getConsent();
+      if (!current) return jsonResponse({ error: "No existing cloud-sync consent was found." }, 404, cors);
+      const consent = await consentRepository.setConsent({
+        status: body.status,
+        categories: current.categories,
+        confirmedAt: current.confirmedAt
+      });
+      return jsonResponse({ ok: true, consent }, 200, cors);
+    }
+    return jsonResponse({ error: "Unsupported consent status." }, 400, cors);
+  }
+
+  const consent = await consentRepository.getConsent();
+  if (!consent || consent.status !== "enabled") {
+    return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
+  }
+
+  if (path === "/sync/records") {
+    const type = url.searchParams.get("type");
+    if (!type) return jsonResponse({ error: "Missing record type." }, 400, cors);
+    const repository = createNebulaD1Repository({ db: env.NEBULA_DB, authContext, syncConsent: consent });
+    if (request.method === "GET") {
+      const after = url.searchParams.get("after") || null;
+      const rawLimit = Number(url.searchParams.get("limit") || 50);
+      const records = await repository.listRecords(type, { after, limit: rawLimit });
+      return jsonResponse({ ok: true, records }, 200, cors);
+    }
+    if (request.method === "POST") {
+      let body;
+      try { body = await request.json(); }
+      catch { return jsonResponse({ error: "A valid JSON record is required." }, 400, cors); }
+      if (body.recordType !== type || typeof body.recordId !== "string") {
+        return jsonResponse({ error: "Record type or ID is invalid." }, 400, cors);
+      }
+      const result = await repository.putRecord(type, body.recordId, body.payload);
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    }
+    if (request.method === "DELETE") {
+      const recordId = url.searchParams.get("id");
+      if (!recordId) return jsonResponse({ error: "Missing record ID." }, 400, cors);
+      const result = await repository.deleteRecord(type, recordId);
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    }
+  }
+
+  if (path === "/sync/objects" || /^\/sync\/objects\/[0-9a-f-]{36}$/.test(path)) {
+    if (!env.NEBULA_BUCKET || typeof env.NEBULA_BUCKET.put !== "function") {
+      return jsonResponse({ error: "Private object storage is not configured." }, 503, cors);
+    }
+    const category = url.searchParams.get("category");
+    if (!category) return jsonResponse({ error: "Missing object category." }, 400, cors);
+    const repository = createNebulaR2Repository({
+      bucket: env.NEBULA_BUCKET,
+      db: env.NEBULA_DB,
+      authContext,
+      consentRepository
+    });
+    if (path === "/sync/objects" && request.method === "POST") {
+      const result = await repository.putObject({
+        category,
+        body: new Uint8Array(await request.arrayBuffer()),
+        contentType: request.headers.get("Content-Type") || "application/octet-stream"
+      });
+      return jsonResponse({ ok: true, object: result }, 201, cors);
+    }
+    if (path === "/sync/objects" && request.method === "GET") {
+      const objects = await repository.listObjects(category, {
+        after: url.searchParams.get("after") || null,
+        limit: Number(url.searchParams.get("limit") || 50)
+      });
+      return jsonResponse({ ok: true, objects }, 200, cors);
+    }
+    if (path !== "/sync/objects") {
+      const objectId = path.slice("/sync/objects/".length);
+      if (request.method === "DELETE") {
+        const result = await repository.deleteObject(category, objectId);
+        return jsonResponse({ ok: true, ...result }, 200, cors);
+      }
+      if (request.method === "GET") {
+        const object = await repository.getObject(category, objectId);
+        if (!object) return jsonResponse({ error: "Object not found." }, 404, cors);
+        return new Response(object.body, {
+          status: 200,
+          headers: { ...cors, "Content-Type": object.contentType, "Content-Length": String(object.sizeBytes) }
+        });
+      }
+    }
+  }
+  return jsonResponse({ error: "Unsupported private sync operation." }, 405, cors);
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
@@ -152,7 +282,7 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin": origin && allowed ? origin : "https://yijianvision-lgtm.github.io",
       "Vary": "Origin",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Content-Type": "application/json; charset=utf-8"
     };
@@ -203,11 +333,19 @@ export default {
         return new Response(JSON.stringify({ ok:true, shareId, title:data.title || "DeepSeek 分享对话", messageCount:messages.length, transcript }), { headers:cors });
       } catch(e) { return new Response(JSON.stringify({ error:String(e.message || e) }), { status:500, headers:cors }); }
     }
-    const supportedPath = ["/analyze", "/coach", "/mnemonic", "/research", "/chat"].includes(url.pathname);
+    const syncObjectPath = url.pathname === "/sync/objects" || /^\/sync\/objects\/[0-9a-f-]{36}$/.test(url.pathname);
+    const syncPath = ["/sync/consent", "/sync/records"].includes(url.pathname) || syncObjectPath;
+    const supportedPath = ["/analyze", "/coach", "/mnemonic", "/research", "/chat"].includes(url.pathname) || syncPath;
     if (!supportedPath) return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: cors });
+    if (syncPath && !["GET", "POST", "DELETE"].includes(request.method))
+      return new Response(JSON.stringify({ error: "Unsupported sync method" }), { status: 405, headers: cors });
+    if (url.pathname === "/sync/consent" && request.method === "DELETE")
+      return new Response(JSON.stringify({ error: "Use POST to pause or revoke consent." }), { status: 405, headers: cors });
+    if (url.pathname === "/sync/records" && request.method === "GET" && !url.searchParams.get("type"))
+      return new Response(JSON.stringify({ error: "Missing record type." }), { status: 400, headers: cors });
     if (url.pathname === "/research" && request.method !== "GET")
       return new Response(JSON.stringify({ error: "GET /research only" }), { status: 405, headers: cors });
-    if (url.pathname !== "/research" && request.method !== "POST")
+    if (!syncPath && url.pathname !== "/research" && request.method !== "POST")
       return new Response(JSON.stringify({ error: "POST required" }), { status: 405, headers: cors });
     const authentication = await authenticateNebulaRequest(request, env);
     if (!authentication.ok)
@@ -224,6 +362,18 @@ export default {
         return new Response(JSON.stringify({ error: timedOut ? "Request body timed out." : "Request body is invalid or exceeds the 1 MiB limit." }), { status: timedOut ? 408 : 413, headers: cors });
       }
       request = bounded.request;
+    }
+
+    if (syncPath) {
+      try {
+        return await handleNebulaSyncRequest(request, env, authContext, cors, url);
+      } catch (error) {
+        const message = String(error?.message || error);
+        const badInput = error instanceof TypeError || error instanceof RangeError;
+        return new Response(JSON.stringify({ error: badInput ? message : "Private sync operation failed." }), {
+          status: badInput ? 400 : 500, headers: cors
+        });
+      }
     }
 
     if (url.pathname === "/research") {
