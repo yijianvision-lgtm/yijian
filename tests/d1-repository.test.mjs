@@ -40,6 +40,9 @@ for (const call of db.calls) {
 assert.match(db.calls[0].sql, /WHERE owner_id = \?/);
 assert.match(db.calls[1].sql, /WHERE owner_id = \?/);
 assert.match(db.calls[2].sql, /record_id > \?/);
+assert.equal(db.calls[1].values[2], 50, "D1 list pages must have a bounded default size.");
+assert.equal(db.calls[2].values[3], 50, "Caller-supplied page sizes must be capped.");
+await assert.rejects(repoA.putRecord("graph", "oversized", { data: "x".repeat(256 * 1024) }), /exceeds 256 KiB/);
 assert.match(db.calls[3].sql, /INSERT INTO nebula_records \(owner_id,/);
 assert.match(db.calls[3].sql, /ON CONFLICT\(owner_id, record_type, record_id\)/);
 assert.match(db.calls[4].sql, /DELETE FROM nebula_records WHERE owner_id = \?/);
