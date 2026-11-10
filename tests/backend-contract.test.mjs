@@ -117,6 +117,7 @@ const performanceResizeStart = performancePreview.indexOf("function resize(){", 
 const performanceAnimateBody = performancePreview.slice(performanceAnimateStart, performanceResizeStart);
 assert.ok(performancePreview.includes("const focusTargetWorld=new THREE.Vector3()"), "V42.8 must preallocate focus-animation scratch vectors.");
 assert.ok(!performanceAnimateBody.includes("new THREE.Vector3") && !performanceAnimateBody.includes(".clone()"), "V42.8 animation loop must not allocate or clone vectors per frame.");
+assert.ok(!performanceAnimateBody.includes("spheres.forEach("), "V42.8 animation loop must not create a per-frame forEach callback.");
 
 console.log("NEBULA backend contract checks passed.");
 
