@@ -1,21 +1,11 @@
+import { authenticateNebulaRequest } from "./nebula-worker-auth.js";
+
 /**
  * NEBULA × DeepSeek bridge — deploy as a Cloudflare Worker.
  * Set secret: DEEPSEEK_API_KEY
  * Optional vars: DEEPSEEK_MODEL=deepseek-v4-pro
  * Endpoint: POST /analyze  { text, existingNodes? }
  */
-function constantTimeEqual(left, right) {
-  if (typeof left !== "string" || typeof right !== "string") return false;
-  const a = new TextEncoder().encode(left);
-  const b = new TextEncoder().encode(right);
-  let difference = a.length ^ b.length;
-  const length = Math.max(a.length, b.length);
-  for (let i = 0; i < length; i += 1) {
-    difference |= (a[i] || 0) ^ (b[i] || 0);
-  }
-  return difference === 0;
-}
-
 async function limitRequestBody(request, maxBytes, maxReadMs = 15000) {
   const declaredLength = Number(request.headers.get("Content-Length") || 0);
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return { request: null, reason: "too_large" };
@@ -179,8 +169,10 @@ export default {
       }), { headers: cors });
     }
     if (url.pathname === "/share" && request.method === "POST") {
-      if (!env.NEBULA_SYNC_TOKEN || !constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
-        return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
+      const shareAuth = await authenticateNebulaRequest(request, env);
+      if (!shareAuth.ok) return new Response(JSON.stringify({ error: shareAuth.error }), { status: shareAuth.status, headers: cors });
+      const authContext = shareAuth.context;
+      // Share import currently returns a preview only; it does not persist user data.
       const rateLimitResponse = await checkRateLimit(request, env, cors);
       if (rateLimitResponse) return rateLimitResponse;
       const bounded = await limitRequestBody(request, 1024 * 1024);
@@ -217,10 +209,12 @@ export default {
       return new Response(JSON.stringify({ error: "GET /research only" }), { status: 405, headers: cors });
     if (url.pathname !== "/research" && request.method !== "POST")
       return new Response(JSON.stringify({ error: "POST required" }), { status: 405, headers: cors });
-    if (!env.NEBULA_SYNC_TOKEN)
-      return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
-    if (!constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
-      return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
+    const authentication = await authenticateNebulaRequest(request, env);
+    if (!authentication.ok)
+      return new Response(JSON.stringify({ error: authentication.error }), { status: authentication.status, headers: cors });
+    const authContext = authentication.context;
+    // Only authContext.kind === "user" is eligible for future owner-scoped data access.
+    // "shared-service" must never be treated as an account identity.
     const rateLimitResponse = await checkRateLimit(request, env, cors);
     if (rateLimitResponse) return rateLimitResponse;
     if (request.method === "POST") {
@@ -259,10 +253,6 @@ export default {
     if (url.pathname === "/chat") {
       if (request.method !== "POST")
         return new Response(JSON.stringify({ error: "POST required" }), { status: 405, headers: cors });
-      if (!env.NEBULA_SYNC_TOKEN)
-        return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
-      if (!constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
-        return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
       try {
         const body = await request.json();
         const provider = String(body.provider || "deepseek").toLowerCase();
@@ -330,10 +320,6 @@ export default {
     if (url.pathname === "/coach" || url.pathname === "/mnemonic") {
       if (request.method !== "POST")
         return new Response(JSON.stringify({ error: "POST required" }), { status: 405, headers: cors });
-      if (!env.NEBULA_SYNC_TOKEN)
-        return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
-      if (!constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
-        return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
       if (!env.DEEPSEEK_API_KEY)
         return new Response(JSON.stringify({ error: "Worker secret DEEPSEEK_API_KEY is missing." }), { status: 503, headers: cors });
       try {
@@ -365,10 +351,8 @@ export default {
         return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers: cors });
       }
     }
-    if (!env.DEEPSEEK_API_KEY || !env.NEBULA_SYNC_TOKEN)
-      return new Response(JSON.stringify({ error: "Worker secrets DEEPSEEK_API_KEY and NEBULA_SYNC_TOKEN must both be configured." }), { status: 503, headers: cors });
-    if (!constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
-      return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
+    if (!env.DEEPSEEK_API_KEY)
+      return new Response(JSON.stringify({ error: "Worker secret DEEPSEEK_API_KEY is missing." }), { status: 503, headers: cors });
     try {
       const body = await request.json();
       const text = String(body.text || "").slice(0, 90000);
