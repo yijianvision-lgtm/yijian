@@ -9,6 +9,7 @@
 - 知识图谱、原始参考文件、对话档案和提取内容由浏览器 IndexedDB 保存；LocalStorage 仅有兼容缓存及少量 UI/同步设置。
 - 当前页面中的 DeepSeek 分享导入流程把 `NEBULA_SYNC_TOKEN` 放在用户输入框并由浏览器发起 Worker 请求；它是部署级共享令牌，不是用户登录凭据。
 - 当前 Worker 的 `/share`、`/analyze`、`/research`、`/chat`、`/coach`、`/mnemonic` 路由使用共享令牌鉴权；没有真实用户 JWT 验证，也没有 D1/R2 owner-scoped 私有数据 API。
+- 2026-11-10 后续安全加固：JWT 验证原型增加 JWKS 大小/超时、RSA 最低强度、重复 kid 拒绝、authorized party allowlist、iat/exp 生命周期限制；Worker 入站 body 1 MiB / 15 秒限制、上游 8 MiB / 20 秒限制与共享令牌常量时间比较。仍未接入真实身份。
 - 当前没有可验证的云端账户身份、数据同步或私人讲义云存储实现。
 - `wrangler.toml` 中的 Rate Limiter namespace 尚未确认；不得部署或声称线上限流生效。
 
@@ -41,7 +42,7 @@
 ### M1 — 真实身份认证（原型阶段；Worker 尚未接入）
 
 - [x] 建立供应商无关 RS256/JWKS 验证原语，固定配置 issuer、audience、HTTPS JWKS URL。
-- [x] 建立合成 RSA/JWKS 测试：签名、过期、错误 issuer/audience、空 subject、未来 nbf、alg=none、恶意 jku、未知 kid、签名错误、密钥轮换及 JWKS 故障。
+- [x] 建立合成 RSA/JWKS 测试：签名、过期、错误 issuer/audience、空 subject、iat/exp 生命周期、未来 nbf、alg=none、恶意 jku、未知 kid、签名错误、密钥轮换及 JWKS 故障。
 - [x] 建立基于服务端 namespace secret 的 HMAC-SHA-256 owner_id 派生原语。
 - [ ] Worker 服务端验证真实 Clerk API access token；完成前现有共享令牌仍在用，不能称为用户身份认证。
 - [ ] 固定测试环境 issuer、audience、JWKS URL，完成 Clerk 真实测试实例验证。
