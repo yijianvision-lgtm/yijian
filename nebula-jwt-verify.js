@@ -33,39 +33,82 @@ function audienceMatches(actual, expected) {
   return Array.isArray(actual) && actual.includes(expected);
 }
 
-function createJwksResolver({ jwksUrl, fetchImpl, cacheTtlMs, now }) {
+function createJwksResolver({ jwksUrl, fetchImpl, cacheTtlMs, now, timeoutMs, maxJwksBytes }) {
   let cached = null;
 
   async function load(force = false) {
     if (!force && cached && cached.expiresAt > now()) return cached.keys;
-    const response = await fetchImpl(jwksUrl, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      redirect: "error"
-    });
-    if (!response || !response.ok) throw new Error("JWKS unavailable.");
-    const body = await response.json();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    try {
+      response = await fetchImpl(jwksUrl, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        redirect: "error",
+        signal: controller.signal
+      });
+    } catch {
+      throw new Error("JWKS unavailable.");
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (!response || !response.ok || !response.body) throw new Error("JWKS unavailable.");
+    const declaredLength = Number(response.headers.get("Content-Length") || 0);
+    if (Number.isFinite(declaredLength) && declaredLength > maxJwksBytes) {
+      await response.body.cancel();
+      throw new Error("JWKS document exceeds size limit.");
+    }
+    const reader = response.body.getReader();
+    const chunks = [];
+    let total = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxJwksBytes) {
+          await reader.cancel();
+          throw new Error("JWKS document exceeds size limit.");
+        }
+        chunks.push(value);
+      }
+    } catch (error) {
+      try { await reader.cancel(); } catch {}
+      throw error;
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    let body;
+    try {
+      body = JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      throw new Error("Invalid JWKS document.");
+    }
     if (!body || !Array.isArray(body.keys) || body.keys.length > 100) {
       throw new Error("Invalid JWKS document.");
     }
-    cached = {
-      keys: body.keys,
-      expiresAt: now() + cacheTtlMs
-    };
+    cached = { keys: body.keys, expiresAt: now() + cacheTtlMs };
     return cached.keys;
   }
 
   return async function resolve(kid) {
     let keys = await load(false);
-    let key = keys.find(item => item && item.kid === kid);
-    if (!key) {
-      // A single forced refresh supports key rotation without accepting
-      // arbitrary key URLs supplied by the token.
+    let matches = keys.filter(item => item && item.kid === kid);
+    if (!matches.length) {
+      // One fixed-origin refresh supports rotation; token headers never set the URL.
       keys = await load(true);
-      key = keys.find(item => item && item.kid === kid);
+      matches = keys.filter(item => item && item.kid === kid);
     }
-    if (!key || key.kty !== "RSA" || key.use && key.use !== "sig" ||
-        key.alg && key.alg !== "RS256" || typeof key.n !== "string" || typeof key.e !== "string") {
+    if (matches.length !== 1) throw new Error("Signing key missing or ambiguous.");
+    const key = matches[0];
+    if (key.kty !== "RSA" || key.use && key.use !== "sig" ||
+        key.alg && key.alg !== "RS256" || key.key_ops && !key.key_ops.includes("verify") ||
+        typeof key.n !== "string" || typeof key.e !== "string" || key.d || key.p || key.q) {
       throw new Error("Signing key not found or unsupported.");
     }
     return key;
@@ -79,6 +122,8 @@ export function createJwtVerifier({
   fetchImpl = fetch,
   cacheTtlMs = 5 * 60 * 1000,
   clockToleranceSeconds = 60,
+  jwksTimeoutMs = 5000,
+  maxJwksBytes = 256 * 1024,
   now = () => Date.now()
 } = {}) {
   if (typeof issuer !== "string" || !issuer || typeof audience !== "string" || !audience ||
@@ -86,11 +131,13 @@ export function createJwtVerifier({
     throw new TypeError("Trusted issuer, audience, and HTTPS JWKS URL are required.");
   }
   if (typeof fetchImpl !== "function" || !Number.isFinite(cacheTtlMs) || cacheTtlMs < 0 ||
-      !Number.isFinite(clockToleranceSeconds) || clockToleranceSeconds < 0) {
+      !Number.isFinite(clockToleranceSeconds) || clockToleranceSeconds < 0 ||
+      !Number.isFinite(jwksTimeoutMs) || jwksTimeoutMs < 1 ||
+      !Number.isFinite(maxJwksBytes) || maxJwksBytes < 1024) {
     throw new TypeError("Invalid JWT verifier options.");
   }
 
-  const resolveJwk = createJwksResolver({ jwksUrl, fetchImpl, cacheTtlMs, now });
+  const resolveJwk = createJwksResolver({ jwksUrl, fetchImpl, cacheTtlMs, now, timeoutMs: jwksTimeoutMs, maxJwksBytes });
 
   return async function verifyAccessToken(token) {
     if (typeof token !== "string" || token.length > 16384) throw new Error("Unauthorized.");
@@ -129,6 +176,7 @@ export function createJwtVerifier({
       false,
       ["verify"]
     );
+    if (publicKey.algorithm.modulusLength < 2048) throw new Error("Signing key is too weak.");
     const valid = await crypto.subtle.verify(
       "RSASSA-PKCS1-v1_5",
       publicKey,
