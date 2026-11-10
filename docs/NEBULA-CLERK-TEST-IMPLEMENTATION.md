@@ -59,3 +59,6 @@
 - 以上是代码级加固；真实 Clerk 签名验证、Cloudflare Worker 运行时、JWKS 网络故障与真实密钥轮换仍需独立测试。未部署任何 Worker 或云资源。
 
 - JWT 验证器支持配置 Clerk azp authorized party 白名单；启用后，缺失或不在白名单的 azp 一律拒绝。
+
+- 2026-11-10 后续审计：Worker 入站请求体读取增加 15 秒总时限，超时返回 408 并取消读取；保留 1 MiB 限制并传播客户端 AbortSignal。
+- JWT 验证要求有限且有效的 iat/exp，拒绝未来签发时间、exp 不晚于 iat、超过 1 小时最大有效期的令牌；Clerk 实际 token claims 仍需在真实测试实例核对。
