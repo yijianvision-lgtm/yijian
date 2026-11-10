@@ -129,7 +129,7 @@ try {
   const base64url = bytes => {
     let binary = "";
     for (const byte of bytes) binary += String.fromCharCode(byte);
-    return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+    return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
   };
   const keyPair = await crypto.subtle.generateKey({
     name: "RSASSA-PKCS1-v1_5", modulusLength: 2048,
