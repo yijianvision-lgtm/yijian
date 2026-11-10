@@ -132,3 +132,16 @@
 - [ ] 把授权写入与云数据读写置于一致的撤销检查边界，并覆盖并发撤销/正在进行的上传。
 
 当前仍是独立 repository + migration 原型；未接入 Worker 路由，未应用真实 D1 migration，未创建 Cloudflare 资源，也未部署。
+
+
+## 2026-11-10 后续推进：R2 私有对象仓储原型
+
+- [x] 新增 `nebula-r2-repository.js`：owner ID 仅取自服务端验证上下文；对象 ID 服务端生成；R2 key 固定为 `owners/{owner_id}/{category}/{object_id}`。
+- [x] 上传、读取、列表前逐次检查服务端同步类别授权；不接受客户端 raw object key 或 owner ID。
+- [x] D1 对象元数据读写按 owner_id + category + object_id 绑定；删除时先标记 deleting，再删 R2 对象与元数据，允许失败后重试。
+- [x] 上传先写 R2、再写 D1；D1 元数据写入失败时尽力删除已上传对象并返回错误。
+- [x] 新增 `migrations/0003_owner_scoped_objects.sql` 和模拟 R2/D1 契约测试，限制上传体积并校验 owner 前缀。
+- [ ] R2/D1 repository 仍未接入 Worker 私有 API；必须在 Worker 中从服务端 consent ledger 读取授权并创建 repository，不得从请求体传入授权对象。
+- [ ] 完成真实 D1/R2 测试环境应用迁移、A/B 用户跨账户上传/下载/列举/删除负向测试、失败补偿与并发撤销测试。
+
+注意：当前上传体积限制通过有界缓冲后再写入 R2，属于受限体积原型，不是大文件流式上传方案。真实 Cloudflare R2/D1 未连接、未创建、未部署，未上传任何用户私人文件。
