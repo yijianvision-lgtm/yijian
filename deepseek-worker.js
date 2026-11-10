@@ -200,6 +200,9 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
   if (path === "/sync/records") {
     const type = url.searchParams.get("type");
     if (!type) return jsonResponse({ error: "Missing record type." }, 400, cors);
+    // Re-read the server-side ledger at the D1 operation boundary instead of
+    // relying only on the request-start consent snapshot.
+    await consentRepository.requireCategory(type);
     const repository = createNebulaD1Repository({ db: env.NEBULA_DB, authContext, syncConsent: consent });
     if (request.method === "GET") {
       const after = url.searchParams.get("after") || null;
@@ -357,10 +360,14 @@ export default {
     const rateLimitResponse = await checkRateLimit(request, env, cors);
     if (rateLimitResponse) return rateLimitResponse;
     if (request.method === "POST") {
-      const bounded = await limitRequestBody(request, 1024 * 1024);
+      // Private object uploads have a separate 10 MiB ceiling, matching the
+      // R2 repository limit. Other Worker POST routes remain capped at 1 MiB.
+      const maxBodyBytes = syncObjectPath ? 10 * 1024 * 1024 : 1024 * 1024;
+      const bounded = await limitRequestBody(request, maxBodyBytes);
       if (!bounded.request) {
         const timedOut = bounded.reason === "timeout";
-        return new Response(JSON.stringify({ error: timedOut ? "Request body timed out." : "Request body is invalid or exceeds the 1 MiB limit." }), { status: timedOut ? 408 : 413, headers: cors });
+        const limitLabel = syncObjectPath ? "10 MiB" : "1 MiB";
+        return new Response(JSON.stringify({ error: timedOut ? "Request body timed out." : "Request body is invalid or exceeds the " + limitLabel + " limit." }), { status: timedOut ? 408 : 413, headers: cors });
       }
       request = bounded.request;
     }
