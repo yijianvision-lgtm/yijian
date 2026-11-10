@@ -59,8 +59,10 @@ assert.ok(worker.includes("NEBULA_RATE_LIMITER.limit"), "Worker must invoke the 
 assert.ok(worker.includes("Rate limit exceeded"), "Worker must return a 429 response when rate limited.");
 assert.match(worker, /timedOut \? 408 : 413/, "Worker must distinguish request-body timeouts from oversized bodies.");
 const coachRouteStart = worker.indexOf('if (url.pathname === "/coach" || url.pathname === "/mnemonic") {');
-const coachAuthBlock = worker.slice(coachRouteStart, worker.indexOf("if (!env.DEEPSEEK_API_KEY)", coachRouteStart));
-assert.ok(coachRouteStart >= 0 && coachAuthBlock.includes('request.method !== "POST"') && coachAuthBlock.includes("NEBULA_SYNC_TOKEN") && coachAuthBlock.includes("Unauthorized: invalid NEBULA access token"), "Coach and mnemonic routes must require POST and the shared access token before calling the AI provider.");
+const centralizedAuth = worker.indexOf("authenticateNebulaRequest(request, env)");
+assert.ok(coachRouteStart >= 0 && centralizedAuth >= 0 && centralizedAuth < coachRouteStart &&
+  worker.slice(coachRouteStart, worker.indexOf("if (!env.DEEPSEEK_API_KEY)", coachRouteStart)).includes('request.method !== "POST"'),
+  "Coach and mnemonic routes must require POST and pass through centralized authentication before calling the AI provider.");
 
 const inlineScripts = [...html.matchAll(/<script(?:\s+type="module")?>([\s\S]*?)<\/script>/g)];
 assert.ok(inlineScripts.length >= 2, "Expected the app bootstrap and main module scripts.");
