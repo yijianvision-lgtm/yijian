@@ -119,3 +119,16 @@
 本阶段只有代码原型与模拟 binding 测试，尚未连接、创建或迁移真实 D1/R2 资源。
 
 - D1 repository 增加显式同步授权门槛：未取得服务端确认的 enabled/category/confirmedAt 授权时拒绝所有云端记录操作；不得从客户端请求体直接构造 syncConsent。
+
+
+## 2026-11-10 后续推进：服务端同步授权账本原型
+
+- [x] 新增 `nebula-sync-consent.js`：以服务端验证身份派生的 owner ID 为唯一主键，读取/写入用户的同步类别与状态。
+- [x] 新增 `migrations/0002_sync_consent_ledger.sql`：保存 categories、enabled/paused/revoked 状态、确认时间、更新时间和撤销时间。
+- [x] 撤销采用保留记录的 tombstone，不自动删除云端数据；后续删除云端副本必须另设明确操作与确认。
+- [x] 增加测试覆盖 owner 绑定、类别授权、暂停、撤销、无效类别和无效身份。
+- [ ] 将账本接入 Worker 的认证用户专属授权/撤销 API；共享令牌上下文必须永久拒绝。
+- [ ] 由 Worker 在每次 D1/R2 操作前读取此账本，并把服务端确认的授权状态交给 repository；不得信任请求体里的 ownerId 或 consent 状态。
+- [ ] 把授权写入与云数据读写置于一致的撤销检查边界，并覆盖并发撤销/正在进行的上传。
+
+当前仍是独立 repository + migration 原型；未接入 Worker 路由，未应用真实 D1 migration，未创建 Cloudflare 资源，也未部署。
