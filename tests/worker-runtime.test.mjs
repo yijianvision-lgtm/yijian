@@ -99,6 +99,24 @@ try {
   });
   assert.equal(streamedOversize.status, 413, "Actual streamed bodies above 1 MiB must be rejected.");
 
+  let slowBodyCancelled = false;
+  const slowBody = new ReadableStream({
+    start(controller) { controller.enqueue(new TextEncoder().encode("{")); },
+    cancel() { slowBodyCancelled = true; }
+  });
+  const slowRequest = new Request("https://worker.test/coach", {
+    method: "POST",
+    headers: { Authorization: "Bearer correct", "Content-Type": "application/json" },
+    body: slowBody,
+    duplex: "half"
+  });
+  const slowBodyResponse = await worker.fetch(slowRequest, {
+    NEBULA_SYNC_TOKEN: "correct",
+    NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) }
+  });
+  assert.equal(slowBodyResponse.status, 408, "Slow request-body streams must be terminated with a request timeout.");
+  assert.equal(slowBodyCancelled, true, "Timed-out request-body streams must be cancelled.");
+
   const deniedOrigin = await call("/coach", {
     token: "correct",
     env: { NEBULA_SYNC_TOKEN: "correct" },
