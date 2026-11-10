@@ -148,9 +148,17 @@ export async function deriveNebulaOwnerId({ issuer, subject, namespaceSecret } =
       typeof namespaceSecret !== "string" || namespaceSecret.length < 32) {
     throw new TypeError("Verified issuer, subject, and a 32+ character server secret are required.");
   }
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    textEncoder.encode("NEBULA_OWNER_V1\0" + namespaceSecret + "\0" + issuer + "\0" + subject)
+  const key = await crypto.subtle.importKey(
+    "raw",
+    textEncoder.encode(namespaceSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const digest = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    textEncoder.encode(JSON.stringify(["NEBULA_OWNER_V1", issuer, subject]))
   );
   return "own_" + Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 }
