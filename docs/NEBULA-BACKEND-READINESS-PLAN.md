@@ -33,7 +33,7 @@
 
 身份提供方比较记录见 [NEBULA 第三方身份服务选型评估](./NEBULA-AUTH-PROVIDER-EVALUATION.md)。当前 Clerk 为第一候选、Auth0 为备选，尚未最终选定或创建供应商账户。
 
-- [ ] 确认身份提供方及注册、登录、登出、账号删除/恢复生命周期。
+- [x] 用户确认 Clerk 作为测试阶段首选身份提供方；实际测试实例、回调域名及账户生命周期仍待配置。
 - [ ] 明确测试环境域名、回调地址、issuer、audience、JWKS URL。
 - [ ] 确认独立 Cloudflare 测试环境及账号权限。
 - [ ] 确认 Rate Limiter namespace 唯一性与 Wrangler CLI 版本。
@@ -73,6 +73,10 @@
 ### M5 — 正式后台（禁止提前执行）
 
 只有 M0–M4 全部通过、风险与回滚报告齐备、用户明确批准后，才评估正式资源配置与数据迁移。不得在批准前部署生产 Worker、创建/改动正式资源或上传私人资料。
+
+## Clerk 测试阶段决策（2026-11-10）
+
+用户已选择 A：Clerk 优先。供应商无关 Auth Adapter 原型与同步授权测试已建立，详见 [NEBULA Clerk 测试阶段实施边界](./NEBULA-CLERK-TEST-IMPLEMENTATION.md)。这不是 Clerk 账户已创建、Worker 已接入或测试后台可用的证明。
 
 ## 接入判定
 
