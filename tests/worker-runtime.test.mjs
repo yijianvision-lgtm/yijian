@@ -50,7 +50,7 @@ try {
   assert.equal(unauthenticatedShareOversize.status, 401, "Share requests must authenticate before request-body buffering.");
   assert.equal((await call("/coach", { token: "correct", env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) } } })).status, 503, "Coach must not call AI when its server-side API key is missing.");
   assert.equal((await call("/mnemonic", { token: "correct", env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) } } })).status, 503, "Mnemonic must not call AI when its server-side API key is missing.");
-  assert.equal((await call("/share", { env: {} })).status, 401, "Share import must require the shared token.");
+  assert.equal((await call("/share", { env: {} })).status, 503, "Share import must fail closed when authentication is not configured.");
   assert.equal((await call("/analyze", { env: {} })).status, 503, "Analyze must fail closed when the shared token is not configured.");
   assert.equal((await call("/chat", { env: {} })).status, 503, "Chat must fail closed when the shared token is not configured.");
   assert.equal((await call("/research", { method: "GET", env: {} })).status, 503, "Research must fail closed when the shared token is not configured.");
