@@ -67,8 +67,27 @@ async function readJsonLimited(response, maxBytes = 8 * 1024 * 1024) {
   const reader = response.body.getReader();
   const chunks = [];
   let total = 0;
+  const deadline = Date.now() + 20000;
   while (true) {
-    const { done, value } = await reader.read();
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      await reader.cancel();
+      throw new Error("Upstream response timed out.");
+    }
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error("Upstream response timed out.")), remaining);
+    });
+    let readResult;
+    try {
+      readResult = await Promise.race([reader.read(), timeoutPromise]);
+    } catch (error) {
+      await reader.cancel();
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    const { done, value } = readResult;
     if (done) break;
     total += value.byteLength;
     if (total > maxBytes) {
