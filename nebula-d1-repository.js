@@ -23,18 +23,29 @@ function timestamp(value) {
  * ownerId is captured once from server-created authContext; no method accepts
  * an owner identifier from its caller.
  */
-export function createNebulaD1Repository({ db, authContext, now = () => new Date().toISOString() } = {}) {
+export function createNebulaD1Repository({ db, authContext, syncConsent, now = () => new Date().toISOString() } = {}) {
   if (!db || typeof db.prepare !== "function") throw new TypeError("A Cloudflare D1 database binding is required.");
   if (!authContext || authContext.kind !== "user" || typeof authContext.ownerId !== "string" ||
       !OWNER_ID_PATTERN.test(authContext.ownerId)) {
     throw new TypeError("A verified user identity with a server-derived owner ID is required.");
   }
   const ownerId = authContext.ownerId;
+  if (!syncConsent || syncConsent.enabled !== true || !Array.isArray(syncConsent.categories) ||
+      !syncConsent.categories.length || typeof syncConsent.confirmedAt !== "string" ||
+      !Number.isFinite(Date.parse(syncConsent.confirmedAt))) {
+    throw new TypeError("Server-verified, explicit cloud-sync consent is required.");
+  }
+  const consentCategories = new Set(syncConsent.categories.filter(value => typeof value === "string"));
+  if (!consentCategories.size) throw new TypeError("Cloud-sync consent has no valid categories.");
+  const assertConsentedCategory = recordType => {
+    if (!consentCategories.has(recordType)) throw new Error("Cloud-sync consent does not cover this record category.");
+  };
 
   return Object.freeze({
     async getRecord(recordType, recordId) {
       const type = assertRecordType(recordType);
       const id = assertRecordId(recordId);
+      assertConsentedCategory(type);
       const row = await db.prepare(
         "SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? LIMIT 1"
       ).bind(ownerId, type, id).first();
@@ -53,6 +64,7 @@ export function createNebulaD1Repository({ db, authContext, now = () => new Date
 
     async listRecords(recordType, { after = null, limit = 50 } = {}) {
       const type = assertRecordType(recordType);
+      assertConsentedCategory(type);
       const boundedLimit = Math.max(1, Math.min(50, Number.isInteger(limit) ? limit : 50));
       const cursor = after === null ? null : assertRecordId(after);
       const statement = cursor === null
@@ -76,6 +88,7 @@ export function createNebulaD1Repository({ db, authContext, now = () => new Date
     async putRecord(recordType, recordId, payload) {
       const type = assertRecordType(recordType);
       const id = assertRecordId(recordId);
+      assertConsentedCategory(type);
       if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new TypeError("Record payload must be an object.");
       const serialized = JSON.stringify(payload);
       if (new TextEncoder().encode(serialized).byteLength > MAX_PAYLOAD_BYTES) throw new RangeError("Record payload exceeds 256 KiB.");
@@ -89,6 +102,7 @@ export function createNebulaD1Repository({ db, authContext, now = () => new Date
     async deleteRecord(recordType, recordId) {
       const type = assertRecordType(recordType);
       const id = assertRecordId(recordId);
+      assertConsentedCategory(type);
       const result = await db.prepare(
         "DELETE FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ?"
       ).bind(ownerId, type, id).run();
