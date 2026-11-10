@@ -23,7 +23,7 @@
 
 - `nebula-auth-adapter.js`：供应商无关的前端认证边界；注入 provider 与 consent store，不含供应商 SDK或网络请求。
 - `nebula-jwt-verify.js`：供应商无关的 RS256/JWKS 验证原语；固定 issuer、audience、HTTPS JWKS URL；拒绝 `alg=none`、令牌自带 `jku/x5u`、错误签名、过期/未生效令牌和未知密钥；未知 `kid` 只触发一次受控 JWKS 刷新。
-- `deriveNebulaOwnerId()`：使用服务端 namespace secret 对已验证的 issuer + subject 做 SHA-256 命名空间派生；不接受客户端 owner_id。此函数尚未接入 Worker 路由或 D1。
+- `deriveNebulaOwnerId()`：使用服务端 namespace secret 对已验证的 issuer + subject 做 HMAC-SHA-256 命名空间派生；不接受客户端 owner_id。此函数尚未接入 Worker 路由或 D1。
 - `tests/auth-adapter.test.mjs`：合成身份测试，覆盖登录不授权同步、同步显式确认、类别白名单、登出与关闭同步。
 - `tests/jwt-verify.test.mjs`：合成 RSA 密钥测试，覆盖有效签名、缓存、过期、错误 issuer/audience、空 subject、未来 nbf、`alg=none`、恶意 jku、签名错误、未知 kid、密钥轮换、JWKS 故障及 owner_id 稳定性。
 - 这些模块目前未接入 `index.html`、`nebula-local.js` 或 `deepseek-worker.js`，因此不改变现有用户流程。JWT 验证模块使用配置注入的固定 JWKS URL；本轮测试仅使用本地生成的合成 RSA 密钥与模拟 JWKS，不访问 Clerk，也不代表真实 Clerk token 已验证。
