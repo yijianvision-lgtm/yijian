@@ -38,7 +38,7 @@ const bucket = new FakeR2();
 const consentCalls = [];
 const consentRepository = { async requireCategory(category) { consentCalls.push(category); return { status: "enabled" }; } };
 const repo = createNebulaR2Repository({
-  bucket, db, authContext: { kind: "user", ownerId: ownerA }, consentRepository,
+  bucket, db, authContext: { kind: "user", ownerId: ownerA }, consentRepository, maxBytes: 10,
   idFactory: () => fixedId, now: () => "2026-11-10T00:00:00.000Z"
 });
 const stored = await repo.putObject({ category: "private-files", body: new TextEncoder().encode("hello"), contentType: "text/plain" });
