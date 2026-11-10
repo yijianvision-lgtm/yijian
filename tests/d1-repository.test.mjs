@@ -57,7 +57,7 @@ assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "shared-
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerB + "x" } }), /verified user identity/);
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: "own_" + "g".repeat(64) } }), /verified user identity/);
 await assert.rejects(createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA } }).putRecord("graph", "node-1", []), /payload must be an object/);
-assert.throws(() => repoA.getRecord("bad type", "node-1"), /Invalid record type/);
-assert.throws(() => repoA.deleteRecord("graph", "../other-user"), /Invalid record ID/);
+await assert.rejects(repoA.getRecord("bad type", "node-1"), /Invalid record type/);
+await assert.rejects(repoA.deleteRecord("graph", "../other-user"), /Invalid record ID/);
 
 console.log("NEBULA owner-scoped D1 repository contract tests passed.");
