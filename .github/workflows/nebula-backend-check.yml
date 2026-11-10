@@ -42,6 +42,8 @@ jobs:
         run: node tests/worker-sync-api.test.mjs
       - name: Test owner-scoped D1 repository contracts
         run: node tests/d1-repository.test.mjs
+      - name: Execute D1 migrations and consent-gated SQL in SQLite
+        run: node --experimental-sqlite tests/d1-sqlite-integration.test.mjs
       - name: Test server-side sync consent ledger
         run: node tests/sync-consent.test.mjs
       - name: Test owner-scoped private R2 repository contracts
