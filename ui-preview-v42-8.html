@@ -2031,6 +2031,8 @@ renderer.domElement.addEventListener('pointerup',e=>{if(!nodePointerStart||nodeP
 renderer.domElement.addEventListener('pointercancel',()=>{nodePointerStart=null;},{passive:true});
 const mini=document.getElementById('miniMap'),ctx=mini.getContext('2d');const minimapQuadrantReturn=document.getElementById('minimapQuadrantReturn');minimapQuadrantReturn?.addEventListener('click',event=>{event.stopPropagation();document.getElementById('continuumFocus')?.classList.add('open');restoreFocusFromMinimap();toast('四向探索已重新展开')});let mapCenterX=0,mapCenterY=0,mapScale=8,mapPulse=0;
 mini.style.cursor='crosshair';mini.addEventListener('click',e=>{const rect=mini.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;let best=-1,dist=Infinity;positions.forEach((p,i)=>{const px=rect.width/2+(p.x+p.z*.34-mapCenterX)*mapScale,py=rect.height/2-(p.y-p.z*.22-mapCenterY)*mapScale,d=Math.hypot(px-x,py-y);if(d<dist){dist=d;best=i}});if(best>=0&&dist<22)selectNode(best)});function drawMini(){const d=mini.getBoundingClientRect(),ww=d.width,hh=d.height;if(!ww||!hh)return;const ratio=Math.min(devicePixelRatio||1,2),w=Math.round(ww*ratio),h=Math.round(hh*ratio);if(mini.width!==w||mini.height!==h){mini.width=w;mini.height=h}ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,ww,hh);const xs=positions.map(p=>p.x),ys=positions.map(p=>p.y),zs=positions.map(p=>p.z),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),minZ=Math.min(...zs),maxZ=Math.max(...zs);const targetScale=Math.max(5,Math.min(ww/(maxX-minX+Math.max(0,maxZ-minZ)*.34+5),hh/(maxY-minY+Math.max(0,maxZ-minZ)*.22+5)));mapScale+=(targetScale-mapScale)*.055;const targetX3=positions[selected]?.x||0,targetY3=positions[selected]?.y||0,targetZ3=positions[selected]?.z||0;const targetPX=targetX3+targetZ3*.34,targetPY=targetY3-targetZ3*.22;mapCenterX+=(targetPX-mapCenterX)*.095;mapCenterY+=(targetPY-mapCenterY)*.095;const point=p=>({x:ww/2+(p.x+p.z*.34-mapCenterX)*mapScale,y:hh/2-(p.y-p.z*.22-mapCenterY)*mapScale});ctx.save();ctx.beginPath();ctx.rect(0,0,ww,hh);ctx.clip();ctx.strokeStyle='rgba(185,199,208,.18)';ctx.lineWidth=.8;edges.forEach(([a,b])=>{if(!positions[a]||!positions[b])return;const A=point(positions[a]),B=point(positions[b]);ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke()});if(focusHistory.length>1){ctx.beginPath();focusHistory.slice(0,focusCursor+1).forEach((idx,k)=>{const p=point(positions[idx]);if(k===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y)});ctx.strokeStyle='rgba(215,225,232,.52)';ctx.lineWidth=1.2;ctx.stroke()}positions.forEach((p,i)=>{const q=point(p);if(q.x<-5||q.x>ww+5||q.y<-5||q.y>hh+5)return;ctx.beginPath();ctx.arc(q.x,q.y,i===selected?3.3:1.9,0,Math.PI*2);ctx.fillStyle=i===selected?'rgba(229,237,242,.98)':'rgba(135,149,159,.65)';ctx.fill();if(i===selected){ctx.beginPath();ctx.arc(q.x,q.y,7+Math.sin(mapPulse)*1.5,0,Math.PI*2);ctx.strokeStyle='rgba(218,229,236,.5)';ctx.lineWidth=.8;ctx.stroke()}});const viewW=Math.min(ww*.7,mapScale*5.8),viewH=Math.min(hh*.68,mapScale*4.2);ctx.strokeStyle='rgba(211,224,232,.26)';ctx.lineWidth=.8;ctx.setLineDash([3,3]);ctx.strokeRect(ww/2-viewW/2,hh/2-viewH/2,viewW,viewH);ctx.setLineDash([]);ctx.restore();mapPulse+=.055}
+/* V42.8: reusable anchor scratch vectors; preserve the approved projection and correction math. */
+const anchorWorld=new THREE.Vector3(),anchorProjected=new THREE.Vector3(),anchorRight=new THREE.Vector3(),anchorUp=new THREE.Vector3(),anchorCorrection=new THREE.Vector3();
 function updateCoreScreenAnchor(){
  if(!focusActive||!spheres[selected])return;
  const stage=document.querySelector('#continuumFocus .continuum-stage');
@@ -2039,8 +2041,8 @@ function updateCoreScreenAnchor(){
  const stageRect=stage.getBoundingClientRect(),canvasRect=canvas.getBoundingClientRect();
  if(!stageRect.width||!stageRect.height||!canvasRect.width||!canvasRect.height)return;
  core.updateMatrixWorld(true);camera.updateMatrixWorld(true);
- const world=spheres[selected].getWorldPosition(new THREE.Vector3());
- const projected=world.clone().project(camera);
+ const world=spheres[selected].getWorldPosition(anchorWorld);
+ const projected=anchorProjected.copy(world).project(camera);
  if(projected.z< -1||projected.z>1)return;
  const actualX=canvasRect.left+(projected.x+1)*.5*canvasRect.width;
  const actualY=canvasRect.top+(1-projected.y)*.5*canvasRect.height;
@@ -2050,9 +2052,9 @@ function updateCoreScreenAnchor(){
  const depth=Math.max(.1,camera.position.distanceTo(world));
  const worldPerPixel=2*depth*Math.tan(THREE.MathUtils.degToRad(camera.fov*.5))/canvasRect.height;
  const e=camera.matrixWorld.elements;
- const right=new THREE.Vector3(e[0],e[1],e[2]).normalize();
- const up=new THREE.Vector3(e[4],e[5],e[6]).normalize();
- const correction=right.multiplyScalar(dx*worldPerPixel).addScaledVector(up,-dy*worldPerPixel);
+ const right=anchorRight.set(e[0],e[1],e[2]).normalize();
+ const up=anchorUp.set(e[4],e[5],e[6]).normalize();
+ const correction=anchorCorrection.copy(right).multiplyScalar(dx*worldPerPixel).addScaledVector(up,-dy*worldPerPixel);
  camera.position.add(correction);
  controls.target.add(correction);
  camera.updateMatrixWorld(true);
