@@ -47,8 +47,8 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       const id = assertRecordId(recordId);
       assertConsentedCategory(type);
       const row = await db.prepare(
-        "SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? LIMIT 1"
-      ).bind(ownerId, type, id).first();
+        "SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) LIMIT 1"
+      ).bind(ownerId, type, id, ownerId, type).first();
       if (!row) return null;
       let payload;
       try { payload = JSON.parse(row.payload_json); }
@@ -68,8 +68,8 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       const boundedLimit = Math.max(1, Math.min(50, Number.isInteger(limit) ? limit : 50));
       const cursor = after === null ? null : assertRecordId(after);
       const statement = cursor === null
-        ? db.prepare("SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? ORDER BY record_id LIMIT ?").bind(ownerId, type, boundedLimit)
-        : db.prepare("SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id > ? ORDER BY record_id LIMIT ?").bind(ownerId, type, cursor, boundedLimit);
+        ? db.prepare("SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) ORDER BY record_id LIMIT ?").bind(ownerId, type, ownerId, type, boundedLimit)
+        : db.prepare("SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id > ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) ORDER BY record_id LIMIT ?").bind(ownerId, type, cursor, ownerId, type, boundedLimit);
       const result = await statement.all();
       return (result.results || []).map(row => {
         let payload;
@@ -94,8 +94,8 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       if (new TextEncoder().encode(serialized).byteLength > MAX_PAYLOAD_BYTES) throw new RangeError("Record payload exceeds 256 KiB.");
       const updatedAt = timestamp(now());
       const result = await db.prepare(
-        "INSERT INTO nebula_records (owner_id, record_type, record_id, payload_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(owner_id, record_type, record_id) DO UPDATE SET payload_json = excluded.payload_json, updated_at = excluded.updated_at"
-      ).bind(ownerId, type, id, serialized, updatedAt, updatedAt).run();
+        "INSERT INTO nebula_records (owner_id, record_type, record_id, payload_json, created_at, updated_at) SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) ON CONFLICT(owner_id, record_type, record_id) DO UPDATE SET payload_json = excluded.payload_json, updated_at = excluded.updated_at"
+      ).bind(ownerId, type, id, serialized, updatedAt, updatedAt, ownerId, type).run();
       return Object.freeze({ ok: true, changes: Number(result.meta?.changes || 0), updatedAt });
     },
 
@@ -104,8 +104,8 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       const id = assertRecordId(recordId);
       assertConsentedCategory(type);
       const result = await db.prepare(
-        "DELETE FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ?"
-      ).bind(ownerId, type, id).run();
+        "DELETE FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?))"
+      ).bind(ownerId, type, id, ownerId, type).run();
       return Object.freeze({ deleted: Number(result.meta?.changes || 0) > 0 });
     }
   });
