@@ -50,7 +50,7 @@ async function fetchWithTimeout(url, init = {}, timeoutMs = 20000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetchWithTimeout(url, { ...init, signal: controller.signal });
+    return await fetch(url, { ...init, signal: controller.signal });
   } catch {
     throw new Error("Upstream request failed or timed out.");
   } finally {
