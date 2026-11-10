@@ -38,6 +38,8 @@ jobs:
         run: node tests/worker-auth.test.mjs
       - name: Test Worker authentication and request limits
         run: node tests/worker-runtime.test.mjs
+      - name: Test authenticated private sync API integration
+        run: node tests/worker-sync-api.test.mjs
       - name: Test owner-scoped D1 repository contracts
         run: node tests/d1-repository.test.mjs
       - name: Test server-side sync consent ledger
