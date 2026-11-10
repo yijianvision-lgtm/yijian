@@ -181,14 +181,14 @@ export default {
     if (url.pathname === "/share" && request.method === "POST") {
       if (!env.NEBULA_SYNC_TOKEN || !constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
         return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
+      const rateLimitResponse = await checkRateLimit(request, env, cors);
+      if (rateLimitResponse) return rateLimitResponse;
       const bounded = await limitRequestBody(request, 1024 * 1024);
       if (!bounded.request) {
         const timedOut = bounded.reason === "timeout";
         return new Response(JSON.stringify({ error: timedOut ? "Request body timed out." : "Request body is invalid or exceeds the 1 MiB limit." }), { status: timedOut ? 408 : 413, headers: cors });
       }
       request = bounded.request;
-      const rateLimitResponse = await checkRateLimit(request, env, cors);
-      if (rateLimitResponse) return rateLimitResponse;
       try {
         const body = await request.json();
         const match = String(body.url || "").match(/^https:\/\/chat\.deepseek\.com\/share\/([a-z0-9]+)\/?$/i);
@@ -221,6 +221,8 @@ export default {
       return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
     if (!constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
       return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
+    const rateLimitResponse = await checkRateLimit(request, env, cors);
+    if (rateLimitResponse) return rateLimitResponse;
     if (request.method === "POST") {
       const bounded = await limitRequestBody(request, 1024 * 1024);
       if (!bounded.request) {
@@ -229,8 +231,6 @@ export default {
       }
       request = bounded.request;
     }
-    const rateLimitResponse = await checkRateLimit(request, env, cors);
-    if (rateLimitResponse) return rateLimitResponse;
 
     if (url.pathname === "/research") {
       try {
