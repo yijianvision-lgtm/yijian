@@ -125,6 +125,55 @@ try {
   assert.equal(deniedOrigin.status, 403, "Unapproved browser origins must be rejected.");
   assert.equal(upstreamCalls, 0, "Negative-path checks must never call external AI or import providers.");
 
+  const encoder = new TextEncoder();
+  const base64url = bytes => {
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  };
+  const keyPair = await crypto.subtle.generateKey({
+    name: "RSASSA-PKCS1-v1_5", modulusLength: 2048,
+    publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256"
+  }, true, ["sign", "verify"]);
+  const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+  Object.assign(publicJwk, { kid: "worker-synthetic-key", alg: "RS256", use: "sig", key_ops: ["verify"] });
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const jwtHeader = base64url(encoder.encode(JSON.stringify({ alg: "RS256", kid: "worker-synthetic-key", typ: "JWT" })));
+  const jwtClaims = base64url(encoder.encode(JSON.stringify({
+    iss: "https://worker-synthetic-issuer.example",
+    aud: "nebula-api",
+    sub: "synthetic-user-a",
+    azp: "https://preview.example",
+    iat: nowSeconds,
+    exp: nowSeconds + 300
+  })));
+  const signingInput = jwtHeader + "." + jwtClaims;
+  const signature = new Uint8Array(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", keyPair.privateKey, encoder.encode(signingInput)));
+  const syntheticJwt = signingInput + "." + base64url(signature);
+  globalThis.fetch = async url => {
+    upstreamCalls += 1;
+    assert.equal(String(url), "https://worker-synthetic-issuer.example/.well-known/jwks.json");
+    return new Response(JSON.stringify({ keys: [publicJwk] }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  };
+  const clerkModeResponse = await call("/coach", {
+    token: syntheticJwt,
+    env: {
+      NEBULA_AUTH_MODE: "clerk-jwt",
+      NEBULA_JWT_ISSUER: "https://worker-synthetic-issuer.example",
+      NEBULA_JWT_AUDIENCE: "nebula-api",
+      NEBULA_JWKS_URL: "https://worker-synthetic-issuer.example/.well-known/jwks.json",
+      NEBULA_AUTHORIZED_PARTIES: JSON.stringify(["https://preview.example"]),
+      NEBULA_OWNER_NAMESPACE_SECRET: "synthetic-worker-owner-namespace-secret-at-least-32",
+      NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) }
+    }
+  });
+  assert.equal(clerkModeResponse.status, 503, "A valid synthetic Clerk-style JWT must pass Worker authentication before provider configuration is checked.");
+  assert.match(await clerkModeResponse.text(), /DEEPSEEK_API_KEY is missing/);
+  assert.equal(upstreamCalls, 1, "JWT authentication should fetch only the trusted JWKS endpoint.");
+  upstreamCalls = 0;
+
   globalThis.fetch = async () => {
     upstreamCalls += 1;
     return new Response("x", {
