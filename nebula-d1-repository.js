@@ -1,7 +1,7 @@
 const OWNER_ID_PATTERN = /^own_[a-f0-9]{64}$/;
 const RECORD_TYPE_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
 const RECORD_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
-const MAX_PAYLOAD_BYTES = 1024 * 1024;
+const MAX_PAYLOAD_BYTES = 256 * 1024;
 
 function assertRecordType(value) {
   if (typeof value !== "string" || !RECORD_TYPE_PATTERN.test(value)) throw new TypeError("Invalid record type.");
@@ -51,9 +51,9 @@ export function createNebulaD1Repository({ db, authContext, now = () => new Date
       });
     },
 
-    async listRecords(recordType, { after = null, limit = 100 } = {}) {
+    async listRecords(recordType, { after = null, limit = 50 } = {}) {
       const type = assertRecordType(recordType);
-      const boundedLimit = Math.max(1, Math.min(100, Number.isInteger(limit) ? limit : 100));
+      const boundedLimit = Math.max(1, Math.min(50, Number.isInteger(limit) ? limit : 50));
       const cursor = after === null ? null : assertRecordId(after);
       const statement = cursor === null
         ? db.prepare("SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? ORDER BY record_id LIMIT ?").bind(ownerId, type, boundedLimit)
