@@ -168,3 +168,13 @@
 - [ ] 当前 D1 授权复核仍是操作前检查，不是与 SQL 读写处于同一原子事务；极窄的检查后撤销竞态仍需通过条件 SQL/事务边界进一步消除，并在真实 D1 验证。
 - [ ] 10 MiB 上传目前仍经 Worker 有界缓冲后再写 R2，不是流式直传；大文件方案仍待独立设计。
 - [ ] 上述测试仍使用模拟 D1/R2，不构成真实 Cloudflare 服务验证。
+
+## 2026-11-11：D1 原子授权条件与 SQLite 迁移集成测试
+
+- [x] D1 get/list/put/delete 的 SQL 均在同一条语句中校验服务端授权账本：owner 一致、status=enabled、JSON 类别列表包含当前类别。
+- [x] 写入采用 INSERT ... SELECT ... WHERE EXISTS ... ON CONFLICT；撤销后即使仓储对象持有旧授权快照，也不能读取或变更数据。
+- [x] 新增 Node SQLite 集成测试，执行三份真实 migration，并用真实 SQLite 引擎执行授权、双 owner 隔离、撤销后读写拒绝及重新授权删除测试。
+- [x] 将 SQLite 集成测试纳入 NEBULA backend CI。
+- [ ] SQLite 本地集成不等于 Cloudflare D1 生产兼容性验证；仍需在隔离的真实 D1 测试库运行 migration 和双账户测试。
+- [ ] R2 是 D1 外部存储，授权检查与 R2 网络操作无法由单条 D1 SQL 原子包裹；仍需设计上传/下载/删除的竞态补偿和故障恢复。
+
