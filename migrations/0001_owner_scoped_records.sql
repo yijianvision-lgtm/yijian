@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS nebula_records (
   owner_id TEXT NOT NULL,
   record_type TEXT NOT NULL CHECK (length(record_type) BETWEEN 1 AND 64),
   record_id TEXT NOT NULL CHECK (length(record_id) BETWEEN 1 AND 128),
-  payload_json TEXT NOT NULL CHECK (json_valid(payload_json)),
+  payload_json TEXT NOT NULL CHECK (json_valid(payload_json) AND json_type(payload_json) = 'object' AND length(payload_json) <= 262144),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   PRIMARY KEY (owner_id, record_type, record_id)
