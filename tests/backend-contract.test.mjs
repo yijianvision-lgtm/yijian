@@ -108,8 +108,9 @@ assert.ok(performancePreview.includes("scale.x+=(target-scale.x)*.032"), "V42.8 
 assert.ok(performancePreview.includes("scale.y+=(target-scale.y)*.032") && performancePreview.includes("scale.z+=(target-scale.z)*.032"), "V42.8 must retain equivalent Y/Z scale interpolation.");
 assert.ok(!performancePreview.includes("s.scale.lerp(new THREE.Vector3(target,target,target),.032)"), "V42.8 must not allocate a new Vector3 for every node on every animation frame.");
 const performanceAnchorStart = performancePreview.indexOf("function updateCoreScreenAnchor(){");
-const performanceAnimateBoundary = performancePreview.indexOf("function animate(){");
-const performanceAnchorBody = performancePreview.slice(performanceAnchorStart, performanceAnimateBoundary);
+const performanceAnchorEnd = performancePreview.indexOf("\n}\n/* V42.8: preserve V42.7 visuals", performanceAnchorStart);
+assert.ok(performanceAnchorStart >= 0 && performanceAnchorEnd > performanceAnchorStart, "V42.8 center-anchor function boundaries must be present.");
+const performanceAnchorBody = performancePreview.slice(performanceAnchorStart, performanceAnchorEnd);
 assert.ok(performancePreview.includes("const anchorWorld=new THREE.Vector3()") && performancePreview.includes("anchorProjected=new THREE.Vector3()") && performancePreview.includes("anchorRight=new THREE.Vector3()") && performancePreview.includes("anchorUp=new THREE.Vector3()") && performancePreview.includes("anchorCorrection=new THREE.Vector3()"), "V42.8 must preallocate anchor-projection scratch vectors.");
 assert.ok(!performanceAnchorBody.includes("new THREE.Vector3") && !performanceAnchorBody.includes(".clone()"), "V42.8 center-anchor correction must not allocate or clone vectors on each focused frame.");
 const performanceAnimateStart = performancePreview.indexOf("function animate(){");
