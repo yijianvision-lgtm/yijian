@@ -105,3 +105,15 @@
 - [ ] 真实浏览器 E2E、撤销窗口和线上运行时安全验证。
 
 当前身份中间件尚未启用 Clerk 模式；未部署 Worker、未创建 Cloudflare 资源、未迁移数据。不能将身份上下文原型等同于完成多用户数据隔离。
+
+
+## D1 owner-scoped repository prototype
+
+- [x] 新增统一 owner-scoped D1 repository：GET/LIST/UPSERT/DELETE 全部绑定服务端 owner ID。
+- [x] 新增 records schema migration：复合 owner 主键、owner/type/update 索引、JSON object 与 256 KiB payload 限制。
+- [x] 新增模拟 D1 binding 契约测试：验证 owner 参数固定、客户端 owner_id 不能覆盖归属、分页与 payload 上限。
+- [ ] 将 repository 接入 Worker 私有数据 API（仅 clerk-jwt 用户上下文允许，shared-service 永远拒绝）。
+- [ ] 在真实隔离的 D1 测试数据库应用 migration，完成双用户 A/B 实际 SQL 越权测试。
+- [ ] 增加 R2 owner 前缀与元数据绑定层，并完成跨用户下载/删除负向测试。
+
+本阶段只有代码原型与模拟 binding 测试，尚未连接、创建或迁移真实 D1/R2 资源。
