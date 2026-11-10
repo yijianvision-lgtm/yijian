@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { createNebulaD1Repository } from "../nebula-d1-repository.js";
 
 class FakeD1 {
@@ -59,5 +60,11 @@ assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", 
 await assert.rejects(createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA } }).putRecord("graph", "node-1", []), /payload must be an object/);
 await assert.rejects(repoA.getRecord("bad type", "node-1"), /Invalid record type/);
 await assert.rejects(repoA.deleteRecord("graph", "../other-user"), /Invalid record ID/);
+
+const migration = await readFile(new URL("../migrations/0001_owner_scoped_records.sql", import.meta.url), "utf8");
+assert.match(migration, /PRIMARY KEY \\(owner_id, record_type, record_id\\)/);
+assert.match(migration, /substr\\(owner_id, 1, 4\\) = 'own_'/);
+assert.match(migration, /json_type\\(payload_json\\) = 'object'/);
+assert.match(migration, /idx_nebula_records_owner_type_updated/);
 
 console.log("NEBULA owner-scoped D1 repository contract tests passed.");
