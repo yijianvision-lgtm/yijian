@@ -38,13 +38,14 @@
 - [ ] 确认独立 Cloudflare 测试环境及账号权限。
 - [ ] 确认 Rate Limiter namespace 唯一性与 Wrangler CLI 版本。
 
-### M1 — 真实身份认证（未完成）
+### M1 — 真实身份认证（原型阶段；Worker 尚未接入）
 
-- [ ] Worker 服务端验证签名、算法、issuer、audience、exp、nbf、sub。
-- [ ] 固定受信任 JWKS 来源，处理密钥轮换、缓存和故障关闭。
-- [ ] 服务端基于可信 (iss, sub) 派生 owner_id。
-- [ ] 拒绝客户端 userId、ownerId、tenantId 作为身份依据。
-- [ ] 增加伪造、过期、错误 issuer/audience、未知 kid 等测试。
+- [x] 建立供应商无关 RS256/JWKS 验证原语，固定配置 issuer、audience、HTTPS JWKS URL。
+- [x] 建立合成 RSA/JWKS 测试：签名、过期、错误 issuer/audience、空 subject、未来 nbf、alg=none、恶意 jku、未知 kid、签名错误、密钥轮换及 JWKS 故障。
+- [x] 建立基于服务端 namespace secret 的 HMAC-SHA-256 owner_id 派生原语。
+- [ ] Worker 服务端验证真实 Clerk API access token；完成前现有共享令牌仍在用，不能称为用户身份认证。
+- [ ] 固定测试环境 issuer、audience、JWKS URL，完成 Clerk 真实测试实例验证。
+- [ ] 拒绝客户端 userId、ownerId、tenantId 作为身份依据，并将验证结果接入私有 API 授权层。
 
 ### M2 — 隔离存储与 API（未完成）
 
@@ -76,7 +77,7 @@
 
 ## Clerk 测试阶段决策（2026-11-10）
 
-用户已选择 A：Clerk 优先。供应商无关 Auth Adapter 原型与同步授权测试已建立，详见 [NEBULA Clerk 测试阶段实施边界](./NEBULA-CLERK-TEST-IMPLEMENTATION.md)。这不是 Clerk 账户已创建、Worker 已接入或测试后台可用的证明。
+用户已选择 A：Clerk 优先。供应商无关 Auth Adapter、显式同步授权测试、JWT/JWKS 验证原语和 HMAC owner_id 派生原型已建立，详见 [NEBULA Clerk 测试阶段实施边界](./NEBULA-CLERK-TEST-IMPLEMENTATION.md)。这不是 Clerk 账户已创建、Worker 已接入或测试后台可用的证明。
 
 ## 接入判定
 
