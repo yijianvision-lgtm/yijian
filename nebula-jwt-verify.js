@@ -114,6 +114,7 @@ export function createJwtVerifier({
   issuer,
   audience,
   jwksUrl,
+  authorizedParties,
   fetchImpl = fetch,
   cacheTtlMs = 5 * 60 * 1000,
   clockToleranceSeconds = 60,
@@ -124,6 +125,9 @@ export function createJwtVerifier({
   if (typeof issuer !== "string" || !issuer || typeof audience !== "string" || !audience ||
       typeof jwksUrl !== "string" || !/^https:\/\//.test(jwksUrl)) {
     throw new TypeError("Trusted issuer, audience, and HTTPS JWKS URL are required.");
+  }
+  if (authorizedParties !== undefined && (!Array.isArray(authorizedParties) || !authorizedParties.length || authorizedParties.some(value => typeof value !== "string" || !value))) {
+    throw new TypeError("authorizedParties must be a non-empty string array when configured.");
   }
   if (typeof fetchImpl !== "function" || !Number.isFinite(cacheTtlMs) || cacheTtlMs < 0 ||
       !Number.isFinite(clockToleranceSeconds) || clockToleranceSeconds < 0 ||
@@ -152,6 +156,7 @@ export function createJwtVerifier({
       throw new Error("Unauthorized.");
     }
     if (!claims || claims.iss !== issuer || !audienceMatches(claims.aud, audience) ||
+        (authorizedParties && (typeof claims.azp !== "string" || !authorizedParties.includes(claims.azp))) ||
         typeof claims.sub !== "string" || !claims.sub.trim() ||
         !Number.isFinite(claims.exp)) {
       throw new Error("Unauthorized.");
