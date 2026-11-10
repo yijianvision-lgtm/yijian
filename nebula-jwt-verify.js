@@ -120,6 +120,7 @@ export function createJwtVerifier({
   clockToleranceSeconds = 60,
   jwksTimeoutMs = 5000,
   maxJwksBytes = 256 * 1024,
+  maxTokenLifetimeSeconds = 3600,
   now = () => Date.now()
 } = {}) {
   if (typeof issuer !== "string" || !issuer || typeof audience !== "string" || !audience ||
@@ -132,7 +133,8 @@ export function createJwtVerifier({
   if (typeof fetchImpl !== "function" || !Number.isFinite(cacheTtlMs) || cacheTtlMs < 0 ||
       !Number.isFinite(clockToleranceSeconds) || clockToleranceSeconds < 0 ||
       !Number.isFinite(jwksTimeoutMs) || jwksTimeoutMs < 1 ||
-      !Number.isFinite(maxJwksBytes) || maxJwksBytes < 1024) {
+      !Number.isFinite(maxJwksBytes) || maxJwksBytes < 1024 ||
+      !Number.isFinite(maxTokenLifetimeSeconds) || maxTokenLifetimeSeconds < 1) {
     throw new TypeError("Invalid JWT verifier options.");
   }
 
@@ -158,13 +160,15 @@ export function createJwtVerifier({
     if (!claims || claims.iss !== issuer || !audienceMatches(claims.aud, audience) ||
         (authorizedParties && (typeof claims.azp !== "string" || !authorizedParties.includes(claims.azp))) ||
         typeof claims.sub !== "string" || !claims.sub.trim() ||
-        !Number.isFinite(claims.exp)) {
+        !Number.isFinite(claims.iat) || !Number.isFinite(claims.exp) ||
+        claims.exp <= claims.iat || claims.exp - claims.iat > maxTokenLifetimeSeconds) {
       throw new Error("Unauthorized.");
     }
 
     const nowSeconds = Math.floor(now() / 1000);
     if (claims.exp <= nowSeconds - clockToleranceSeconds ||
-        (claims.nbf !== undefined && (!Number.isFinite(claims.nbf) || claims.nbf > nowSeconds + clockToleranceSeconds))) {
+        claims.iat > nowSeconds + clockToleranceSeconds ||
+        (claims.nbf !== undefined && (!Number.isFinite(claims.nbf) || claims.nbf > nowSeconds + clockToleranceSeconds || claims.nbf >= claims.exp))) {
       throw new Error("Unauthorized.");
     }
 
