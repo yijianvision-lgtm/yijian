@@ -21,6 +21,7 @@ jobs:
           node --input-type=module --check < deepseek-worker.js
           node --input-type=module --check < nebula-jwt-verify.js
           node --input-type=module --check < nebula-worker-auth.js
+          node --input-type=module --check < nebula-d1-repository.js
       - name: Install IndexedDB test shim
         run: npm install --no-save fake-indexeddb@6.2.4
       - name: Check inline preview JavaScript syntax
@@ -35,5 +36,7 @@ jobs:
         run: node tests/worker-auth.test.mjs
       - name: Test Worker authentication and request limits
         run: node tests/worker-runtime.test.mjs
+      - name: Test owner-scoped D1 repository contracts
+        run: node tests/d1-repository.test.mjs
       - name: Test local database workflows
         run: node tests/backend-runtime.test.mjs
