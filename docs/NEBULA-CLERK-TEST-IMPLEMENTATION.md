@@ -64,3 +64,18 @@
 - JWT 验证要求有限且有效的 iat/exp，拒绝未来签发时间、exp 不晚于 iat、超过 1 小时最大有效期的令牌；Clerk 实际 token claims 仍需在真实测试实例核对。
 - 2026-11-10 请求处理顺序调整为：共享令牌鉴权 → per-IP/per-route 限流 → 读取并限制请求体；避免已认证请求在限流前占用请求缓冲资源。
 - 2026-11-10 前端安全审计发现并修复一个存储型 XSS：时间轴将本地/导入节点的 date 字段插入 innerHTML；现改为 DOM textContent，并加入回归契约测试。其余检查到的动态 innerHTML 字段使用 esc() 转义或改用 textContent/DOM 节点；仍需后续持续审计。
+
+
+## 2026-11-10：Worker 可信身份中间件原型（未启用）
+
+新增 `nebula-worker-auth.js`，Worker 的 `/share` 与 AI/研究路由统一经过身份中间件：
+
+- 默认兼容模式为 `shared`，只返回 `kind: "shared-service"`，绝不派生或伪造用户 `owner_id`。
+- 可选 `clerk-jwt` 模式使用固定服务端 issuer、audience、HTTPS JWKS URL、JSON 格式 authorized-party allowlist 和服务端 namespace secret。
+- JWT 模式验证成功后，仅使用已验证的 `iss/sub` 派生 HMAC owner ID；客户端请求体中的 owner 字段不会参与身份计算。
+- JWT 模式配置不完整、authorized-party 配置无效、身份服务不可用时 fail closed；不会回退到共享令牌。
+- 验证器在 Worker isolate 内按可信 issuer/audience/JWKS/party 配置缓存，避免每个请求重建 JWKS 缓存。
+- Worker 已移除 AI 路由重复的共享令牌检查，统一使用中央身份中间件。
+- 新增独立中间件合成测试，以及 Worker 路由实际验签的合成 RSA/JWKS 集成测试。
+
+**重要限制：** 该模式只是可配置的 Clerk 风格 JWT 验证接入边界，不代表真实 Clerk 实例已创建、真实 Clerk token claims 已确认或 Clerk SDK 已安装。没有设置 `NEBULA_AUTH_MODE=clerk-jwt`，没有设置生产身份参数，没有部署 Worker。默认仍为共享服务令牌兼容模式；共享令牌不是用户身份。当前 Worker 尚无 D1/R2 私有数据路由，因此 owner ID 目前只建立在认证上下文中，尚未用于任何数据库或对象存储授权。
