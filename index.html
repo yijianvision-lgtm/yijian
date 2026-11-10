@@ -196,7 +196,7 @@ function build(){
  document.querySelector('#stats').textContent=nodes.length+' KNOWLEDGE NODES · '+visible.length+' STARS IN VIEW · XYZ SPACE';
  renderLogical();renderTimeline();
 }
-function renderTimeline(){const ev=document.querySelector('#events');ev.innerHTML='';nodes.filter(n=>n.date).slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(n=>{const e=document.createElement('div');e.className='event'+(selected?.id===n.id?' active':'');e.innerHTML='<span>'+n.date+'</span>';e.title=n.name;e.onclick=()=>select(n);ev.append(e);});}
+function renderTimeline(){const ev=document.querySelector('#events');ev.replaceChildren();nodes.filter(n=>n.date!=null&&String(n.date).length).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(n=>{const e=document.createElement('div');e.className='event'+(selected?.id===n.id?' active':'');const label=document.createElement('span');label.textContent=String(n.date);e.append(label);e.title=String(n.name||'');e.onclick=()=>select(n);ev.append(e);});}
 function levelOf(n,seen=new Set()){
  const p=n.parentId?nodes.find(x=>x.id===n.parentId):null;
  if(p&&!seen.has(n.id)){seen.add(n.id);return levelOf(p,seen)+1;}
