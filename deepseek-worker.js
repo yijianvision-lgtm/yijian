@@ -46,6 +46,18 @@ async function limitRequestBody(request, maxBytes) {
   });
 }
 
+async function fetchWithTimeout(url, init = {}, timeoutMs = 20000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetchWithTimeout(url, { ...init, signal: controller.signal });
+  } catch {
+    throw new Error("Upstream request failed or timed out.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function readJsonLimited(response, maxBytes = 8 * 1024 * 1024) {
   const declaredLength = Number(response.headers.get("Content-Length") || 0);
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
@@ -136,7 +148,7 @@ export default {
         const match = String(body.url || "").match(/^https:\/\/chat\.deepseek\.com\/share\/([a-z0-9]+)\/?$/i);
         if (!match) return new Response(JSON.stringify({ error: "无效的 DeepSeek 分享链接" }), { status: 400, headers: cors });
         const shareId = match[1];
-        const upstream = await fetch("https://chat.deepseek.com/api/v0/share/content?share_id=" + encodeURIComponent(shareId), {
+        const upstream = await fetchWithTimeout("https://chat.deepseek.com/api/v0/share/content?share_id=" + encodeURIComponent(shareId), {
           headers: { "Accept":"application/json", "Referer":"https://chat.deepseek.com/share/"+shareId, "User-Agent":"Mozilla/5.0", "X-Client-Platform":"web", "X-Client-Locale":"zh-CN" }
         });
         if (!upstream.ok) return new Response(JSON.stringify({ error:"DeepSeek 分享接口请求失败", upstreamStatus:upstream.status }), { status:502, headers:cors });
@@ -175,7 +187,7 @@ export default {
       try {
         const q = (new URL(request.url)).searchParams.get("q")?.trim().slice(0, 240);
         if (!q) return new Response(JSON.stringify({ error: "Missing search query q" }), { status: 400, headers: cors });
-        const upstream = await fetch("https://api.crossref.org/works?rows=10&query=" + encodeURIComponent(q), {
+        const upstream = await fetchWithTimeout("https://api.crossref.org/works?rows=10&query=" + encodeURIComponent(q), {
           headers: { "Accept": "application/json", "User-Agent": "NEBULA-Knowledge/1.0" }
         });
         if (!upstream.ok) return new Response(JSON.stringify({ error: "Crossref unavailable", status: upstream.status }), { status: 502, headers: cors });
@@ -239,7 +251,7 @@ export default {
         let upstream, data, reply, model;
         if (provider === "claude") {
           model = env.CLAUDE_MODEL || "claude-sonnet-4-5";
-          upstream = await fetch("https://api.anthropic.com/v1/messages", {
+          upstream = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
             body: JSON.stringify({ model, system, messages, max_tokens: 2800, stream: false })
@@ -248,7 +260,7 @@ export default {
           reply = (Array.isArray(data.content) ? data.content.filter(part => part.type === "text").map(part => part.text).join("\n") : "").trim();
         } else {
           model = env.DEEPSEEK_MODEL || "deepseek-v4-pro";
-          upstream = await fetch("https://api.deepseek.com/chat/completions", {
+          upstream = await fetchWithTimeout("https://api.deepseek.com/chat/completions", {
             method: "POST",
             headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
             body: JSON.stringify({ model, messages: [{ role: "system", content: system }, ...messages], max_tokens: 2800, stream: false })
@@ -285,7 +297,7 @@ export default {
         const system = mnemonicMode
           ? `你是 NEBULA 记忆口诀教练。检查用户口诀与给定讲义是否一致，指出错漏、歧义和不适用条件。必须保留用户原文，不得覆盖或擅自改写。给出可选优化版本并解释改动。证据不足时标记 needsReview。只返回 JSON：{verdict,original,mistakes,missingPoints,suggestedVersion,explanation,sourceEvidence,needsReview}。`
           : `你是 NEBULA 知识学习教练。逐项对照讲义和用户回答，判断正确性；区分讲义明确内容、可验证基础事实和推论。指出错误、遗漏、概念混淆、适用边界，提供更准确精炼的建议版本。不得编造出处或结论。四向必须使用产品原名：瞻前(前置/起源)、顾后(后续/影响)、左顾(横向关联)、右盼(反例/限制/矛盾)。生成逻辑链和可用于口头考核的追问。原文不得覆盖，证据不足标记 needsReview。只返回 JSON：{verdict,corrected,concise,fourDimensions:{foresight,aftermath,lateral,counterview},logicChain,evidenceGaps,sourceEvidence,quiz,needsReview}。`;
-        const upstream = await fetch("https://api.deepseek.com/chat/completions", {
+        const upstream = await fetchWithTimeout("https://api.deepseek.com/chat/completions", {
           method: "POST",
           headers: { "Authorization": "Bearer " + env.DEEPSEEK_API_KEY, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -321,7 +333,7 @@ export default {
 4. 每个节点输出 coreWord、name、desc、parentId、before、after、left、right、date、sourceNote、needsReview。
 5. links 表示横向/因果/对比等非父子关系，格式 {source,target,type,label}。
 6. 返回纯 JSON，结构为 {"nodes":[...],"links":[...],"mergeSuggestions":[...],"uncertain":[...]}。 `;
-      const response = await fetch("https://api.deepseek.com/chat/completions", {
+      const response = await fetchWithTimeout("https://api.deepseek.com/chat/completions", {
         method: "POST",
         headers: { "Authorization": "Bearer " + env.DEEPSEEK_API_KEY, "Content-Type": "application/json" },
         body: JSON.stringify({
