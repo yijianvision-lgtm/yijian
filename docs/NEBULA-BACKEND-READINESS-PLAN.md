@@ -31,6 +31,8 @@
 
 ### M0 — 前置选择与环境准备（未完成）
 
+身份提供方比较记录见 [NEBULA 第三方身份服务选型评估](./NEBULA-AUTH-PROVIDER-EVALUATION.md)。当前 Clerk 为第一候选、Auth0 为备选，尚未最终选定或创建供应商账户。
+
 - [ ] 确认身份提供方及注册、登录、登出、账号删除/恢复生命周期。
 - [ ] 明确测试环境域名、回调地址、issuer、audience、JWKS URL。
 - [ ] 确认独立 Cloudflare 测试环境及账号权限。
