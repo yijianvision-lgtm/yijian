@@ -78,7 +78,7 @@ export function createNebulaD1Repository({ db, authContext, now = () => new Date
       const id = assertRecordId(recordId);
       if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new TypeError("Record payload must be an object.");
       const serialized = JSON.stringify(payload);
-      if (new TextEncoder().encode(serialized).byteLength > MAX_PAYLOAD_BYTES) throw new RangeError("Record payload exceeds 1 MiB.");
+      if (new TextEncoder().encode(serialized).byteLength > MAX_PAYLOAD_BYTES) throw new RangeError("Record payload exceeds 256 KiB.");
       const updatedAt = timestamp(now());
       const result = await db.prepare(
         "INSERT INTO nebula_records (owner_id, record_type, record_id, payload_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(owner_id, record_type, record_id) DO UPDATE SET payload_json = excluded.payload_json, updated_at = excluded.updated_at"
