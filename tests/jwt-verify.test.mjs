@@ -71,6 +71,43 @@ const outageVerifier = createJwtVerifier({ issuer, audience, jwksUrl, fetchImpl,
 await assert.rejects(outageVerifier(token()), /JWKS unavailable|synthetic JWKS outage/);
 fetchFailure = false;
 
+
+const duplicateKidVerifier = createJwtVerifier({
+  issuer, audience, jwksUrl,
+  fetchImpl: async () => new Response(JSON.stringify({ keys: [signingJwk, signingJwk] }), { status: 200 }),
+  now, clockToleranceSeconds: 0
+});
+await assert.rejects(duplicateKidVerifier(token()), /ambiguous/);
+
+const oversizedJwksVerifier = createJwtVerifier({
+  issuer, audience, jwksUrl,
+  fetchImpl: async () => new Response("{}", { status: 200, headers: { "Content-Length": "2048" } }),
+  maxJwksBytes: 1024, now, clockToleranceSeconds: 0
+});
+await assert.rejects(oversizedJwksVerifier(token()), /size limit/);
+
+const timeoutVerifier = createJwtVerifier({
+  issuer, audience, jwksUrl,
+  fetchImpl: async (_url, options) => new Promise((resolve, reject) => {
+    options.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+  }),
+  jwksTimeoutMs: 10, now, clockToleranceSeconds: 0
+});
+await assert.rejects(timeoutVerifier(token()), /timed out/);
+
+const weakPair = generateKeyPairSync("rsa", { modulusLength: 1024 });
+const weakJwk = { ...weakPair.publicKey.export({ format: "jwk" }), kid: "weak-key", alg: "RS256", use: "sig" };
+const weakVerifier = createJwtVerifier({
+  issuer, audience, jwksUrl,
+  fetchImpl: async () => new Response(JSON.stringify({ keys: [weakJwk] }), { status: 200 }),
+  now, clockToleranceSeconds: 0
+});
+const weakHeader = b64url({ alg: "RS256", typ: "JWT", kid: "weak-key" });
+const weakPayload = b64url({ iss: issuer, aud: audience, sub: "user_synthetic_123", exp: Math.floor(now() / 1000) + 300 });
+const weakInput = weakHeader + "." + weakPayload;
+const weakSignature = signBytes("RSA-SHA256", Buffer.from(weakInput), weakPair.privateKey).toString("base64url");
+await assert.rejects(weakVerifier(weakInput + "." + weakSignature), /weak|unsupported/i);
+
 const secret = "synthetic-test-secret-at-least-32-characters";
 const ownerA = await deriveNebulaOwnerId({ issuer, subject: "user-a", namespaceSecret: secret });
 const ownerARepeat = await deriveNebulaOwnerId({ issuer, subject: "user-a", namespaceSecret: secret });
