@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 
 const local = await readFile(new URL("../nebula-local.js", import.meta.url), "utf8");
 const worker = await readFile(new URL("../deepseek-worker.js", import.meta.url), "utf8");
+const workerAuth = await readFile(new URL("../nebula-worker-auth.js", import.meta.url), "utf8");
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const preview = await readFile(new URL("../ui-preview-v1.html", import.meta.url), "utf8");
 const currentPreview = await readFile(new URL("../ui-preview-v42-7.html", import.meta.url), "utf8");
@@ -36,9 +37,12 @@ assert.match(timelineRenderer, /label\.textContent=String\(n\.date\)/, "Timeline
 assert.doesNotMatch(timelineRenderer, /innerHTML=.*n\.date/, "Timeline must not interpolate untrusted date values into HTML.");
 
 assert.match(worker, /DEEPSEEK_API_KEY/);
-assert.match(worker, /NEBULA_SYNC_TOKEN/);
+assert.match(workerAuth, /NEBULA_SYNC_TOKEN/);
+assert.match(workerAuth, /shared-service/);
+assert.match(workerAuth, /clerk-jwt/);
+assert.match(worker, /authenticateNebulaRequest/);
 assert.match(worker, /url\.pathname === "\/chat"/);
-assert.match(worker, /Unauthorized: invalid NEBULA access token/);
+assert.match(workerAuth, /Unauthorized/);
 assert.match(worker, /async function limitRequestBody\(request, maxBytes(?:, maxReadMs = 15000)?\)/, "Worker must enforce a streaming request-body ceiling and read deadline.");
 assert.ok(worker.includes("limitRequestBody(request, 1024 * 1024)"), "Worker POST routes must enforce the 1 MiB body ceiling.");
 const shareRouteStart = worker.indexOf('if (url.pathname === "/share" && request.method === "POST") {');
