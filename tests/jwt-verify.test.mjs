@@ -17,7 +17,7 @@ function token({ header = {}, claims = {}, key = privateKey } = {}) {
   const h = b64url({ alg: "RS256", typ: "JWT", kid: "key-a", ...header });
   const p = b64url({
     iss: issuer, aud: audience, sub: "user_synthetic_123",
-    exp: Math.floor(now() / 1000) + 300, ...claims
+    iat: Math.floor(now() / 1000), exp: Math.floor(now() / 1000) + 300, ...claims
   });
   const input = h + "." + p;
   const signature = signBytes("RSA-SHA256", Buffer.from(input), key).toString("base64url");
@@ -48,6 +48,10 @@ await assert.rejects(partyVerifier(token()), /Unauthorized/);
 assert.equal((await partyVerifier(token({ claims: { azp: "https://app.nebula.test" } }))).subject, "user_synthetic_123");
 await assert.rejects(partyVerifier(token({ claims: { azp: "https://attacker.example" } })), /Unauthorized/);
 await assert.rejects(verify(token({ claims: { sub: "" } })), /Unauthorized/);
+await assert.rejects(verify(token({ claims: { iat: undefined } })), /Unauthorized/);
+await assert.rejects(verify(token({ claims: { iat: Math.floor(now() / 1000) + 120 } })), /Unauthorized/);
+await assert.rejects(verify(token({ claims: { exp: Math.floor(now() / 1000) + 7200 } })), /Unauthorized/);
+await assert.rejects(verify(token({ claims: { iat: Math.floor(now() / 1000) + 120, exp: Math.floor(now() / 1000) + 300 } })), /Unauthorized/);
 await assert.rejects(verify(token({ claims: { nbf: Math.floor(now() / 1000) + 60 } })), /Unauthorized/);
 await assert.rejects(verify(token({ header: { alg: "none" } })), /Unauthorized/);
 await assert.rejects(verify(token({ header: { jku: "https://attacker.invalid/jwks.json" } })), /Unauthorized/);
@@ -65,7 +69,7 @@ const rotatedJwk = { ...rotatedPublic.publicKey.export({ format: "jwk" }), kid: 
 jwks = { keys: [rotatedJwk] };
 const rotationVerifier = createJwtVerifier({ issuer, audience, jwksUrl, fetchImpl, now, cacheTtlMs: 60000, clockToleranceSeconds: 0 });
 const rotatedHeader = b64url({ alg: "RS256", typ: "JWT", kid: "rotated-key" });
-const rotatedPayload = b64url({ iss: issuer, aud: audience, sub: "user_synthetic_123", exp: Math.floor(now() / 1000) + 300 });
+const rotatedPayload = b64url({ iss: issuer, aud: audience, sub: "user_synthetic_123", iat: Math.floor(now() / 1000), exp: Math.floor(now() / 1000) + 300 });
 const rotatedInput = rotatedHeader + "." + rotatedPayload;
 const rotatedSignature = signBytes("RSA-SHA256", Buffer.from(rotatedInput), rotatedPublic.privateKey).toString("base64url");
 assert.equal((await rotationVerifier(rotatedInput + "." + rotatedSignature)).subject, "user_synthetic_123");
@@ -107,7 +111,7 @@ const weakVerifier = createJwtVerifier({
   now, clockToleranceSeconds: 0
 });
 const weakHeader = b64url({ alg: "RS256", typ: "JWT", kid: "weak-key" });
-const weakPayload = b64url({ iss: issuer, aud: audience, sub: "user_synthetic_123", exp: Math.floor(now() / 1000) + 300 });
+const weakPayload = b64url({ iss: issuer, aud: audience, sub: "user_synthetic_123", iat: Math.floor(now() / 1000), exp: Math.floor(now() / 1000) + 300 });
 const weakInput = weakHeader + "." + weakPayload;
 const weakSignature = signBytes("RSA-SHA256", Buffer.from(weakInput), weakPair.privateKey).toString("base64url");
 await assert.rejects(weakVerifier(weakInput + "." + weakSignature), /weak|unsupported/i);
