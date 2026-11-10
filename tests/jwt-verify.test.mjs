@@ -53,7 +53,7 @@ const wrongKey = generateKeyPairSync("rsa", { modulusLength: 2048 });
 await assert.rejects(verify(token({ key: wrongKey.privateKey })), /Unauthorized/);
 
 const unknownKidToken = token({ header: { kid: "rotated-key" } });
-await assert.rejects(verify(unknownKidToken), /Signing key not found/);
+await assert.rejects(verify(unknownKidToken), /Signing key missing or ambiguous/);
 assert.equal(fetchCalls, 2, "Unknown kid should cause exactly one controlled JWKS refresh after the cached lookup.");
 
 const rotatedPublic = generateKeyPairSync("rsa", { modulusLength: 2048 });
