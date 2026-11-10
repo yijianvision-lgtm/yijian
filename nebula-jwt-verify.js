@@ -97,8 +97,14 @@ export function createJwtVerifier({
     const parts = token.split(".");
     if (parts.length !== 3 || parts.some(part => !part)) throw new Error("Unauthorized.");
 
-    const header = decodeJsonSegment(parts[0]);
-    const claims = decodeJsonSegment(parts[1]);
+    let header;
+    let claims;
+    try {
+      header = decodeJsonSegment(parts[0]);
+      claims = decodeJsonSegment(parts[1]);
+    } catch {
+      throw new Error("Unauthorized.");
+    }
     if (!header || header.alg !== "RS256" || typeof header.kid !== "string" || !header.kid ||
         header.jku || header.x5u || header.crit) {
       throw new Error("Unauthorized.");
