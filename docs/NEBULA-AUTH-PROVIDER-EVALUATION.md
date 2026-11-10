@@ -59,8 +59,11 @@
 
 ### Cloudflare Workers
 - Web Crypto: https://developers.cloudflare.com/workers/runtime-apis/web-crypto/
+- Clerk backend-only SDK（V8 isolates）：https://clerk.com/docs/guides/development/sdk-development/backend-only
+- Auth0 SPA SDK（Authorization Code + PKCE）：https://auth0.github.io/auth0-spa-js/
+- Cloudflare Workers JWT validation guidance：使用 Web Crypto/JWKS 的运行时注意事项见 https://developers.cloudflare.com/workers/runtime-apis/web-crypto/
 
-Workers Runtime 提供 Web Crypto API，可执行公钥签名验证。正式实现前仍须在实际 Worker 运行时验证算法、JWK 导入、缓存与密钥轮换行为；不能只凭文档声明通过。
+Workers Runtime 提供 Web Crypto API，可执行公钥签名验证。Clerk 官方 backend-only SDK 文档明确其基础包面向 Node.js/V8 isolates（包括 Cloudflare Workers），因此 Clerk 在 Worker 端的技术兼容性风险较低；但仍须在本仓库实际运行时验证包体、模块导入、验证路径和失败行为。Auth0 SPA SDK 可用于浏览器端 PKCE 登录，Worker 端应使用标准 JWT/JWKS 验证，不应把浏览器 SDK 当作 API 授权层。正式实现前仍须验证算法、JWK 导入、缓存与密钥轮换行为；不能只凭文档声明通过。
 
 ## 4. 初步判断
 
@@ -70,7 +73,7 @@ Workers Runtime 提供 Web Crypto API，可执行公钥签名验证。正式实�
 1. 当前产品首先需要个人账户注册、登录、会话管理与顺畅的前端体验。
 2. Clerk 提供较完整的预制 UI 和开发者集成路径，可能缩短 M0/M1 的实现周期。
 3. 当前公开免费层的 50,000 MRU 对早期测试有吸引力，但 MRU 与 MAU 不可直接横向等同。
-4. JWT 与公开验证密钥的机制可与 Worker 的服务端验证边界配合。
+4. Clerk 官方文档明确其 backend SDK 面向 V8 isolates/Cloudflare Workers；这降低了 Worker SDK 兼容性的不确定性，但不替代本仓库实测。
 
 需要先解决的条件：
 - 确认其当前生产套餐、MFA/Passkeys、域名、账户恢复、删除、会话撤销和支持政策是否满足长期要求。
