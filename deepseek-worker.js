@@ -369,9 +369,10 @@ export default {
         return await handleNebulaSyncRequest(request, env, authContext, cors, url);
       } catch (error) {
         const message = String(error?.message || error);
+        const denied = /consent|not enabled|not authorized/i.test(message);
         const badInput = error instanceof TypeError || error instanceof RangeError;
-        return new Response(JSON.stringify({ error: badInput ? message : "Private sync operation failed." }), {
-          status: badInput ? 400 : 500, headers: cors
+        return new Response(JSON.stringify({ error: denied || badInput ? message : "Private sync operation failed." }), {
+          status: denied ? 403 : badInput ? 400 : 500, headers: cors
         });
       }
     }
