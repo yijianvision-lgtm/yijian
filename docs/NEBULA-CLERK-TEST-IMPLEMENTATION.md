@@ -94,3 +94,14 @@
 - 新增独立中间件合成测试，以及 Worker 路由实际验签的合成 RSA/JWKS 集成测试。
 
 重要限制：该模式只是可配置的 Clerk 风格 JWT 验证接入边界，不代表真实 Clerk 实例已创建、真实 Clerk token claims 已确认或 Clerk SDK 已安装。没有设置 NEBULA_AUTH_MODE=clerk-jwt，没有设置生产身份参数，没有部署 Worker。默认仍为共享服务令牌兼容模式；共享令牌不是用户身份。当前 Worker 尚无 D1/R2 私有数据路由，因此 owner ID 目前只建立在认证上下文中，尚未用于任何数据库或对象存储授权。
+
+
+## 2026-11-10：D1 owner-scoped repository prototype（未接入路由）
+
+- 新增 nebula-d1-repository.js；构造器只接受 kind=user 且符合 own_ + 64 位小写十六进制格式的服务端 owner ID。
+- get/list/put/delete 全部由闭包捕获 owner ID；方法签名不接受 owner 参数；SELECT/DELETE 显式 owner_id 条件；UPSERT 使用 owner_id + record_type + record_id 复合冲突键。
+- record type/id 严格校验；payload 只接受 JSON object，限制 256 KiB；分页最多 50 条。
+- 新增 migrations/0001_owner_scoped_records.sql，以 (owner_id, record_type, record_id) 作为主键，并添加 owner/type/update 索引和 JSON object/大小约束。
+- 新增合成 D1 binding 契约测试，验证所有 SQL 首个绑定值为服务端 owner ID，客户端 payload 中的 owner_id 不改变实际行归属。
+
+限制：目前没有 D1 binding、没有创建/应用迁移、没有真实 SQLite/D1 双用户测试；此 repository 尚未被 Worker 路由调用，也没有 R2 存储/对象 API。不可宣称 D1/R2 多租户隔离已经完成。
