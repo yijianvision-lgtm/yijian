@@ -86,7 +86,7 @@ try {
 
   const declaredOversize = await call("/coach", {
     token: "correct",
-    env: { NEBULA_SYNC_TOKEN: "correct" },
+    env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) } },
     body: "{}",
     headers: { "Content-Length": String(1024 * 1024 + 1) }
   });
@@ -94,7 +94,7 @@ try {
 
   const streamedOversize = await call("/mnemonic", {
     token: "correct",
-    env: { NEBULA_SYNC_TOKEN: "correct" },
+    env: { NEBULA_SYNC_TOKEN: "correct", NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) } },
     body: "x".repeat(1024 * 1024 + 1)
   });
   assert.equal(streamedOversize.status, 413, "Actual streamed bodies above 1 MiB must be rejected.");
