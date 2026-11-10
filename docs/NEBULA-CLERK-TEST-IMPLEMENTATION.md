@@ -22,7 +22,7 @@
 ## 当前代码原型
 
 - `nebula-auth-adapter.js`：供应商无关的前端认证边界；注入 provider 与 consent store，不含供应商 SDK或网络请求。
-- `nebula-jwt-verify.js`：供应商无关的 RS256/JWKS 验证原语；固定 issuer、audience、HTTPS JWKS URL；拒绝 `alg=none`、令牌自带 `jku/x5u`、错误签名、过期/未生效令牌和未知密钥；未知 `kid` 只触发一次受控 JWKS 刷新。
+- `nebula-jwt-verify.js`：供应商无关的 RS256/JWKS 验证原语；固定 issuer、audience、HTTPS JWKS URL；拒绝 `alg=none`、令牌自带 `jku/x5u`、错误签名、过期/未生效令牌和未知密钥；JWKS 响应设大小上限、请求超时、RSA 最低 2048 位并拒绝重复 kid；未知 `kid` 只触发一次受控 JWKS 刷新。
 - `deriveNebulaOwnerId()`：使用服务端 namespace secret 对已验证的 issuer + subject 做 HMAC-SHA-256 命名空间派生；不接受客户端 owner_id。此函数尚未接入 Worker 路由或 D1。
 - `tests/auth-adapter.test.mjs`：合成身份测试，覆盖登录不授权同步、同步显式确认、类别白名单、登出与关闭同步。
 - `tests/jwt-verify.test.mjs`：合成 RSA 密钥测试，覆盖有效签名、缓存、过期、错误 issuer/audience、空 subject、未来 nbf、`alg=none`、恶意 jku、签名错误、未知 kid、密钥轮换、JWKS 故障及 owner_id 稳定性。
@@ -48,3 +48,12 @@
 6. 最后才实现用户明确授权的云同步 adapter。
 
 在以上测试与安全评审完成前，测试后台仍不可接入真实数据，正式后台仍禁止接入。
+
+
+## 2026-11-10 安全审计增量
+
+- Worker 对现有共享 Bearer token 的比较改为固定长度遍历的常量时间比较；该令牌仍只是部署级共享访问令牌，不构成用户身份认证。
+- Worker 上游 HTTP 请求增加连接超时；上游响应体读取增加 20 秒总时限，并继续执行 8 MiB 大小限制。
+- JWT/JWKS 验证器增加 JWKS 256 KiB 默认响应上限、5 秒默认请求超时、RSA 公钥至少 2048 位检查、重复 kid 拒绝及公钥用途/私钥材料检查。
+- 合成测试覆盖 JWKS 超时、超大响应、重复 kid 和弱 RSA 密钥。
+- 以上是代码级加固；真实 Clerk 签名验证、Cloudflare Worker 运行时、JWKS 网络故障与真实密钥轮换仍需独立测试。未部署任何 Worker 或云资源。
