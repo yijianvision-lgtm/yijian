@@ -186,6 +186,9 @@ try {
   const revoked = await call("/sync/consent", { method: "POST", body: JSON.stringify({ status: "revoked" }) });
   assert.equal(revoked.status, 200);
   assert.equal((await revoked.json()).consent.status, "revoked");
+  const removeAfterRevocation = await call(objectPath, { method: "DELETE" });
+  assert.equal(removeAfterRevocation.status, 200, "Owners must retain the ability to delete their own cloud copies after revocation.");
+  assert.equal(bucket.values.has("owners/" + [...db.consents.keys()][0] + "/private-files/" + object.objectId), false);
   console.log("NEBULA authenticated private sync API integration tests passed.");
 } finally {
   globalThis.fetch = originalFetch;
