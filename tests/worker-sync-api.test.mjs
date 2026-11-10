@@ -143,6 +143,33 @@ try {
   assert.equal(enabled.status, 200);
   assert.equal((await enabled.json()).consent.status, "enabled");
 
+  // Simulate revocation after the request-start snapshot but before the D1
+  // repository operation. The live ledger re-check must fail closed.
+  let consentReads = 0;
+  const revocationRaceDb = {
+    prepare(sql) {
+      const statement = db.prepare(sql);
+      return {
+        bind(...values) {
+          const bound = statement.bind(...values);
+          if (!sql.includes("FROM nebula_sync_consents")) return bound;
+          return {
+            ...bound,
+            async first() {
+              const row = await bound.first();
+              consentReads += 1;
+              return consentReads === 1 ? row : { ...row, status: "revoked" };
+            }
+          };
+        }
+      };
+    }
+  };
+  const revokedDuringRequest = await call("/sync/records?type=graph", {
+    envOverride: { ...env, NEBULA_DB: revocationRaceDb }
+  });
+  assert.equal(revokedDuringRequest.status, 403, "A D1 operation must re-check live consent after the request-start snapshot.");
+
   const putRecord = await call("/sync/records?type=graph", {
     method: "POST",
     body: JSON.stringify({ recordType: "graph", recordId: "root-1", payload: { title: "Knowledge graph" } })
@@ -164,6 +191,14 @@ try {
   const downloaded = await call(objectPath);
   assert.equal(downloaded.status, 200);
   assert.equal(await downloaded.text(), "private file body");
+
+  const largerUploadBody = new Uint8Array(1024 * 1024 + 1);
+  largerUploadBody.fill(7);
+  const largerUpload = await call("/sync/objects?category=private-files", {
+    method: "POST", body: largerUploadBody, contentType: "application/octet-stream"
+  });
+  assert.equal(largerUpload.status, 201, "Private file uploads above 1 MiB must be accepted up to the documented 10 MiB limit.");
+  assert.equal((await largerUpload.json()).object.sizeBytes, largerUploadBody.byteLength);
 
   const enableB = await call("/sync/consent", {
     token: tokenB, method: "POST",
