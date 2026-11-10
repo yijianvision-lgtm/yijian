@@ -105,3 +105,5 @@
 - 新增合成 D1 binding 契约测试，验证所有 SQL 首个绑定值为服务端 owner ID，客户端 payload 中的 owner_id 不改变实际行归属。
 
 限制：目前没有 D1 binding、没有创建/应用迁移、没有真实 SQLite/D1 双用户测试；此 repository 尚未被 Worker 路由调用，也没有 R2 存储/对象 API。不可宣称 D1/R2 多租户隔离已经完成。
+
+- D1 repository 后续增加强制 server-verified syncConsent：只有 enabled=true、有效 confirmedAt 且包含对应 record_type 类别时才允许读写；无授权类别在发起 D1 查询前拒绝。该 consent 必须由未来 Worker 从服务端授权记录读取，绝不能直接采用客户端请求体声明。
