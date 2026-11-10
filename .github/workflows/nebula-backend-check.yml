@@ -27,6 +27,8 @@ jobs:
         run: node tests/backend-contract.test.mjs
       - name: Test provider-neutral auth and explicit sync consent
         run: node tests/auth-adapter.test.mjs
+      - name: Test JWT verification and owner derivation
+        run: node tests/jwt-verify.test.mjs
       - name: Test Worker authentication and request limits
         run: node tests/worker-runtime.test.mjs
       - name: Test local database workflows
