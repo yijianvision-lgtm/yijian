@@ -56,7 +56,7 @@ assert.equal(dbB.calls[0].values[0], ownerB, "User B must be scoped to B's serve
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "shared-service" } }), /verified user identity/);
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerB + "x" } }), /verified user identity/);
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: "own_" + "g".repeat(64) } }), /verified user identity/);
-assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA } }).putRecord("graph", "node-1", []), /payload must be an object/);
+await assert.rejects(createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA } }).putRecord("graph", "node-1", []), /payload must be an object/);
 assert.throws(() => repoA.getRecord("bad type", "node-1"), /Invalid record type/);
 assert.throws(() => repoA.deleteRecord("graph", "../other-user"), /Invalid record ID/);
 
