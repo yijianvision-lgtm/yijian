@@ -117,3 +117,5 @@
 - [ ] 增加 R2 owner 前缀与元数据绑定层，并完成跨用户下载/删除负向测试。
 
 本阶段只有代码原型与模拟 binding 测试，尚未连接、创建或迁移真实 D1/R2 资源。
+
+- D1 repository 增加显式同步授权门槛：未取得服务端确认的 enabled/category/confirmedAt 授权时拒绝所有云端记录操作；不得从客户端请求体直接构造 syncConsent。
