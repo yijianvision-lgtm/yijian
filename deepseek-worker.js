@@ -16,22 +16,45 @@ function constantTimeEqual(left, right) {
   return difference === 0;
 }
 
-async function limitRequestBody(request, maxBytes) {
+async function limitRequestBody(request, maxBytes, maxReadMs = 15000) {
   const declaredLength = Number(request.headers.get("Content-Length") || 0);
-  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return null;
-  if (!request.body) return request;
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return { request: null, reason: "too_large" };
+  if (!request.body) return { request };
   const reader = request.body.getReader();
   const chunks = [];
   let total = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      await reader.cancel();
-      return null;
+  const deadline = Date.now() + maxReadMs;
+  try {
+    while (true) {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) {
+        await reader.cancel();
+        return { request: null, reason: "timeout" };
+      }
+      let timeoutId;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Request body timed out.")), remaining);
+      });
+      let result;
+      try {
+        result = await Promise.race([reader.read(), timeoutPromise]);
+      } catch (error) {
+        await reader.cancel();
+        if (error?.message === "Request body timed out.") return { request: null, reason: "timeout" };
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+      if (result.done) break;
+      total += result.value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return { request: null, reason: "too_large" };
+      }
+      chunks.push(result.value);
     }
-    chunks.push(value);
+  } catch {
+    return { request: null, reason: "invalid" };
   }
   const body = new Uint8Array(total);
   let offset = 0;
@@ -39,11 +62,11 @@ async function limitRequestBody(request, maxBytes) {
     body.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return new Request(request.url, {
+  return { request: new Request(request.url, {
     method: request.method,
     headers: request.headers,
     body
-  });
+  }) };
 }
 
 async function fetchWithTimeout(url, init = {}, timeoutMs = 20000) {
@@ -157,9 +180,12 @@ export default {
     if (url.pathname === "/share" && request.method === "POST") {
       if (!env.NEBULA_SYNC_TOKEN || !constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
         return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
-      const boundedRequest = await limitRequestBody(request, 1024 * 1024);
-      if (!boundedRequest) return new Response(JSON.stringify({ error: "Request body exceeds the 1 MiB limit." }), { status: 413, headers: cors });
-      request = boundedRequest;
+      const bounded = await limitRequestBody(request, 1024 * 1024);
+      if (!bounded.request) {
+        const timedOut = bounded.reason === "timeout";
+        return new Response(JSON.stringify({ error: timedOut ? "Request body timed out." : "Request body is invalid or exceeds the 1 MiB limit." }), { status: timedOut ? 408 : 413, headers: cors });
+      }
+      request = bounded.request;
       const rateLimitResponse = await checkRateLimit(request, env, cors);
       if (rateLimitResponse) return rateLimitResponse;
       try {
@@ -195,9 +221,12 @@ export default {
     if (!constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
       return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
     if (request.method === "POST") {
-      const boundedRequest = await limitRequestBody(request, 1024 * 1024);
-      if (!boundedRequest) return new Response(JSON.stringify({ error: "Request body exceeds the 1 MiB limit." }), { status: 413, headers: cors });
-      request = boundedRequest;
+      const bounded = await limitRequestBody(request, 1024 * 1024);
+      if (!bounded.request) {
+        const timedOut = bounded.reason === "timeout";
+        return new Response(JSON.stringify({ error: timedOut ? "Request body timed out." : "Request body is invalid or exceeds the 1 MiB limit." }), { status: timedOut ? 408 : 413, headers: cors });
+      }
+      request = bounded.request;
     }
     const rateLimitResponse = await checkRateLimit(request, env, cors);
     if (rateLimitResponse) return rateLimitResponse;
