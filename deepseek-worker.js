@@ -4,6 +4,18 @@
  * Optional vars: DEEPSEEK_MODEL=deepseek-v4-pro
  * Endpoint: POST /analyze  { text, existingNodes? }
  */
+function constantTimeEqual(left, right) {
+  if (typeof left !== "string" || typeof right !== "string") return false;
+  const a = new TextEncoder().encode(left);
+  const b = new TextEncoder().encode(right);
+  let difference = a.length ^ b.length;
+  const length = Math.max(a.length, b.length);
+  for (let i = 0; i < length; i += 1) {
+    difference |= (a[i] || 0) ^ (b[i] || 0);
+  }
+  return difference === 0;
+}
+
 async function limitRequestBody(request, maxBytes) {
   const declaredLength = Number(request.headers.get("Content-Length") || 0);
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return null;
@@ -112,7 +124,7 @@ export default {
       }), { headers: cors });
     }
     if (url.pathname === "/share" && request.method === "POST") {
-      if (!env.NEBULA_SYNC_TOKEN || request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
+      if (!env.NEBULA_SYNC_TOKEN || !constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
         return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
       const boundedRequest = await limitRequestBody(request, 1024 * 1024);
       if (!boundedRequest) return new Response(JSON.stringify({ error: "Request body exceeds the 1 MiB limit." }), { status: 413, headers: cors });
@@ -149,7 +161,7 @@ export default {
       return new Response(JSON.stringify({ error: "POST required" }), { status: 405, headers: cors });
     if (!env.NEBULA_SYNC_TOKEN)
       return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
-    if (request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
+    if (!constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
       return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
     if (request.method === "POST") {
       const boundedRequest = await limitRequestBody(request, 1024 * 1024);
@@ -188,7 +200,7 @@ export default {
         return new Response(JSON.stringify({ error: "POST required" }), { status: 405, headers: cors });
       if (!env.NEBULA_SYNC_TOKEN)
         return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
-      if (request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
+      if (!constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
         return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
       try {
         const body = await request.json();
@@ -259,7 +271,7 @@ export default {
         return new Response(JSON.stringify({ error: "POST required" }), { status: 405, headers: cors });
       if (!env.NEBULA_SYNC_TOKEN)
         return new Response(JSON.stringify({ error: "Worker secret NEBULA_SYNC_TOKEN must be configured." }), { status: 503, headers: cors });
-      if (request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
+      if (!constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
         return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA access token." }), { status: 401, headers: cors });
       if (!env.DEEPSEEK_API_KEY)
         return new Response(JSON.stringify({ error: "Worker secret DEEPSEEK_API_KEY is missing." }), { status: 503, headers: cors });
@@ -294,7 +306,7 @@ export default {
     }
     if (!env.DEEPSEEK_API_KEY || !env.NEBULA_SYNC_TOKEN)
       return new Response(JSON.stringify({ error: "Worker secrets DEEPSEEK_API_KEY and NEBULA_SYNC_TOKEN must both be configured." }), { status: 503, headers: cors });
-    if (request.headers.get("Authorization") !== "Bearer " + env.NEBULA_SYNC_TOKEN)
+    if (!constantTimeEqual(request.headers.get("Authorization"), "Bearer " + env.NEBULA_SYNC_TOKEN))
       return new Response(JSON.stringify({ error: "Unauthorized: invalid NEBULA sync token." }), { status: 401, headers: cors });
     try {
       const body = await request.json();
