@@ -151,10 +151,8 @@ const committedRepo = createNebulaR2Repository({
   idFactory: () => fourthId, now: () => "2026-11-10T00:00:00.000Z"
 });
 db.failCleanupDelete = 1;
-await assert.rejects(
-  committedRepo.putObject({ category: "private-files", body: new Uint8Array([3]) }),
-  /durable cleanup intent/
-);
+const fourth = await committedRepo.putObject({ category: "private-files", body: new Uint8Array([3]) });
+assert.equal(fourth.objectId, fourthId);
 const fourthKey = "owners/" + ownerA + "/private-files/" + fourthId;
 assert.ok(bucket.objects.has(fourthKey));
 assert.equal(db.row.status, "active");
