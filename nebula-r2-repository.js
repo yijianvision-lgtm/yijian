@@ -104,11 +104,6 @@ export function createNebulaR2Repository({
         await db.prepare(
           "INSERT INTO nebula_objects (owner_id, object_id, category, object_key, content_type, size_bytes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)"
         ).bind(ownerId, objectId, safeCategory, objectKey, contentType, bytes.byteLength, createdAt, createdAt).run();
-        // If this cleanup-intent deletion fails, reconciliation sees the active
-        // metadata row and removes only the stale intent, never the live object.
-        await db.prepare(
-          "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
-        ).bind(ownerId, safeCategory, objectId).run();
       } catch (error) {
         try {
           await bucket.delete(objectKey);
@@ -119,6 +114,16 @@ export function createNebulaR2Repository({
           // Keep the durable cleanup intent for explicit reconciliation.
         }
         throw new Error("Object upload did not complete; a durable cleanup intent was retained when compensation could not finish.", { cause: error });
+      }
+      // If intent deletion fails after metadata commit, the object is still
+      // committed. Reconciliation checks active metadata and clears only the
+      // stale intent; it must never delete the live object.
+      try {
+        await db.prepare(
+          "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
+        ).bind(ownerId, safeCategory, objectId).run();
+      } catch {
+        // Safe to leave the intent: reconcilePendingUploads sees active metadata.
       }
       return Object.freeze({ objectId, category: safeCategory, contentType, sizeBytes: bytes.byteLength, createdAt });
     },
