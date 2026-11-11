@@ -11,7 +11,8 @@ const db = new DatabaseSync(":memory:");
 const migrations = [
   "0001_owner_scoped_records.sql",
   "0002_sync_consent_ledger.sql",
-  "0003_owner_scoped_objects.sql"
+  "0003_owner_scoped_objects.sql",
+  "0004_r2_upload_cleanup_intents.sql"
 ];
 for (const migration of migrations) {
   const sql = await readFile(new URL("../migrations/" + migration, import.meta.url), "utf8");
@@ -34,6 +35,9 @@ const d1 = {
     };
   }
 };
+
+assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'nebula_object_cleanup'").get(),
+  "The R2 upload cleanup-intent migration must be applied in SQLite integration.");
 
 const ownerA = "own_" + "a".repeat(64);
 const ownerB = "own_" + "b".repeat(64);
