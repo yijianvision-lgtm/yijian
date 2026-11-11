@@ -93,16 +93,57 @@ export function createNebulaR2Repository({
       const objectKey = "owners/" + ownerId + "/" + safeCategory + "/" + objectId;
       const createdAt = now();
       if (typeof createdAt !== "string" || !Number.isFinite(Date.parse(createdAt))) throw new TypeError("Invalid repository timestamp.");
-      await bucket.put(objectKey, bytes, { httpMetadata: { contentType } });
+      // Persist a cleanup intent before touching R2. If the subsequent D1
+      // metadata write fails and R2 compensation also fails, this row remains
+      // as a durable recovery handle instead of creating an invisible orphan.
+      await db.prepare(
+        "INSERT INTO nebula_object_cleanup (owner_id, object_id, category, object_key, created_at) VALUES (?, ?, ?, ?, ?)"
+      ).bind(ownerId, objectId, safeCategory, objectKey, createdAt).run();
       try {
+        await bucket.put(objectKey, bytes, { httpMetadata: { contentType } });
         await db.prepare(
           "INSERT INTO nebula_objects (owner_id, object_id, category, object_key, content_type, size_bytes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)"
         ).bind(ownerId, objectId, safeCategory, objectKey, contentType, bytes.byteLength, createdAt, createdAt).run();
+        // If this cleanup-intent deletion fails, reconciliation sees the active
+        // metadata row and removes only the stale intent, never the live object.
+        await db.prepare(
+          "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
+        ).bind(ownerId, safeCategory, objectId).run();
       } catch (error) {
-        try { await bucket.delete(objectKey); } catch {}
-        throw new Error("Object metadata write failed; uploaded object was rolled back where possible.", { cause: error });
+        try {
+          await bucket.delete(objectKey);
+          await db.prepare(
+            "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
+          ).bind(ownerId, safeCategory, objectId).run();
+        } catch {
+          // Keep the durable cleanup intent for explicit reconciliation.
+        }
+        throw new Error("Object upload did not complete; a durable cleanup intent was retained when compensation could not finish.", { cause: error });
       }
       return Object.freeze({ objectId, category: safeCategory, contentType, sizeBytes: bytes.byteLength, createdAt });
+    },
+
+    async reconcilePendingUploads() {
+      const result = await db.prepare(
+        "SELECT object_id, category, object_key FROM nebula_object_cleanup WHERE owner_id = ? ORDER BY created_at LIMIT 50"
+      ).bind(ownerId).all();
+      const outcomes = [];
+      for (const pending of result.results || []) {
+        const active = await findMetadata(pending.category, pending.object_id);
+        if (active && active.status === "active") {
+          await db.prepare(
+            "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
+          ).bind(ownerId, pending.category, pending.object_id).run();
+          outcomes.push({ objectId: pending.object_id, action: "intent-cleared" });
+          continue;
+        }
+        await bucket.delete(pending.object_key);
+        await db.prepare(
+          "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
+        ).bind(ownerId, pending.category, pending.object_id).run();
+        outcomes.push({ objectId: pending.object_id, action: "orphan-removed" });
+      }
+      return outcomes;
     },
 
     async getObject(category, objectId) {
