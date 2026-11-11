@@ -139,7 +139,7 @@
 - [x] 新增 `nebula-r2-repository.js`：owner ID 仅取自服务端验证上下文；对象 ID 服务端生成；R2 key 固定为 `owners/{owner_id}/{category}/{object_id}`。
 - [x] 上传、读取、列表前逐次检查服务端同步类别授权；不接受客户端 raw object key 或 owner ID。
 - [x] D1 对象元数据读写按 owner_id + category + object_id 绑定；删除时先标记 deleting，再删 R2 对象与元数据，允许失败后重试。
-- [x] 上传先写 R2、再写 D1；D1 元数据写入失败时尽力删除已上传对象并返回错误。
+- [x] 上传前先写入 D1 cleanup intent，再写 R2、再写 active 元数据；D1 元数据失败时执行 R2 补偿删除，补偿失败则保留可追踪 cleanup intent。
 - [x] 新增 `migrations/0003_owner_scoped_objects.sql` 和模拟 R2/D1 契约测试，限制上传体积并校验 owner 前缀。
 - [ ] R2/D1 repository 仍未接入 Worker 私有 API；必须在 Worker 中从服务端 consent ledger 读取授权并创建 repository，不得从请求体传入授权对象。
 - [ ] 完成真实 D1/R2 测试环境应用迁移、A/B 用户跨账户上传/下载/列举/删除负向测试、失败补偿与并发撤销测试。
@@ -184,3 +184,14 @@
 - [x] 新增 R2 删除成功但 D1 metadata delete 失败测试：保留 deleting 元数据，后续幂等重试完成清理。
 - [ ] 目前是仓储级模拟故障注入；仍需在真实 Cloudflare R2/D1 测试资源上验证服务故障、超时和重试语义。
 
+
+## 2026-11-11：R2 上传孤儿对象补偿加固
+
+- [x] 新增 migration `0004_r2_upload_cleanup_intents.sql`，在 R2 上传前持久化 owner/category/object ID/object key 对应的 cleanup intent。
+- [x] D1 active 元数据写入失败时尝试删除 R2；若 R2 删除也失败，cleanup intent 保留，不再静默丢失对象定位信息。
+- [x] 新增 `reconcilePendingUploads()`：逐条检查 owner-scoped cleanup intent；若 active 元数据已存在，只清除陈旧 intent；若 active 元数据不存在，删除 R2 对象后再清除 intent。
+- [x] 修正提交后清理 intent 失败的边界：不再误删已经有 active 元数据的 R2 对象；由后续 reconcile 安全清理陈旧 intent。
+- [x] 新增故障注入覆盖：D1 metadata insert + R2 compensation delete 双失败，以及 active metadata 已提交但 cleanup intent 删除失败。
+- [x] SQLite 集成测试现在执行四份 migration，并断言 cleanup 表存在。
+- [ ] 当前 reconcile 仅为仓储方法，尚未接入 Worker 管理路由、定时任务或运维任务；没有自动重试调度。
+- [ ] 故障注入仍是 Fake R2/Fake D1；需要在隔离真实 Cloudflare D1/R2 环境验证超时、重复执行和部分失败语义。
