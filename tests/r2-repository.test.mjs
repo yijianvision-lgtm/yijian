@@ -9,6 +9,9 @@ class FakeD1 {
   calls = [];
   row = null;
   failMetadataDelete = 0;
+  failMetadataInsert = 0;
+  failCleanupDelete = 0;
+  cleanup = new Map();
   prepare(sql) {
     const call = { sql, values: [] };
     this.calls.push(call);
@@ -16,13 +19,29 @@ class FakeD1 {
       call.values = values;
       return {
         first: async () => this.row,
-        all: async () => ({ results: [] }),
+        all: async () => sql.includes("FROM nebula_object_cleanup")
+          ? ({ results: [...this.cleanup.values()].filter(item => item.owner_id === values[0]) })
+          : ({ results: [] }),
         run: async () => {
-          if (sql.startsWith("INSERT")) this.row = {
-            owner_id: values[0], object_id: values[1], category: values[2], object_key: values[3],
-            content_type: values[4], size_bytes: values[5], status: "active", created_at: values[6]
-          };
-          else if (sql.startsWith("UPDATE nebula_objects")) {
+          if (sql.startsWith("INSERT INTO nebula_object_cleanup")) {
+            const item = { owner_id: values[0], object_id: values[1], category: values[2], object_key: values[3], created_at: values[4] };
+            this.cleanup.set(values[1], item);
+          } else if (sql.startsWith("DELETE FROM nebula_object_cleanup")) {
+            if (this.failCleanupDelete > 0) {
+              this.failCleanupDelete -= 1;
+              throw new Error("simulated cleanup intent delete failure");
+            }
+            this.cleanup.delete(values[2]);
+          } else if (sql.startsWith("INSERT INTO nebula_objects")) {
+            if (this.failMetadataInsert > 0) {
+              this.failMetadataInsert -= 1;
+              throw new Error("simulated metadata insert failure");
+            }
+            this.row = {
+              owner_id: values[0], object_id: values[1], category: values[2], object_key: values[3],
+              content_type: values[4], size_bytes: values[5], status: "active", created_at: values[6]
+            };
+          } else if (sql.startsWith("UPDATE nebula_objects")) {
             if (this.row) this.row.status = "deleting";
           } else if (sql.startsWith("DELETE FROM nebula_objects")) {
             if (this.failMetadataDelete > 0) {
@@ -101,9 +120,56 @@ assert.equal(bucket.objects.has(secondKey), false);
 assert.deepEqual(await retryRepo.deleteObject("private-files", second.objectId), { deleted: true });
 assert.equal(db.row, null);
 
+// If the D1 metadata insert and immediate R2 compensation both fail, the
+// pre-written cleanup intent must survive and allow a later retry to remove
+// the otherwise unindexed R2 object.
+const thirdId = "123e4567-e89b-12d3-a456-426614174002";
+const recoveryRepo = createNebulaR2Repository({
+  bucket, db, authContext: { kind: "user", ownerId: ownerA }, consentRepository,
+  idFactory: () => thirdId, now: () => "2026-11-10T00:00:00.000Z"
+});
+const thirdKey = "owners/" + ownerA + "/private-files/" + thirdId;
+db.failMetadataInsert = 1;
+bucket.failDeletes = 1;
+await assert.rejects(
+  recoveryRepo.putObject({ category: "private-files", body: new Uint8Array([2]) }),
+  /durable cleanup intent/
+);
+assert.ok(bucket.objects.has(thirdKey), "Fault injection should leave the R2 object for recovery.");
+assert.ok(db.cleanup.has(thirdId), "Cleanup intent must survive failed compensation.");
+assert.deepEqual(await recoveryRepo.reconcilePendingUploads(), [
+  { objectId: thirdId, action: "orphan-removed" }
+]);
+assert.equal(bucket.objects.has(thirdKey), false);
+assert.equal(db.cleanup.has(thirdId), false);
+
+// A stale cleanup intent after successful metadata commit must never delete
+// the active object; reconciliation only clears the intent.
+const fourthId = "123e4567-e89b-12d3-a456-426614174003";
+const committedRepo = createNebulaR2Repository({
+  bucket, db, authContext: { kind: "user", ownerId: ownerA }, consentRepository,
+  idFactory: () => fourthId, now: () => "2026-11-10T00:00:00.000Z"
+});
+db.failCleanupDelete = 1;
+await assert.rejects(
+  committedRepo.putObject({ category: "private-files", body: new Uint8Array([3]) }),
+  /durable cleanup intent/
+);
+const fourthKey = "owners/" + ownerA + "/private-files/" + fourthId;
+assert.ok(bucket.objects.has(fourthKey));
+assert.equal(db.row.status, "active");
+assert.deepEqual(await committedRepo.reconcilePendingUploads(), [
+  { objectId: fourthId, action: "intent-cleared" }
+]);
+assert.ok(bucket.objects.has(fourthKey), "A committed object must not be removed by cleanup reconciliation.");
+
 const migration = await readFile(new URL("../migrations/0003_owner_scoped_objects.sql", import.meta.url), "utf8");
 assert.match(migration, /PRIMARY KEY \(owner_id, category, object_id\)/);
 assert.match(migration, /object_key LIKE 'owners\/' \|\| owner_id/);
 assert.match(migration, /status IN \('active', 'deleting'\)/);
+
+const cleanupMigration = await readFile(new URL("../migrations/0004_r2_upload_cleanup_intents.sql", import.meta.url), "utf8");
+assert.match(cleanupMigration, /CREATE TABLE IF NOT EXISTS nebula_object_cleanup/);
+assert.match(cleanupMigration, /PRIMARY KEY \(owner_id, category, object_id\)/);
 
 console.log("NEBULA owner-scoped R2 repository contract tests passed.");
