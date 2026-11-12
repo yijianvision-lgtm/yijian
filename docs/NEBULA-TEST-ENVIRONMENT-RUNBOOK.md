@@ -91,6 +91,7 @@ npx wrangler d1 migrations list nebula-private-test --remote --config wrangler.t
 2. `0002_sync_consent_ledger.sql`
 3. `0003_owner_scoped_objects.sql`
 4. `0004_r2_upload_cleanup_intents.sql`
+5. `0005_r2_delete_intent_kind.sql`
 
 任何 migration 失败都应停止部署，保留错误输出并先修复；不要尝试在正式数据库上补跑。
 
@@ -101,7 +102,7 @@ npx wrangler d1 migrations list nebula-private-test --remote --config wrangler.t
 - [ ] `wrangler whoami` 确认目标是测试账户
 - [ ] D1 database ID 是刚创建的测试数据库
 - [ ] R2 bucket 是专用测试 bucket
-- [ ] 四份 migration 已在测试 D1 成功应用
+- [ ] 五份 migration 已在测试 D1 成功应用
 - [ ] Clerk 测试 issuer/audience/JWKS/authorized parties 已真实核验
 - [ ] `NEBULA_OWNER_NAMESPACE_SECRET` 已写入 Worker secrets
 - [ ] 没有把生产 API key、用户数据或生产资源 ID 放入测试环境
@@ -128,6 +129,8 @@ npx wrangler deploy --config wrangler.test.toml
 | cleanup intent 与 active metadata 交错 | 不得删除已提交对象 |
 | 两个 scheduler 同时处理同一 intent | 仅一个成功认领 |
 | R2 delete 成功、D1 intent 删除失败 | 后续可幂等恢复 |
+| 用户主动删除时 R2 暂时不可用 | D1 原子保留 deleting 元数据与 delete intent；定时任务立即具备认领资格 |
+| 用户主动删除的 pending intent | 不受上传的一小时宽限期限制 |
 | 15 分钟 Cron | 仅在测试 Worker 上运行，批次最多 50 条 |
 | 私人文件跨账户访问 | B 无法访问 A 的对象 key 或内容 |
 
