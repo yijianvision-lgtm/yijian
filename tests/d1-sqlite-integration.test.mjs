@@ -150,7 +150,7 @@ await consentA.setConsent({ status: "enabled", categories: ["graph", "private-fi
 const revocationRaceId = "123e4567-e89b-12d3-a456-426614174104";
 const revocationRaceKey = cleanupKey(revocationRaceId);
 const uploadedObjects = new Set();
-const raceBucket = {
+const revocationRaceBucket = {
   async put(key) {
     uploadedObjects.add(key);
     await consentA.setConsent({ status: "revoked", categories: ["graph", "private-files"] });
@@ -159,7 +159,7 @@ const raceBucket = {
   async delete(key) { uploadedObjects.delete(key); }
 };
 const r2RepoA = createNebulaR2Repository({
-  bucket: raceBucket, db: d1, authContext: authA, consentRepository: consentA,
+  bucket: revocationRaceBucket, db: d1, authContext: authA, consentRepository: consentA,
   idFactory: () => revocationRaceId, now
 });
 await assert.rejects(
