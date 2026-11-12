@@ -90,11 +90,16 @@ class FakeR2 {
   objects = new Map();
   failDeletes = 0;
   beforePut = null;
+  beforeGet = null;
   async put(key, body, options) {
     if (this.beforePut) await this.beforePut(key, body, options);
     this.objects.set(key, { body, options });
   }
-  async get(key) { const value = this.objects.get(key); return value ? { body: value.body } : null; }
+  async get(key) {
+    if (this.beforeGet) await this.beforeGet(key);
+    const value = this.objects.get(key);
+    return value ? { body: value.body } : null;
+  }
   async delete(key) {
     if (this.failDeletes > 0) {
       this.failDeletes -= 1;
@@ -106,7 +111,11 @@ class FakeR2 {
 const db = new FakeD1();
 const bucket = new FakeR2();
 const consentCalls = [];
-const consentRepository = { async requireCategory(category) { consentCalls.push(category); return { status: "enabled" }; } };
+const consentRepository = { async requireCategory(category) {
+  consentCalls.push(category);
+  if (!db.consentEnabled) throw new Error("Active server-side cloud-sync consent is required for this category.");
+  return { status: "enabled" };
+} };
 const repo = createNebulaR2Repository({
   bucket, db, authContext: { kind: "user", ownerId: ownerA }, consentRepository, maxBytes: 10,
   idFactory: () => fixedId, now: () => "2026-11-10T00:00:00.000Z"
@@ -123,6 +132,8 @@ assert.match(firstMetadataCommit.sql, /nebula_sync_consents/,
 assert.deepEqual(firstMetadataCommit.values.slice(-2), [ownerA, "private-files"]);
 assert.equal((await repo.getObject("private-files", fixedId)).body.byteLength, 5);
 assert.deepEqual(await repo.listObjects("private-files", { limit: 1000 }), []);
+assert.ok(db.calls.some(call => call.sql.includes("FROM nebula_objects o") && call.sql.includes("nebula_sync_consents")),
+  "Object listing must be fenced by the live consent ledger in its D1 query.");
 assert.ok(consentCalls.length >= 3);
 assert.ok(db.calls.every(call => call.values[0] === ownerA), "Every D1 metadata operation must be owner-scoped.");
 assert.ok(db.calls.every(call => !call.values.includes(ownerB)), "Client-supplied foreign owner IDs must never be used.");
@@ -212,6 +223,12 @@ assert.deepEqual(await committedRepo.reconcilePendingUploads(), [
   { objectId: fourthId, action: "intent-cleared" }
 ]);
 assert.ok(bucket.objects.has(fourthKey), "A committed object must not be removed by cleanup reconciliation.");
+
+// A revocation during the R2 read must be re-checked before returning the body.
+bucket.beforeGet = async () => { db.consentEnabled = false; };
+await assert.rejects(committedRepo.getObject("private-files", fourthId), /Active server-side cloud-sync consent/);
+bucket.beforeGet = null;
+db.consentEnabled = true;
 
 // Revoking consent while R2 is receiving the bytes must block the final D1
 // metadata commit. The uploaded bytes are compensated and the intent removed.
