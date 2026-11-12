@@ -243,4 +243,4 @@
 
 - [x] Follow-up regression found during CI: successful uploads can retain an `uploading` intent if the post-commit intent delete fails. Owner-scoped recovery now selects such a row only when matching active metadata exists, then removes the intent with an SQL `EXISTS(active)` guard; it never deletes the R2 object.
 - [x] The same recovery path continues to exclude fresh `uploading` rows without active metadata.
-- [ ] Latest correction is awaiting CI rerun; the immediately preceding run correctly failed on the newly added committed-intent test before this correction.
+- [x] Latest code/test head `f52c301e7e270a3d3813088353eb9465f275eb4e` passes NEBULA backend checks #657, local backend validation #160, and Jekyll site CI #746. The preceding head correctly failed on the new committed-intent test; the active-metadata-only recovery selection fixed it.
