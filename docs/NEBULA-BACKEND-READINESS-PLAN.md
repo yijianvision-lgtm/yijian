@@ -239,3 +239,8 @@
 - [x] It validates and re-derives the object key, atomically claims with a lease and active-metadata guard, and clears only the matching processing lease after R2 deletion.
 - [x] Added a regression test proving a fresh `uploading` intent is neither selected nor deleted by user-scoped recovery.
 - [ ] Latest PR head CI is pending; no live Cloudflare validation has occurred.
+
+
+- [x] Follow-up regression found during CI: successful uploads can retain an `uploading` intent if the post-commit intent delete fails. Owner-scoped recovery now selects such a row only when matching active metadata exists, then removes the intent with an SQL `EXISTS(active)` guard; it never deletes the R2 object.
+- [x] The same recovery path continues to exclude fresh `uploading` rows without active metadata.
+- [ ] Latest correction is awaiting CI rerun; the immediately preceding run correctly failed on the newly added committed-intent test before this correction.
