@@ -20,7 +20,13 @@ class FakeD1 {
       return {
         first: async () => this.row,
         all: async () => sql.includes("FROM nebula_object_cleanup")
-          ? ({ results: [...this.cleanup.values()].filter(item => item.owner_id === values[0]) })
+          ? ({ results: [...this.cleanup.values()].filter(item =>
+              item.owner_id === values[0] &&
+              (sql.includes("status = 'pending'") ? (
+                item.status === "pending" ||
+                (item.status === "processing" && item.lease_expires_at <= values[1])
+              ) : true)
+            ) })
           : ({ results: [] }),
         run: async () => {
           if (sql.startsWith("INSERT INTO nebula_object_cleanup")) {
@@ -32,6 +38,18 @@ class FakeD1 {
               throw new Error("simulated cleanup intent delete failure");
             }
             this.cleanup.delete(values[2]);
+          } else if (sql.startsWith("UPDATE nebula_object_cleanup SET status = 'processing'")) {
+            const item = this.cleanup.get(values[3]);
+            if (item && item.owner_id === values[1] && item.category === values[2] &&
+                item.created_at === values[4] &&
+                (item.status === "pending" ||
+                 (item.status === "processing" && item.lease_expires_at <= values[5])) &&
+                this.row?.status !== "active") {
+              item.status = "processing";
+              item.lease_expires_at = values[0];
+              return { meta: { changes: 1 } };
+            }
+            return { meta: { changes: 0 } };
           } else if (sql.startsWith("UPDATE nebula_object_cleanup SET status = 'pending'")) {
             const item = this.cleanup.get(values[2]);
             if (item && item.status === "uploading") {
@@ -150,6 +168,18 @@ assert.deepEqual(await recoveryRepo.reconcilePendingUploads(), [
 ]);
 assert.equal(bucket.objects.has(thirdKey), false);
 assert.equal(db.cleanup.has(thirdId), false);
+
+// User-scoped recovery must not select or delete a fresh upload intent.
+const freshIntentId = "123e4567-e89b-12d3-a456-426614174004";
+const freshIntentKey = "owners/" + ownerA + "/private-files/" + freshIntentId;
+db.cleanup.set(freshIntentId, {
+  owner_id: ownerA, object_id: freshIntentId, category: "private-files",
+  object_key: freshIntentKey, created_at: "2026-11-10T00:00:00.000Z", status: "uploading"
+});
+await bucket.put(freshIntentKey, new Uint8Array([9]), {});
+assert.deepEqual(await recoveryRepo.reconcilePendingUploads(), []);
+assert.ok(bucket.objects.has(freshIntentKey),
+  "User-scoped recovery must never delete an uploading intent.");
 
 // A stale cleanup intent after successful metadata commit must never delete
 // the active object; reconciliation only clears the intent.
