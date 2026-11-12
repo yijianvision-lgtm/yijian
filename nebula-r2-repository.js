@@ -208,10 +208,15 @@ export function createNebulaR2Repository({
       const safeCategory = assertCategory(category);
       const safeId = assertObjectId(objectId);
       await consentRepository.requireCategory(safeCategory);
-      const row = await findMetadata(safeCategory, safeId);
+      const row = await db.prepare(
+        "SELECT o.object_id, o.category, o.object_key, o.content_type, o.size_bytes, o.created_at, o.status FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.object_id = ? AND o.status = 'active' AND EXISTS (SELECT 1 FROM nebula_sync_consents c, json_each(c.categories_json) AS allowed_category WHERE c.owner_id = o.owner_id AND c.status = 'enabled' AND allowed_category.value = o.category) LIMIT 1"
+      ).bind(ownerId, safeCategory, safeId).first();
       if (!row || row.status !== "active") return null;
       const object = await bucket.get(row.object_key);
       if (!object) return null;
+      // R2 is outside the D1 statement. Re-check after the object fetch so a
+      // revocation during storage I/O cannot release a body to the caller.
+      await consentRepository.requireCategory(safeCategory);
       return Object.freeze({
         objectId: row.object_id, category: row.category, contentType: row.content_type,
         sizeBytes: row.size_bytes, createdAt: row.created_at, body: object.body
@@ -224,8 +229,8 @@ export function createNebulaR2Repository({
       const boundedLimit = Math.max(1, Math.min(50, Number.isInteger(limit) ? limit : 50));
       const cursor = after === null ? null : assertObjectId(after);
       const statement = cursor === null
-        ? db.prepare("SELECT object_id, category, content_type, size_bytes, created_at FROM nebula_objects WHERE owner_id = ? AND category = ? AND status = 'active' ORDER BY object_id LIMIT ?").bind(ownerId, safeCategory, boundedLimit)
-        : db.prepare("SELECT object_id, category, content_type, size_bytes, created_at FROM nebula_objects WHERE owner_id = ? AND category = ? AND status = 'active' AND object_id > ? ORDER BY object_id LIMIT ?").bind(ownerId, safeCategory, cursor, boundedLimit);
+        ? db.prepare("SELECT o.object_id, o.category, o.content_type, o.size_bytes, o.created_at FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.status = 'active' AND EXISTS (SELECT 1 FROM nebula_sync_consents c, json_each(c.categories_json) AS allowed_category WHERE c.owner_id = o.owner_id AND c.status = 'enabled' AND allowed_category.value = o.category) ORDER BY o.object_id LIMIT ?").bind(ownerId, safeCategory, boundedLimit)
+        : db.prepare("SELECT o.object_id, o.category, o.content_type, o.size_bytes, o.created_at FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.status = 'active' AND o.object_id > ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c, json_each(c.categories_json) AS allowed_category WHERE c.owner_id = o.owner_id AND c.status = 'enabled' AND allowed_category.value = o.category) ORDER BY o.object_id LIMIT ?").bind(ownerId, safeCategory, cursor, boundedLimit);
       const result = await statement.all();
       return (result.results || []).map(row => Object.freeze({
         objectId: row.object_id, category: row.category, contentType: row.content_type,
