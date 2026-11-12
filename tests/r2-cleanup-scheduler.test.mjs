@@ -19,7 +19,7 @@ class FakeD1 {
         return {
           all: async () => ({
             results: this.intents
-              .filter(item => item.created_at <= values[0])
+              .filter(item => (item.status || "pending") === "pending" && item.created_at <= values[0])
               .sort((a, b) => a.created_at.localeCompare(b.created_at))
               .slice(0, values[1])
           }),
@@ -30,6 +30,14 @@ class FakeD1 {
                 !(item.owner_id === values[0] && item.category === values[1] &&
                   item.object_id === values[2] && item.created_at === values[3])
               );
+            }
+            if (sql.startsWith("UPDATE nebula_object_cleanup SET status = 'quarantined'")) {
+              const item = this.intents.find(item =>
+                item.owner_id === values[0] && item.category === values[1] &&
+                item.object_id === values[2] && item.created_at === values[3] &&
+                (item.status || "pending") === "pending"
+              );
+              if (item) item.status = "quarantined";
             }
             return { meta: { changes: 1 } };
           }
@@ -86,6 +94,29 @@ assert.ok(db.intents.some(item => item.object_id === freshId),
   "Recent uploads must be protected by the grace period.");
 assert.ok(db.intents.some(item => item.object_id === invalidId),
   "Invalid keys must never be passed to R2 or silently deleted.");
+
+// Invalid rows are quarantined, not deleted, and no longer monopolize the
+// oldest pending batch slots on subsequent scheduler runs.
+assert.equal(db.intents.find(item => item.object_id === invalidId).status, "quarantined");
+const backlogDb = new FakeD1();
+const backlogBucket = new FakeR2();
+backlogDb.intents = Array.from({ length: 55 }, (_, index) => ({
+  ...make(ownerA, "123e4567-e89b-12d3-a456-" + String(index).padStart(12, "0"), old),
+  object_key: "malformed/" + index
+}));
+const fairId = "123e4567-e89b-12d3-a456-426614174099";
+backlogDb.intents.push(make(ownerB, fairId, old));
+const firstBacklogRun = await reconcileNebulaR2UploadCleanup({
+  db: backlogDb, bucket: backlogBucket, now: () => now, limit: 50
+});
+assert.equal(firstBacklogRun.scanned, 50);
+assert.equal(backlogDb.intents.filter(item => item.status === "quarantined").length, 50);
+const secondBacklogRun = await reconcileNebulaR2UploadCleanup({
+  db: backlogDb, bucket: backlogBucket, now: () => now, limit: 50
+});
+assert.ok(backlogBucket.deleted.includes("owners/" + ownerB + "/private-files/" + fairId),
+  "Quarantined malformed rows must not starve later valid cleanup intents.");
+assert.ok(backlogDb.intents.some(item => item.object_id === fairId) === false);
 
 bucket.fail.clear();
 const retried = await reconcileNebulaR2UploadCleanup({ db, bucket, now: () => now });
