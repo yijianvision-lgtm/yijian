@@ -1,0 +1,18 @@
+# LOCAL ONLY. This config uses Wrangler/Miniflare local bindings.
+# Do not add remote = true to either binding.
+name = "nebula-private-local"
+main = "deepseek-worker.js"
+compatibility_date = "2026-11-06"
+workers_dev = false
+
+[vars]
+DEEPSEEK_MODEL = "deepseek-v4-pro"
+
+[[d1_databases]]
+binding = "NEBULA_DB"
+database_name = "nebula-private-local"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "NEBULA_BUCKET"
+bucket_name = "nebula-private-local"
