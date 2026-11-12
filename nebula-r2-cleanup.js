@@ -31,7 +31,7 @@ export async function reconcileNebulaR2UploadCleanup({
   if (!Number.isFinite(currentMs)) throw new TypeError("Invalid cleanup clock.");
   const cutoff = new Date(currentMs - staleAfterMs).toISOString();
   const pending = await db.prepare(
-    "SELECT owner_id, object_id, category, object_key, created_at FROM nebula_object_cleanup WHERE created_at <= ? ORDER BY created_at LIMIT ?"
+    "SELECT owner_id, object_id, category, object_key, created_at FROM nebula_object_cleanup WHERE status = 'pending' AND created_at <= ? ORDER BY created_at LIMIT ?"
   ).bind(cutoff, limit).all();
 
   const outcomes = [];
@@ -42,8 +42,18 @@ export async function reconcileNebulaR2UploadCleanup({
         !CATEGORY_PATTERN.test(category || "") ||
         !OBJECT_ID_PATTERN.test(objectId || "") ||
         objectKey !== expectedKey ||
-        typeof createdAt !== "string" || !Number.isFinite(Date.parse(createdAt))) {
-      outcomes.push({ action: "invalid-intent" });
+        typeof createdAt !== "string" || !Number.isFinite(Date.parse(createdAt)) ||
+        new Date(Date.parse(createdAt)).toISOString() !== createdAt) {
+      // Quarantine malformed rows so they remain visible for operator review
+      // without permanently occupying the oldest pending batch slots.
+      try {
+        await db.prepare(
+          "UPDATE nebula_object_cleanup SET status = 'quarantined' WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status = 'pending'"
+        ).bind(ownerId, category, objectId, createdAt).run();
+        outcomes.push({ action: "invalid-quarantined" });
+      } catch {
+        outcomes.push({ action: "invalid-quarantine-retry" });
+      }
       continue;
     }
 
