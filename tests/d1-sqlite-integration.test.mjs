@@ -164,7 +164,7 @@ const r2RepoA = createNebulaR2Repository({
 });
 await assert.rejects(
   r2RepoA.putObject({ category: "private-files", body: new Uint8Array([1]), contentType: "application/octet-stream" }),
-  /authorization or cleanup intent changed/
+  /Object upload did not complete/
 );
 assert.equal(uploadedObjects.has(revocationRaceKey), false,
   "R2 bytes written during a revoked upload must be compensated.");
