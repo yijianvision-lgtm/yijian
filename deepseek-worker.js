@@ -2,6 +2,7 @@ import { authenticateNebulaRequest } from "./nebula-worker-auth.js";
 import { createNebulaSyncConsentRepository } from "./nebula-sync-consent.js";
 import { createNebulaD1Repository } from "./nebula-d1-repository.js";
 import { createNebulaR2Repository } from "./nebula-r2-repository.js";
+import { reconcileNebulaR2UploadCleanup } from "./nebula-r2-cleanup.js";
 
 /**
  * NEBULA × DeepSeek bridge — deploy as a Cloudflare Worker.
@@ -275,6 +276,17 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
 }
 
 export default {
+  async scheduled(controller, env) {
+    // Cron is inert until an isolated test environment binds both resources.
+    // The reconciler only touches intents older than its one-hour safety grace.
+    if (!env.NEBULA_DB || !env.NEBULA_BUCKET) return;
+    await reconcileNebulaR2UploadCleanup({
+      db: env.NEBULA_DB,
+      bucket: env.NEBULA_BUCKET,
+      limit: 50
+    });
+  },
+
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
     const allowedOrigins = new Set([
