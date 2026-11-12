@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { createNebulaD1Repository } from "../nebula-d1-repository.js";
 import { createNebulaSyncConsentRepository } from "../nebula-sync-consent.js";
+import { reconcileNebulaR2UploadCleanup } from "../nebula-r2-cleanup.js";
 
 // Execute the actual Cloudflare D1 SQLite migrations and repository SQL against
 // Node's SQLite engine. This is stronger than the contract mocks, but is still
@@ -80,5 +81,67 @@ await consentA.setConsent({ status: "enabled", categories: ["graph"] });
 assert.deepEqual(await repoA.deleteRecord("graph", "root"), { deleted: true });
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ?").get(ownerA).count, 0);
 
+// Exercise the actual cleanup-claim SQL against SQLite, not only Fake D1.
+const cleanupNow = Date.parse("2026-11-13T12:00:00.000Z");
+const cleanupOld = "2026-11-13T10:00:00.000Z";
+const cleanupKey = (id) => "owners/" + ownerA + "/private-files/" + id;
+const insertCleanupIntent = (id) => db.prepare(
+  "INSERT INTO nebula_object_cleanup (owner_id, object_id, category, object_key, created_at) VALUES (?, ?, 'private-files', ?, ?)"
+).run(ownerA, id, cleanupKey(id), cleanupOld);
+
+const committedId = "123e4567-e89b-12d3-a456-426614174101";
+insertCleanupIntent(committedId);
+db.prepare(
+  "INSERT INTO nebula_objects (owner_id, object_id, category, object_key, content_type, size_bytes, status, created_at, updated_at) VALUES (?, ?, 'private-files', ?, 'text/plain', 1, 'active', ?, ?)"
+).run(ownerA, committedId, cleanupKey(committedId), cleanupOld, cleanupOld);
+const activeDeletes = [];
+await reconcileNebulaR2UploadCleanup({
+  db: d1, now: () => cleanupNow, bucket: { async delete(key) { activeDeletes.push(key); } }
+});
+assert.deepEqual(activeDeletes, [], "An active metadata row must prevent a cleanup delete.");
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_objects WHERE object_id = ?").get(committedId).count, 1);
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHERE object_id = ?").get(committedId).count, 0);
+
+const racedId = "123e4567-e89b-12d3-a456-426614174102";
+insertCleanupIntent(racedId);
+let releaseDelete;
+let deleteStarted;
+const deleteGate = new Promise(resolve => { releaseDelete = resolve; });
+const startedGate = new Promise(resolve => { deleteStarted = resolve; });
+let racedDeleteCalls = 0;
+const raceBucket = { async delete() { racedDeleteCalls += 1; deleteStarted(); await deleteGate; } };
+const firstScheduler = reconcileNebulaR2UploadCleanup({
+  db: d1, now: () => cleanupNow, bucket: raceBucket
+});
+await startedGate;
+// The scheduler has atomically changed uploading -> processing. The upload's
+// conditional metadata INSERT must now fail rather than publish a deleted object.
+const blockedCommit = db.prepare(
+  "INSERT INTO nebula_objects (owner_id, object_id, category, object_key, content_type, size_bytes, status, created_at, updated_at) SELECT ?, ?, 'private-files', ?, 'text/plain', 1, 'active', ?, ? WHERE EXISTS (SELECT 1 FROM nebula_object_cleanup i WHERE i.owner_id = ? AND i.category = 'private-files' AND i.object_id = ? AND i.status = 'uploading')"
+).run(ownerA, racedId, cleanupKey(racedId), cleanupOld, cleanupOld, ownerA, racedId);
+assert.equal(Number(blockedCommit.changes), 0, "A scheduler claim must fence the upload metadata commit.");
+const secondScheduler = await reconcileNebulaR2UploadCleanup({
+  db: d1, now: () => cleanupNow, bucket: raceBucket
+});
+assert.equal(secondScheduler.scanned, 0, "A second scheduler must not claim an unexpired processing lease.");
+assert.equal(racedDeleteCalls, 1, "Only one scheduler may issue the R2 delete for a claimed intent.");
+releaseDelete();
+await firstScheduler;
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHERE object_id = ?").get(racedId).count, 0);
+
+// An active upload that commits before the scheduler's claim remains protected.
+const commitFirstId = "123e4567-e89b-12d3-a456-426614174103";
+insertCleanupIntent(commitFirstId);
+const uploadCommit = db.prepare(
+  "INSERT INTO nebula_objects (owner_id, object_id, category, object_key, content_type, size_bytes, status, created_at, updated_at) SELECT ?, ?, 'private-files', ?, 'text/plain', 1, 'active', ?, ? WHERE EXISTS (SELECT 1 FROM nebula_object_cleanup i WHERE i.owner_id = ? AND i.category = 'private-files' AND i.object_id = ? AND i.status = 'uploading')"
+).run(ownerA, commitFirstId, cleanupKey(commitFirstId), cleanupOld, cleanupOld, ownerA, commitFirstId);
+assert.equal(Number(uploadCommit.changes), 1);
+const commitFirstDeletes = [];
+await reconcileNebulaR2UploadCleanup({
+  db: d1, now: () => cleanupNow, bucket: { async delete(key) { commitFirstDeletes.push(key); } }
+});
+assert.deepEqual(commitFirstDeletes, []);
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_objects WHERE object_id = ?").get(commitFirstId).count, 1);
+
 db.close();
-console.log("NEBULA SQLite migrations and atomic-consent repository integration tests passed.");
+console.log("NEBULA SQLite migrations, consent and atomic R2 cleanup integration tests passed.");
