@@ -56,6 +56,43 @@ async function readBodyLimited(body, maxBytes) {
   return result;
 }
 
+async function readDownloadedObjectLimited(body, maxBytes) {
+  if (body instanceof Uint8Array) {
+    if (body.byteLength > maxBytes) throw new RangeError("Stored object exceeds the configured download size limit.");
+    return body;
+  }
+  if (body instanceof ArrayBuffer) {
+    if (body.byteLength > maxBytes) throw new RangeError("Stored object exceeds the configured download size limit.");
+    return new Uint8Array(body);
+  }
+  if (!body || typeof body.getReader !== "function") {
+    throw new TypeError("Stored object body is not a readable stream.");
+  }
+  const reader = body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!(value instanceof Uint8Array)) throw new TypeError("Stored object stream yielded an invalid chunk.");
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new RangeError("Stored object exceeds the configured download size limit.");
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    try { await reader.cancel(); } catch {}
+    throw error;
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return bytes;
+}
+
 /**
  * Private R2 repository. Object keys are always derived internally from the
  * authenticated owner and generated object ID; callers never supply raw keys.
@@ -216,14 +253,21 @@ export function createNebulaR2Repository({
         "SELECT o.object_id, o.category, o.object_key, o.content_type, o.size_bytes, o.created_at, o.status FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.object_id = ? AND o.status = 'active' AND EXISTS (SELECT 1 FROM nebula_sync_consents c, json_each(c.categories_json) AS allowed_category WHERE c.owner_id = o.owner_id AND c.status = 'enabled' AND allowed_category.value = o.category) LIMIT 1"
       ).bind(ownerId, safeCategory, safeId).first();
       if (!row || row.status !== "active") return null;
+      if (!Number.isInteger(row.size_bytes) || row.size_bytes < 0 || row.size_bytes > maxBytes) {
+        throw new RangeError("Stored object metadata exceeds the configured download size limit.");
+      }
       const object = await bucket.get(row.object_key);
       if (!object) return null;
-      // R2 is outside the D1 statement. Re-check after the object fetch so a
-      // revocation during storage I/O cannot release a body to the caller.
+      // Buffer the bounded object before the final consent check. Returning an
+      // unread R2 stream would leave a revocation window during body delivery.
+      const body = await readDownloadedObjectLimited(object.body, Math.min(maxBytes, row.size_bytes));
+      if (body.byteLength !== row.size_bytes) {
+        throw new Error("Stored object size does not match its metadata.");
+      }
       await consentRepository.requireCategory(safeCategory);
       return Object.freeze({
         objectId: row.object_id, category: row.category, contentType: row.content_type,
-        sizeBytes: row.size_bytes, createdAt: row.created_at, body: object.body
+        sizeBytes: row.size_bytes, createdAt: row.created_at, body
       });
     },
 
