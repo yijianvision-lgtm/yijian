@@ -19,9 +19,14 @@ class FakeD1 {
         return {
           all: async () => ({
             results: this.intents
-              .filter(item => (item.status || "pending") === "pending" && item.created_at <= values[0])
+              .filter(item => {
+                const status = item.status || "pending";
+                if (status === "pending" || status === "uploading") return item.created_at <= values[0];
+                if (status === "processing") return item.lease_expires_at <= values[2];
+                return false;
+              })
               .sort((a, b) => a.created_at.localeCompare(b.created_at))
-              .slice(0, values[1])
+              .slice(0, values[3])
           }),
           first: async () => this.metadata.get(values.join(":")) || null,
           run: async () => {
@@ -30,6 +35,21 @@ class FakeD1 {
                 !(item.owner_id === values[0] && item.category === values[1] &&
                   item.object_id === values[2] && item.created_at === values[3])
               );
+            }
+            if (sql.startsWith("UPDATE nebula_object_cleanup SET status = 'processing'")) {
+              const item = this.intents.find(item =>
+                item.owner_id === values[1] && item.category === values[2] &&
+                item.object_id === values[3] && item.created_at === values[4] &&
+                ((["pending", "uploading"].includes(item.status || "pending") && item.created_at <= values[5]) ||
+                 (item.status === "processing" && item.lease_expires_at <= values[6]))
+              );
+              const active = item && this.metadata.get([values[1], values[2], values[3]].join(":"))?.status === "active";
+              if (item && !active) {
+                item.status = "processing";
+                item.lease_expires_at = values[0];
+                return { meta: { changes: 1 } };
+              }
+              return { meta: { changes: 0 } };
             }
             if (sql.startsWith("UPDATE nebula_object_cleanup SET status = 'quarantined'")) {
               const item = this.intents.find(item =>
@@ -119,7 +139,7 @@ assert.ok(backlogBucket.deleted.includes("owners/" + ownerB + "/private-files/" 
 assert.ok(backlogDb.intents.some(item => item.object_id === fairId) === false);
 
 bucket.fail.clear();
-const retried = await reconcileNebulaR2UploadCleanup({ db, bucket, now: () => now });
+const retried = await reconcileNebulaR2UploadCleanup({ db, bucket, now: () => now + 31 * 60 * 1000 });
 assert.deepEqual(retried.outcomes.map(item => item.action), ["orphan-removed"]);
 assert.ok(!db.intents.some(item => item.object_id === failedId));
 
