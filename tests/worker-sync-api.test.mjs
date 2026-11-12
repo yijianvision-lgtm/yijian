@@ -42,6 +42,12 @@ class MemoryD1 {
   consents = new Map();
   records = new Map();
   objects = new Map();
+  cleanup = new Map();
+  async batch(statements) {
+    const results = [];
+    for (const statement of statements) results.push(await statement.run());
+    return results;
+  }
   prepare(sql) {
     const db = this;
     return {
@@ -72,6 +78,21 @@ class MemoryD1 {
                 owner_id: owner, record_type: values[1], record_id: values[2],
                 payload_json: values[3], created_at: values[4], updated_at: values[5]
               });
+            } else if (sql.startsWith("INSERT INTO nebula_object_cleanup")) {
+              if (sql.includes("SELECT owner_id, object_id")) {
+                const row = db.objects.get([values[1], values[2], values[3]].join("|"));
+                if (row?.status === "deleting") db.cleanup.set([values[1], values[2], values[3]].join("|"), {
+                  owner_id: row.owner_id, object_id: row.object_id, category: row.category,
+                  object_key: row.object_key, created_at: values[0], status: "pending", lease_expires_at: null
+                });
+              } else {
+                db.cleanup.set([owner, values[2], values[1]].join("|"), {
+                  owner_id: owner, object_id: values[1], category: values[2], object_key: values[3],
+                  created_at: values[4], status: "uploading"
+                });
+              }
+            } else if (sql.startsWith("DELETE FROM nebula_object_cleanup")) {
+              db.cleanup.delete([owner, values[1], values[2]].join("|"));
             } else if (sql.startsWith("INSERT INTO nebula_objects")) {
               db.objects.set([owner, values[2], values[1]].join("|"), {
                 owner_id: owner, object_id: values[1], category: values[2], object_key: values[3],
