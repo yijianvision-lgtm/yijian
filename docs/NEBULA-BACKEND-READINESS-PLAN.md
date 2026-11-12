@@ -216,3 +216,5 @@
 - [x] 增加 55 条非法记录压在有效记录之前的公平性测试，验证第二轮能处理后续有效对象；SQLite migration 集成测试检查状态字段。
 - [ ] 仍需在真实 D1 验证 migration 兼容性及定时任务执行行为。
 - [ ] 超长上传与 scheduler 交错仍未通过原子状态机彻底消除；一小时宽限期只是风险缓解。后续需设计上传完成与 cleanup claim 的原子竞争协议，并增加双 scheduler 并发、上传提交交错及 R2 成功/D1 intent 删除失败测试。
+
+- CI note: first run of this fairness patch caught an outdated expected action label in the test; the assertion was corrected in the follow-up commit. The corrected head still requires a fresh workflow run before this patch can be called green.
