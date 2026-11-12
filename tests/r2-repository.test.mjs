@@ -147,6 +147,23 @@ assert.match(firstMetadataCommit.sql, /nebula_sync_consents/,
   "The final metadata commit must atomically re-check the live server-side consent ledger.");
 assert.deepEqual(firstMetadataCommit.values.slice(-2), [ownerA, "private-files"]);
 assert.equal((await repo.getObject("private-files", fixedId)).body.byteLength, 5);
+
+// Revoke consent while the R2 body stream is being consumed. The repository
+// must finish its bounded read, then re-check consent before returning bytes.
+const originalGet = bucket.get.bind(bucket);
+bucket.get = async key => ({
+  body: new ReadableStream({
+    pull(controller) {
+      db.consentEnabled = false;
+      controller.enqueue(new Uint8Array([104, 101, 108, 108, 111]));
+      controller.close();
+    }
+  })
+});
+await assert.rejects(repo.getObject("private-files", fixedId), /Active server-side cloud-sync consent/);
+bucket.get = originalGet;
+db.consentEnabled = true;
+
 assert.deepEqual(await repo.listObjects("private-files", { limit: 1000 }), []);
 assert.ok(db.calls.some(call => call.sql.includes("FROM nebula_objects o") && call.sql.includes("nebula_sync_consents")),
   "Object listing must be fenced by the live consent ledger in its D1 query.");
