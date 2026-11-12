@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const files = ["nebula-worker-auth.js", "nebula-sync-consent.js", "nebula-d1-repository.js", "nebula-r2-repository.js"];
+const files = ["nebula-worker-auth.js", "nebula-sync-consent.js", "nebula-d1-repository.js", "nebula-r2-repository.js", "nebula-r2-cleanup.js"];
 let source = await readFile(new URL("../deepseek-worker.js", import.meta.url), "utf8");
 for (const file of files) source = source.replaceAll('"./' + file + '"', JSON.stringify(new URL("../" + file, import.meta.url).href));
 const { default: worker } = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
