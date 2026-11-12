@@ -193,6 +193,10 @@ export function createNebulaR2Repository({
 
         try {
           await bucket.delete(expectedKey);
+          // Finish any interrupted user-requested deletion only after R2 confirms.
+          await db.prepare(
+            "DELETE FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting'"
+          ).bind(ownerId, item.category, item.object_id).run();
           await db.prepare(
             "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status = 'processing' AND lease_expires_at = ?"
           ).bind(ownerId, item.category, item.object_id, item.created_at, leaseUntil).run();
@@ -245,13 +249,32 @@ export function createNebulaR2Repository({
       // remove their own cloud copies. Ownership is still enforced by D1.
       const row = await findMetadata(safeCategory, safeId);
       if (!row) return Object.freeze({ deleted: false });
-      await db.prepare(
-        "UPDATE nebula_objects SET status = 'deleting', updated_at = ? WHERE owner_id = ? AND category = ? AND object_id = ?"
-      ).bind(now(), ownerId, safeCategory, safeId).run();
+      const updatedAt = now();
+      if (typeof updatedAt !== "string" || !Number.isFinite(Date.parse(updatedAt))) {
+        throw new TypeError("Invalid repository timestamp.");
+      }
+      if (typeof db.batch !== "function") {
+        throw new TypeError("D1 batch transactions are required for durable object deletion.");
+      }
+      // Atomically mark metadata deleting and persist a retry intent.
+      await db.batch([
+        db.prepare(
+          "UPDATE nebula_objects SET status = 'deleting', updated_at = ? WHERE owner_id = ? AND category = ? AND object_id = ? AND status IN ('active', 'deleting')"
+        ).bind(updatedAt, ownerId, safeCategory, safeId),
+        db.prepare(
+          "INSERT INTO nebula_object_cleanup (owner_id, object_id, category, object_key, created_at, status, lease_expires_at) SELECT owner_id, object_id, category, object_key, ?, 'pending', NULL FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting' ON CONFLICT(owner_id, category, object_id) DO UPDATE SET created_at = excluded.created_at, status = 'pending', lease_expires_at = NULL"
+        ).bind(updatedAt, ownerId, safeCategory, safeId)
+      ]);
       await bucket.delete(row.object_key);
-      await db.prepare(
-        "DELETE FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ?"
-      ).bind(ownerId, safeCategory, safeId).run();
+      // If this final batch fails, the durable intent remains for scheduler retry.
+      await db.batch([
+        db.prepare(
+          "DELETE FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting'"
+        ).bind(ownerId, safeCategory, safeId),
+        db.prepare(
+          "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
+        ).bind(ownerId, safeCategory, safeId)
+      ]);
       return Object.freeze({ deleted: true });
     }
   });
