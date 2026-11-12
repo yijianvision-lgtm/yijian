@@ -114,7 +114,16 @@ export function createNebulaR2Repository({
             "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
           ).bind(ownerId, safeCategory, objectId).run();
         } catch {
-          // Keep the durable cleanup intent for explicit reconciliation.
+          // If no scheduler has claimed the row, make failed compensation
+          // immediately eligible for the next cleanup batch. Never overwrite
+          // a concurrent scheduler's processing lease.
+          try {
+            await db.prepare(
+              "UPDATE nebula_object_cleanup SET status = 'pending', lease_expires_at = NULL WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'uploading'"
+            ).bind(ownerId, safeCategory, objectId).run();
+          } catch {
+            // The durable intent remains recoverable after its one-hour grace.
+          }
         }
         throw new Error("Object upload did not complete; a durable cleanup intent was retained when compensation could not finish.", { cause: error });
       }
