@@ -195,3 +195,14 @@
 - [x] SQLite 集成测试现在执行四份 migration，并断言 cleanup 表存在。
 - [ ] 当前 reconcile 仅为仓储方法，尚未接入 Worker 管理路由、定时任务或运维任务；没有自动重试调度。
 - [ ] 故障注入仍是 Fake R2/Fake D1；需要在隔离真实 Cloudflare D1/R2 环境验证超时、重复执行和部分失败语义。
+
+## 2026-11-12：R2 cleanup 定时恢复入口（代码已接入，环境待验证）
+
+- [x] 新增 `nebula-r2-cleanup.js` 系统级恢复模块：从 D1 cleanup ledger 读取待处理记录，不接受请求方提供 owner ID 或 R2 object key；校验 owner/category/object ID，并重新派生、比对 object key。
+- [x] 恢复任务只处理至少一小时前创建的 intent，降低与正在进行的上传发生竞争的风险；每轮最多 50 条。
+- [x] 对每条记录先检查 D1 元数据：active 对象只清除陈旧 intent；无 active 元数据时才删除 R2 对象；R2/D1 失败保留 intent，等待下一轮重试。
+- [x] Worker 增加 scheduled handler；Wrangler 配置每 15 分钟触发。未绑定 D1/R2 时 handler 安全跳过，不开放 HTTP 管理路由。
+- [x] 新增调度恢复测试，覆盖跨 owner 记录、active 对象保护、近期上传保护、非法 key 拒绝、R2 失败保留和后续重试。
+- [ ] 当前只有代码与 CI 测试；未部署 Worker，cron 尚未在 Cloudflare 实际启用。
+- [ ] 必须在隔离测试环境应用 migration 0004 并绑定独立 D1/R2 后，验证 scheduled event、D1/R2 部分失败、并发上传超过一小时的边界及重试行为。
+- [ ] 定时任务没有独立审计表或告警通道；当前返回批次结果供运行时执行，不输出对象正文或用户数据。后续真实环境需补充脱敏指标、失败告警和运维可观测性。
