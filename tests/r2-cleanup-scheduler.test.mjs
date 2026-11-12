@@ -41,7 +41,8 @@ class FakeD1 {
               const item = this.intents.find(item =>
                 item.owner_id === values[1] && item.category === values[2] &&
                 item.object_id === values[3] && item.created_at === values[4] &&
-                ((["pending", "uploading"].includes(item.status || "pending") && item.created_at <= values[5]) ||
+                ((item.status === "pending" && (item.intent_kind === "delete" || item.created_at <= values[5])) ||
+                 (item.status === "uploading" && item.created_at <= values[5]) ||
                  (item.status === "processing" && item.lease_expires_at <= values[7]))
               );
               const active = item && this.metadata.get([values[1], values[2], values[3]].join(":"))?.status === "active";
