@@ -230,3 +230,12 @@
 - [x] 代码与 SQLite 并发测试已通过 GitHub Actions（最新代码测试 head `d4f411ea70af7bccf0ab44b51cd287b8091f12fa`：NEBULA backend checks #654、local backend validation #156、Jekyll site CI #743 均 success）。Fake R2/SQLite 测试仍不等于真实 Cloudflare 并发 D1/R2 测试。
 - [ ] 30 分钟 lease 是崩溃恢复窗口，不是 R2 外部操作的 fencing token；仍需真实 Cloudflare D1/R2 环境验证超时、重复删除、长时间挂起及跨服务部分失败。
 - [ ] migration 0004 尚未应用到真实 D1；Worker 未部署，Cron 未启用。
+
+
+## 2026-11-13 follow-up: user-scoped cleanup recovery fencing
+
+- [x] A second cleanup path existed inside the owner-scoped R2 repository. It previously selected every owner intent, including fresh `uploading` rows, and could delete an object while upload completion was still in progress.
+- [x] User-scoped recovery now selects only explicit `pending` intents or expired `processing` leases; it never selects `uploading` rows.
+- [x] It validates and re-derives the object key, atomically claims with a lease and active-metadata guard, and clears only the matching processing lease after R2 deletion.
+- [x] Added a regression test proving a fresh `uploading` intent is neither selected nor deleted by user-scoped recovery.
+- [ ] Latest PR head CI is pending; no live Cloudflare validation has occurred.
