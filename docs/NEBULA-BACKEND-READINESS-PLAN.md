@@ -277,3 +277,13 @@
 - [x] Worker API 与真实 SQLite 集成测试覆盖：撤销后读取被拒绝、本人记录删除成功、删除后记录确实不存在。
 - [x] 最新代码/测试 head `1325d44475ebde423b2e6f1281b1ec9c54f0adfa`：NEBULA backend checks #707、local backend validation #209、Jekyll site CI #796 均 success。
 - [ ] 真实 Clerk + Cloudflare D1/R2 双账户端到端验证仍待隔离云端资源；未部署正式 Worker、未迁移正式数据。
+
+
+## 2026-11-13: close the R2 download-stream consent window
+
+- [x] Security review found that the previous post-`bucket.get()` consent re-check happened before the returned R2 body stream was consumed. A consent revocation during stream consumption could therefore occur after the last check.
+- [x] `getObject()` now validates stored metadata size, buffers the R2 body under the repository's configured byte ceiling, verifies the received byte count against D1 metadata, and re-checks live category consent only after the body has been fully read.
+- [x] Added a regression test that revokes consent from the R2 stream's `pull()` callback; the download must reject before returning any bytes.
+- [x] Latest code/test head `e0fa8ecc35c32c2a370332bd5eabc594dc2562b7`: backend checks #710, local backend validation #213, and Jekyll site CI #800 all success.
+- [ ] The bounded buffer uses memory proportional to the configured object ceiling (10 MiB in Worker production defaults); large-object streaming/download design remains a separate future requirement.
+- [ ] Cloudflare R2 stream behavior and live consent revocation under real concurrent network traffic still require isolated Cloudflare E2E validation.
