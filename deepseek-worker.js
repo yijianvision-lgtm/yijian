@@ -203,9 +203,9 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
   if (path === "/sync/records") {
     const type = url.searchParams.get("type");
     if (!type) return jsonResponse({ error: "Missing record type." }, 400, cors);
-    // Re-read the server-side ledger at the D1 operation boundary instead of
-    // relying only on the request-start consent snapshot.
-    await consentRepository.requireCategory(type);
+    // Reads and writes re-check live consent at the D1 boundary. Owner-
+    // initiated deletion is intentionally available after pause/revocation.
+    if (request.method !== "DELETE") await consentRepository.requireCategory(type);
     const repository = createNebulaD1Repository({ db: env.NEBULA_DB, authContext, syncConsent: consent });
     if (request.method === "GET") {
       const after = url.searchParams.get("after") || null;
