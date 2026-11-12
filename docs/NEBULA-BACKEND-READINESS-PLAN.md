@@ -264,5 +264,5 @@
 - [x] 系统 scheduler 与 owner-scoped recovery 均在 R2 删除成功后清除 `deleting` 元数据；processing lease 仍通过 lease_expires_at 做条件删除。
 - [x] SQLite 集成测试覆盖：最近 30 秒内创建的 delete intent 即使未满一小时也能恢复；R2 首次删除失败后 scheduler 删除对象并清除 D1 元数据和 intent。
 - [x] R2 仓储与 Worker API 回归测试覆盖 D1 batch 持久化和撤销授权后仍允许用户删除自己的云端副本。
-- [ ] 最新 CI 正在运行；以最新分支 HEAD 对应的三个 workflow 结果作为最终验收依据。
+- [x] 最新代码/测试 head `e6ede49a3cfd66989477570fa1d0e65df5b664c5`：NEBULA backend checks #697、local backend validation #199、Jekyll site CI #786 均 success；SQLite 实际迁移/SQL、删除失败自动恢复、即时 delete intent 资格、Worker API 和本地 Wrangler D1/R2 smoke 均通过。
 - [ ] Cloudflare 真实 D1 batch 事务、R2 删除幂等与 Cron 时序仍待隔离云端验证；当前证据来自 SQLite、Fake R2 与本地 Wrangler。
