@@ -242,7 +242,7 @@ db.consentEnabled = true;
 bucket.beforePut = async () => { db.consentEnabled = false; };
 await assert.rejects(
   revocationRaceRepo.putObject({ category: "private-files", body: new Uint8Array([5]) }),
-  /authorization or cleanup intent changed/
+  /Object upload did not complete/
 );
 bucket.beforePut = null;
 assert.equal(bucket.objects.has(fifthKey), false,
