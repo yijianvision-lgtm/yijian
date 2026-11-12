@@ -11,6 +11,7 @@ class FakeD1 {
   failMetadataDelete = 0;
   failMetadataInsert = 0;
   failCleanupDelete = 0;
+  consentEnabled = true;
   cleanup = new Map();
   prepare(sql) {
     const call = { sql, values: [] };
@@ -63,6 +64,9 @@ class FakeD1 {
               this.failMetadataInsert -= 1;
               throw new Error("simulated metadata insert failure");
             }
+            if (sql.includes("nebula_sync_consents") && !this.consentEnabled) {
+              return { meta: { changes: 0 } };
+            }
             this.row = {
               owner_id: values[0], object_id: values[1], category: values[2], object_key: values[3],
               content_type: values[4], size_bytes: values[5], status: "active", created_at: values[6]
@@ -85,7 +89,11 @@ class FakeD1 {
 class FakeR2 {
   objects = new Map();
   failDeletes = 0;
-  async put(key, body, options) { this.objects.set(key, { body, options }); }
+  beforePut = null;
+  async put(key, body, options) {
+    if (this.beforePut) await this.beforePut(key, body, options);
+    this.objects.set(key, { body, options });
+  }
   async get(key) { const value = this.objects.get(key); return value ? { body: value.body } : null; }
   async delete(key) {
     if (this.failDeletes > 0) {
@@ -109,6 +117,10 @@ const expectedKey = "owners/" + ownerA + "/private-files/" + fixedId;
 assert.ok(bucket.objects.has(expectedKey));
 assert.equal(db.calls[0].values[0], ownerA);
 assert.equal(db.calls[0].values[3], expectedKey);
+const firstMetadataCommit = db.calls.find(call => call.sql.startsWith("INSERT INTO nebula_objects"));
+assert.match(firstMetadataCommit.sql, /nebula_sync_consents/,
+  "The final metadata commit must atomically re-check the live server-side consent ledger.");
+assert.deepEqual(firstMetadataCommit.values.slice(-2), [ownerA, "private-files"]);
 assert.equal((await repo.getObject("private-files", fixedId)).body.byteLength, 5);
 assert.deepEqual(await repo.listObjects("private-files", { limit: 1000 }), []);
 assert.ok(consentCalls.length >= 3);
@@ -200,6 +212,27 @@ assert.deepEqual(await committedRepo.reconcilePendingUploads(), [
   { objectId: fourthId, action: "intent-cleared" }
 ]);
 assert.ok(bucket.objects.has(fourthKey), "A committed object must not be removed by cleanup reconciliation.");
+
+// Revoking consent while R2 is receiving the bytes must block the final D1
+// metadata commit. The uploaded bytes are compensated and the intent removed.
+const fifthId = "123e4567-e89b-12d3-a456-426614174005";
+const fifthKey = "owners/" + ownerA + "/private-files/" + fifthId;
+const revocationRaceRepo = createNebulaR2Repository({
+  bucket, db, authContext: { kind: "user", ownerId: ownerA }, consentRepository,
+  idFactory: () => fifthId, now: () => "2026-11-10T00:00:00.000Z"
+});
+db.consentEnabled = true;
+bucket.beforePut = async () => { db.consentEnabled = false; };
+await assert.rejects(
+  revocationRaceRepo.putObject({ category: "private-files", body: new Uint8Array([5]) }),
+  /authorization or cleanup intent changed/
+);
+bucket.beforePut = null;
+assert.equal(bucket.objects.has(fifthKey), false,
+  "An upload finishing after consent revocation must be compensated.");
+assert.equal(db.cleanup.has(fifthId), false,
+  "A rejected post-revocation upload must not retain an active cleanup intent.");
+db.consentEnabled = true;
 
 const migration = await readFile(new URL("../migrations/0003_owner_scoped_objects.sql", import.meta.url), "utf8");
 assert.match(migration, /PRIMARY KEY \(owner_id, category, object_id\)/);
