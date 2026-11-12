@@ -86,14 +86,9 @@ await consentA.setConsent({ status: "revoked", categories: ["graph"] });
 assert.equal(await repoA.getRecord("graph", "root"), null);
 assert.deepEqual(await repoA.listRecords("graph"), []);
 assert.equal((await repoA.putRecord("graph", "blocked", { title: "must not persist" })).changes, 0);
-assert.deepEqual(await repoA.deleteRecord("graph", "root"), { deleted: false });
-assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ?").get(ownerA).count, 1,
-  "Revocation must block reads and mutations without deleting existing cloud data.");
-
-// Re-enable A and verify normal deletion is restored.
-await consentA.setConsent({ status: "enabled", categories: ["graph"] });
 assert.deepEqual(await repoA.deleteRecord("graph", "root"), { deleted: true });
-assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ?").get(ownerA).count, 0);
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ?").get(ownerA).count, 0,
+  "Revocation blocks reads and writes but preserves the owner's ability to explicitly delete their own cloud data.");
 
 // Exercise the actual cleanup-claim SQL against SQLite, not only Fake D1.
 const cleanupNow = Date.parse("2026-11-13T12:00:00.000Z");
