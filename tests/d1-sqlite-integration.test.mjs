@@ -14,7 +14,8 @@ const migrations = [
   "0001_owner_scoped_records.sql",
   "0002_sync_consent_ledger.sql",
   "0003_owner_scoped_objects.sql",
-  "0004_r2_upload_cleanup_intents.sql"
+  "0004_r2_upload_cleanup_intents.sql",
+  "0005_r2_delete_intent_kind.sql"
 ];
 for (const migration of migrations) {
   const sql = await readFile(new URL("../migrations/" + migration, import.meta.url), "utf8");
@@ -201,14 +202,16 @@ const deleteBucket = {
     deleteObjects.delete(key);
   }
 };
+const deleteNow = () => "2026-11-12T11:59:30.000Z";
 const durableDeleteRepo = createNebulaR2Repository({
   bucket: deleteBucket, db: d1, authContext: authA, consentRepository: consentA,
-  idFactory: () => durableDeleteId, now
+  idFactory: () => durableDeleteId, now: deleteNow
 });
 await durableDeleteRepo.putObject({ category: "private-files", body: new Uint8Array([7]) });
 await assert.rejects(durableDeleteRepo.deleteObject("private-files", durableDeleteId), /simulated R2 delete outage/);
 assert.equal(db.prepare("SELECT status FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).status, "deleting");
 assert.equal(db.prepare("SELECT status FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).status, "pending");
+assert.equal(db.prepare("SELECT intent_kind FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).intent_kind, "delete");
 assert.equal(deleteObjects.has(durableDeleteKey), true);
 await reconcileNebulaR2UploadCleanup({
   db: d1, bucket: deleteBucket, now: () => Date.parse("2026-11-12T12:00:00.000Z")
