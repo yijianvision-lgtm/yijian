@@ -194,7 +194,9 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
 
   const consent = await consentRepository.getConsent();
   const isOwnerInitiatedObjectDeletion = /^\/sync\/objects\/[0-9a-f-]{36}$/.test(path) && request.method === "DELETE";
-  if ((!consent || consent.status !== "enabled") && !isOwnerInitiatedObjectDeletion) {
+  const isOwnerInitiatedRecordDeletion = path === "/sync/records" && request.method === "DELETE";
+  if ((!consent || consent.status !== "enabled") &&
+      !isOwnerInitiatedObjectDeletion && !isOwnerInitiatedRecordDeletion) {
     return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
   }
 
