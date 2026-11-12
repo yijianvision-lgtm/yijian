@@ -1,5 +1,5 @@
-# LOCAL ONLY. This config uses Wrangler/Miniflare local bindings.
-# Do not add remote = true to either binding.
+# LOCAL ONLY. Wrangler/Miniflare creates local D1 and R2 simulations.
+# Never set remote = true here. The all-zero D1 ID is a local placeholder.
 name = "nebula-private-local"
 main = "deepseek-worker.js"
 compatibility_date = "2026-11-06"
@@ -11,6 +11,7 @@ DEEPSEEK_MODEL = "deepseek-v4-pro"
 [[d1_databases]]
 binding = "NEBULA_DB"
 database_name = "nebula-private-local"
+database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
