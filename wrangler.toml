@@ -3,6 +3,11 @@ main = "deepseek-worker.js"
 compatibility_date = "2026-11-06"
 workers_dev = true
 
+# Scheduled cleanup is inert until isolated test D1/R2 bindings are configured.
+# It only processes upload intents at least one hour old, in batches of 50.
+[triggers]
+crons = ["*/15 * * * *"]
+
 [vars]
 DEEPSEEK_MODEL = "deepseek-v4-pro"
 
