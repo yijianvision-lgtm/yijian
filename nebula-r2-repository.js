@@ -262,7 +262,7 @@ export function createNebulaR2Repository({
           "UPDATE nebula_objects SET status = 'deleting', updated_at = ? WHERE owner_id = ? AND category = ? AND object_id = ? AND status IN ('active', 'deleting')"
         ).bind(updatedAt, ownerId, safeCategory, safeId),
         db.prepare(
-          "INSERT INTO nebula_object_cleanup (owner_id, object_id, category, object_key, created_at, status, lease_expires_at) SELECT owner_id, object_id, category, object_key, ?, 'pending', NULL FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting' ON CONFLICT(owner_id, category, object_id) DO UPDATE SET created_at = excluded.created_at, status = 'pending', lease_expires_at = NULL"
+          "INSERT INTO nebula_object_cleanup (owner_id, object_id, category, object_key, created_at, status, lease_expires_at) SELECT owner_id, object_id, category, object_key, ?, 'pending', NULL FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting' ON CONFLICT(owner_id, category, object_id) DO UPDATE SET created_at = CASE WHEN nebula_object_cleanup.status = 'processing' THEN nebula_object_cleanup.created_at ELSE excluded.created_at END, status = CASE WHEN nebula_object_cleanup.status = 'processing' THEN 'processing' ELSE 'pending' END, lease_expires_at = CASE WHEN nebula_object_cleanup.status = 'processing' THEN nebula_object_cleanup.lease_expires_at ELSE NULL END"
         ).bind(updatedAt, ownerId, safeCategory, safeId)
       ]);
       await bucket.delete(row.object_key);
