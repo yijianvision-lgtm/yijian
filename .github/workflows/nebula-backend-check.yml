@@ -25,6 +25,8 @@ jobs:
           node --input-type=module --check < nebula-sync-consent.js
           node --input-type=module --check < nebula-r2-repository.js
           node --input-type=module --check < nebula-r2-cleanup.js
+      - name: Verify Wrangler environment isolation
+        run: node tests/wrangler-config-safety.test.mjs
       - name: Install IndexedDB test shim
         run: npm install --no-save fake-indexeddb@6.2.4
       - name: Check inline preview JavaScript syntax
