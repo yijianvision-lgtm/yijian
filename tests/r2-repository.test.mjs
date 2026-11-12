@@ -50,7 +50,8 @@ class FakeD1 {
               return { meta: { changes: 1 } };
             }
             return { meta: { changes: 0 } };
-          } else if (sql.startsWith("UPDATE nebula_object_cleanup SET status = 'pending'")) {
+          }
+          else if (sql.startsWith("UPDATE nebula_object_cleanup SET status = 'pending'")) {
             const item = this.cleanup.get(values[2]);
             if (item && item.status === "uploading") {
               item.status = "pending";
