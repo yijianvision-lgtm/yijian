@@ -93,17 +93,17 @@ export function createNebulaR2Repository({
       const objectKey = "owners/" + ownerId + "/" + safeCategory + "/" + objectId;
       const createdAt = now();
       if (typeof createdAt !== "string" || !Number.isFinite(Date.parse(createdAt))) throw new TypeError("Invalid repository timestamp.");
-      // Persist a cleanup intent before touching R2. If the subsequent D1
-      // metadata write fails and R2 compensation also fails, this row remains
-      // as a durable recovery handle instead of creating an invisible orphan.
+      // Persist an uploading intent before touching R2. The scheduler will not
+      // claim it until the one-hour upload window has elapsed. The final D1
+      // metadata insert is conditional on this intent still being uploading.
       await db.prepare(
         "INSERT INTO nebula_object_cleanup (owner_id, object_id, category, object_key, created_at) VALUES (?, ?, ?, ?, ?)"
       ).bind(ownerId, objectId, safeCategory, objectKey, createdAt).run();
       try {
         await bucket.put(objectKey, bytes, { httpMetadata: { contentType } });
         await db.prepare(
-          "INSERT INTO nebula_objects (owner_id, object_id, category, object_key, content_type, size_bytes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)"
-        ).bind(ownerId, objectId, safeCategory, objectKey, contentType, bytes.byteLength, createdAt, createdAt).run();
+          "INSERT INTO nebula_objects (owner_id, object_id, category, object_key, content_type, size_bytes, status, created_at, updated_at) SELECT ?, ?, ?, ?, ?, ?, 'active', ?, ? WHERE EXISTS (SELECT 1 FROM nebula_object_cleanup i WHERE i.owner_id = ? AND i.category = ? AND i.object_id = ? AND i.status = 'uploading')"
+        ).bind(ownerId, objectId, safeCategory, objectKey, contentType, bytes.byteLength, createdAt, createdAt, ownerId, safeCategory, objectId).run();
       } catch (error) {
         try {
           await bucket.delete(objectKey);
