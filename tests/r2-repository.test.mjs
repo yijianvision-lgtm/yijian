@@ -13,6 +13,11 @@ class FakeD1 {
   failCleanupDelete = 0;
   consentEnabled = true;
   cleanup = new Map();
+  async batch(statements) {
+    const results = [];
+    for (const statement of statements) results.push(await statement.run());
+    return results;
+  }
   prepare(sql) {
     const call = { sql, values: [] };
     this.calls.push(call);
@@ -32,8 +37,19 @@ class FakeD1 {
           : ({ results: [] }),
         run: async () => {
           if (sql.startsWith("INSERT INTO nebula_object_cleanup")) {
-            const item = { owner_id: values[0], object_id: values[1], category: values[2], object_key: values[3], created_at: values[4], status: "uploading" };
-            this.cleanup.set(values[1], item);
+            if (sql.includes("SELECT owner_id, object_id")) {
+              if (this.row?.status === "deleting" && this.row.owner_id === values[1] &&
+                  this.row.category === values[2] && this.row.object_id === values[3]) {
+                this.cleanup.set(values[3], {
+                  owner_id: this.row.owner_id, object_id: this.row.object_id,
+                  category: this.row.category, object_key: this.row.object_key,
+                  created_at: values[0], status: "pending", lease_expires_at: null
+                });
+              }
+            } else {
+              const item = { owner_id: values[0], object_id: values[1], category: values[2], object_key: values[3], created_at: values[4], status: "uploading" };
+              this.cleanup.set(values[1], item);
+            }
           } else if (sql.startsWith("DELETE FROM nebula_object_cleanup")) {
             if (this.failCleanupDelete > 0) {
               this.failCleanupDelete -= 1;
@@ -143,18 +159,22 @@ await assert.rejects(repo.getObject("private-files", "../" + fixedId), /Invalid 
 assert.throws(() => createNebulaR2Repository({ bucket, db, authContext: { kind: "shared-service" }, consentRepository }), /verified user identity/);
 assert.throws(() => createNebulaR2Repository({ bucket, db, authContext: { kind: "user", ownerId: ownerA } }), /server-side sync consent/);
 
-// R2 deletion failure leaves D1 metadata in "deleting" state; retry must
-// resume cleanup instead of losing the object reference.
+// R2 deletion failure leaves a durable pending intent. User-scoped
+// reconciliation must finish it without requiring the user to retry manually.
 bucket.failDeletes = 1;
 await assert.rejects(repo.deleteObject("private-files", fixedId), /simulated R2 delete failure/);
 assert.equal(db.row.status, "deleting");
+assert.equal(db.cleanup.get(fixedId).status, "pending");
 assert.ok(bucket.objects.has(expectedKey));
-assert.deepEqual(await repo.deleteObject("private-files", fixedId), { deleted: true });
+assert.deepEqual(await repo.reconcilePendingUploads(), [
+  { objectId: fixedId, action: "orphan-removed" }
+]);
 assert.equal(db.row, null);
+assert.equal(db.cleanup.has(fixedId), false);
 assert.equal(bucket.objects.has(expectedKey), false);
 
-// If R2 deletion succeeds but D1 metadata deletion fails, the retained
-// "deleting" row makes the next idempotent retry safe.
+// If R2 deletion succeeds but the final D1 batch fails, the durable intent
+// remains; reconciliation repeats the idempotent R2 delete and finishes.
 const secondId = "123e4567-e89b-12d3-a456-426614174001";
 const retryRepo = createNebulaR2Repository({
   bucket, db, authContext: { kind: "user", ownerId: ownerA }, consentRepository,
@@ -165,9 +185,13 @@ const secondKey = "owners/" + ownerA + "/private-files/" + second.objectId;
 db.failMetadataDelete = 1;
 await assert.rejects(retryRepo.deleteObject("private-files", second.objectId), /simulated metadata delete failure/);
 assert.equal(db.row.status, "deleting");
+assert.equal(db.cleanup.get(second.objectId).status, "pending");
 assert.equal(bucket.objects.has(secondKey), false);
-assert.deepEqual(await retryRepo.deleteObject("private-files", second.objectId), { deleted: true });
+assert.deepEqual(await retryRepo.reconcilePendingUploads(), [
+  { objectId: second.objectId, action: "orphan-removed" }
+]);
 assert.equal(db.row, null);
+assert.equal(db.cleanup.has(second.objectId), false);
 
 // If the D1 metadata insert and immediate R2 compensation both fail, the
 // pre-written cleanup intent must survive and allow a later retry to remove
