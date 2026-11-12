@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { createNebulaD1Repository } from "../nebula-d1-repository.js";
 import { createNebulaSyncConsentRepository } from "../nebula-sync-consent.js";
 import { reconcileNebulaR2UploadCleanup } from "../nebula-r2-cleanup.js";
+import { createNebulaR2Repository } from "../nebula-r2-repository.js";
 
 // Execute the actual Cloudflare D1 SQLite migrations and repository SQL against
 // Node's SQLite engine. This is stronger than the contract mocks, but is still
@@ -142,6 +143,35 @@ await reconcileNebulaR2UploadCleanup({
 });
 assert.deepEqual(commitFirstDeletes, []);
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_objects WHERE object_id = ?").get(commitFirstId).count, 1);
+
+// Exercise the real SQLite consent predicate in the R2 metadata INSERT.
+// Revocation during bucket.put must be observed by the final D1 commit itself.
+await consentA.setConsent({ status: "enabled", categories: ["graph", "private-files"] });
+const revocationRaceId = "123e4567-e89b-12d3-a456-426614174104";
+const revocationRaceKey = cleanupKey(revocationRaceId);
+const uploadedObjects = new Set();
+const raceBucket = {
+  async put(key) {
+    uploadedObjects.add(key);
+    await consentA.setConsent({ status: "revoked", categories: ["graph", "private-files"] });
+  },
+  async get(key) { return uploadedObjects.has(key) ? { body: new Uint8Array([1]) } : null; },
+  async delete(key) { uploadedObjects.delete(key); }
+};
+const r2RepoA = createNebulaR2Repository({
+  bucket: raceBucket, db: d1, authContext: authA, consentRepository: consentA,
+  idFactory: () => revocationRaceId, now
+});
+await assert.rejects(
+  r2RepoA.putObject({ category: "private-files", body: new Uint8Array([1]), contentType: "application/octet-stream" }),
+  /authorization or cleanup intent changed/
+);
+assert.equal(uploadedObjects.has(revocationRaceKey), false,
+  "R2 bytes written during a revoked upload must be compensated.");
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, revocationRaceId).count, 0,
+  "The actual SQLite D1 metadata INSERT must reject a commit after consent revocation.");
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?").get(ownerA, revocationRaceId).count, 0,
+  "Successful compensation must clear the rejected upload intent.");
 
 db.close();
 console.log("NEBULA SQLite migrations, consent and atomic R2 cleanup integration tests passed.");
