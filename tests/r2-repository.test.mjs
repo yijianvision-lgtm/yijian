@@ -24,7 +24,8 @@ class FakeD1 {
               item.owner_id === values[0] &&
               (sql.includes("status = 'pending'") ? (
                 item.status === "pending" ||
-                (item.status === "processing" && item.lease_expires_at <= values[1])
+                (item.status === "processing" && item.lease_expires_at <= values[1]) ||
+                (item.status === "uploading" && this.row?.object_id === item.object_id && this.row?.status === "active")
               ) : true)
             ) })
           : ({ results: [] }),
