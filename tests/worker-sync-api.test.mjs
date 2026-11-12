@@ -83,7 +83,7 @@ class MemoryD1 {
                 const row = db.objects.get([values[1], values[2], values[3]].join("|"));
                 if (row?.status === "deleting") db.cleanup.set([values[1], values[2], values[3]].join("|"), {
                   owner_id: row.owner_id, object_id: row.object_id, category: row.category,
-                  object_key: row.object_key, created_at: values[0], status: "pending", lease_expires_at: null
+                  object_key: row.object_key, created_at: values[0], status: "pending", lease_expires_at: null, intent_kind: "delete"
                 });
               } else {
                 db.cleanup.set([owner, values[2], values[1]].join("|"), {
