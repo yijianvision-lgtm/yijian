@@ -18,8 +18,9 @@
 
 ```bash
 npx wrangler whoami
+TEST_R2_BUCKET="nebula-private-test-unique-suffix"
 npx wrangler d1 create nebula-private-test
-npx wrangler r2 bucket create nebula-private-test-<随机后缀>
+npx wrangler r2 bucket create "$TEST_R2_BUCKET"
 ```
 
 记录 D1 返回的 database ID 和 R2 bucket 的唯一名称。不要把 API token、secret 或任何认证凭据写入仓库、聊天记录或提交内容。
@@ -120,7 +121,7 @@ npx wrangler deploy --config wrangler.test.toml
 
 ```bash
 npx wrangler delete --name nebula-private-test
-npx wrangler r2 bucket delete <唯一测试 bucket 名称>
+npx wrangler r2 bucket delete "$TEST_R2_BUCKET"
 npx wrangler d1 delete nebula-private-test
 ```
 
