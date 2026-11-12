@@ -1,5 +1,23 @@
 # NEBULA 隔离测试后台环境运行手册
 
+## 0. 无银行卡的本地 Worker + D1/R2 模拟（当前优先路径）
+
+本节不创建 Cloudflare 远程资源、不需要银行卡、不需要 Cloudflare 登录，也不部署 Worker。Wrangler 的本地开发由 Miniflare/workerd 提供本地 D1 与 R2 绑定；本地状态默认保存在 `.wrangler/state`，不会写入 Cloudflare 云端资源。仓库中的 `wrangler.local.example.toml` 是独立配置，严禁添加 `remote = true`。
+
+首次运行（需要本机安装 Node.js 22+）：
+
+```bash
+npx wrangler@latest --version
+npx wrangler@latest d1 migrations apply nebula-private-local --local --config wrangler.local.example.toml
+npx wrangler@latest dev --local --config wrangler.local.example.toml --ip 127.0.0.1 --port 8787
+```
+
+Wrangler 首次启动会建立本地绑定；如当前 Wrangler 版本要求先初始化绑定，请升级到支持本地自动资源初始化的 Wrangler 版本后再运行。D1 migration 命令只使用 `--local`，不得去掉。启动后访问 `http://127.0.0.1:8787`，本地 D1/R2 数据留在项目的 `.wrangler/state`。停止服务后可再次启动并继续使用本地数据；需要完全重置时，先停止 Wrangler，再删除 `.wrangler/state`。
+
+本地模式可验证 Worker 启动、绑定注入、D1 migration 与本地 R2 对象操作；它不能替代真实 Cloudflare D1/R2 的权限、网络、并发、Cron 调度和故障恢复验收，也不能证明 Clerk 测试实例/JWT真实配置有效。不得把本地通过写成云端验收通过。
+
+若本地启动提示缺少认证变量，不要填入生产 issuer、生产 token 或生产 API key；先使用专用测试身份配置。没有完成身份配置前，只能验收本地 Worker 启动与绑定，不进行受保护的双账户 API 验收。
+
 > **状态：准备就绪，尚未创建资源或部署。** 本文只提供隔离测试环境的操作步骤。任何创建 D1/R2、应用远程 migration、写入 Worker secrets 或部署 Worker 的操作，都必须在用户明确授权后执行。严禁将测试配置指向正式资源。
 
 ## 1. 隔离原则
