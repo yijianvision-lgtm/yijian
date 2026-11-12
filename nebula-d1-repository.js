@@ -102,10 +102,11 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
     async deleteRecord(recordType, recordId) {
       const type = assertRecordType(recordType);
       const id = assertRecordId(recordId);
-      assertConsentedCategory(type);
+      // Owner-initiated deletion remains available after sync consent is
+      // paused or revoked. The server-derived owner scope is still mandatory.
       const result = await db.prepare(
-        "DELETE FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?))"
-      ).bind(ownerId, type, id, ownerId, type).run();
+        "DELETE FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ?"
+      ).bind(ownerId, type, id).run();
       return Object.freeze({ deleted: Number(result.meta?.changes || 0) > 0 });
     }
   });
