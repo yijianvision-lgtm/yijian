@@ -102,10 +102,10 @@ export function createNebulaR2Repository({
       try {
         await bucket.put(objectKey, bytes, { httpMetadata: { contentType } });
         const committed = await db.prepare(
-          "INSERT INTO nebula_objects (owner_id, object_id, category, object_key, content_type, size_bytes, status, created_at, updated_at) SELECT ?, ?, ?, ?, ?, ?, 'active', ?, ? WHERE EXISTS (SELECT 1 FROM nebula_object_cleanup i WHERE i.owner_id = ? AND i.category = ? AND i.object_id = ? AND i.status = 'uploading')"
-        ).bind(ownerId, objectId, safeCategory, objectKey, contentType, bytes.byteLength, createdAt, createdAt, ownerId, safeCategory, objectId).run();
+          "INSERT INTO nebula_objects (owner_id, object_id, category, object_key, content_type, size_bytes, status, created_at, updated_at) SELECT ?, ?, ?, ?, ?, ?, 'active', ?, ? WHERE EXISTS (SELECT 1 FROM nebula_object_cleanup i WHERE i.owner_id = ? AND i.category = ? AND i.object_id = ? AND i.status = 'uploading') AND EXISTS (SELECT 1 FROM nebula_sync_consents c, json_each(c.categories_json) AS allowed_category WHERE c.owner_id = ? AND c.status = 'enabled' AND allowed_category.value = ?)"
+        ).bind(ownerId, objectId, safeCategory, objectKey, contentType, bytes.byteLength, createdAt, createdAt, ownerId, safeCategory, objectId, ownerId, safeCategory).run();
         if (Number(committed?.meta?.changes || 0) !== 1) {
-          throw new Error("Upload intent was claimed before metadata commit.");
+          throw new Error("Upload authorization or cleanup intent changed before metadata commit.");
         }
       } catch (error) {
         try {
