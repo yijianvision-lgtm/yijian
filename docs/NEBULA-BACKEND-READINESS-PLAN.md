@@ -218,3 +218,15 @@
 - [ ] 超长上传与 scheduler 交错仍未通过原子状态机彻底消除；一小时宽限期只是风险缓解。后续需设计上传完成与 cleanup claim 的原子竞争协议，并增加双 scheduler 并发、上传提交交错及 R2 成功/D1 intent 删除失败测试。
 
 - CI note: first run of this fairness patch caught an outdated expected action label in the test; the assertion was corrected in the follow-up commit. The corrected head still requires a fresh workflow run before this patch can be called green.
+
+
+## 2026-11-13：R2 上传提交与 cleanup scheduler 原子竞争协议（代码已提交，CI 待验证）
+
+- [x] cleanup intent 状态细化为 `uploading`、`pending`、`processing`、`quarantined`；上传先登记为 `uploading`，不再被普通 pending 批次立即认领。
+- [x] 上传元数据采用条件 INSERT ... SELECT：只有 cleanup intent 仍为 `uploading` 时才能提交 active metadata；若 scheduler 已认领，上传提交失败并进入 R2 补偿路径。
+- [x] scheduler 使用单条条件 UPDATE 原子认领 intent，并在 SQL 内排除已有 active metadata 的对象；双 scheduler 对同一条记录竞争时，只有一个能成功认领。
+- [x] processing 认领带 30 分钟 lease；scheduler 崩溃后可在 lease 到期后重试。R2 delete 幂等，D1 intent 仅在匹配 processing lease 时清除。
+- [x] 保留至少一小时上传宽限期、50 条批次上限和非法记录 quarantine。
+- [ ] 本轮代码已提交，GitHub Actions 正在验证；Fake D1 测试并不等于真实并发 D1/R2 测试。
+- [ ] 30 分钟 lease 是崩溃恢复窗口，不是 R2 外部操作的 fencing token；仍需真实 Cloudflare D1/R2 环境验证超时、重复删除、长时间挂起及跨服务部分失败。
+- [ ] migration 0004 尚未应用到真实 D1；Worker 未部署，Cron 未启用。
