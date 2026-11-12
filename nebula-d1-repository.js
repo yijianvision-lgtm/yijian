@@ -30,14 +30,18 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
     throw new TypeError("A verified user identity with a server-derived owner ID is required.");
   }
   const ownerId = authContext.ownerId;
-  if (!syncConsent || syncConsent.enabled !== true || !Array.isArray(syncConsent.categories) ||
-      !syncConsent.categories.length || typeof syncConsent.confirmedAt !== "string" ||
-      !Number.isFinite(Date.parse(syncConsent.confirmedAt))) {
-    throw new TypeError("Server-verified, explicit cloud-sync consent is required.");
+  const consentSnapshot = syncConsent || { enabled: false, categories: [] };
+  if (typeof consentSnapshot !== "object" || !Array.isArray(consentSnapshot.categories)) {
+    throw new TypeError("Invalid server-side cloud-sync consent snapshot.");
   }
-  const consentCategories = new Set(syncConsent.categories.filter(value => typeof value === "string"));
-  if (!consentCategories.size) throw new TypeError("Cloud-sync consent has no valid categories.");
+  if (consentSnapshot.enabled === true &&
+      (typeof consentSnapshot.confirmedAt !== "string" || !Number.isFinite(Date.parse(consentSnapshot.confirmedAt)))) {
+    throw new TypeError("Enabled cloud-sync consent requires a valid confirmation timestamp.");
+  }
+  const consentEnabledSnapshot = consentSnapshot.enabled === true;
+  const consentCategories = new Set(consentSnapshot.categories.filter(value => typeof value === "string"));
   const assertConsentedCategory = recordType => {
+    if (!consentEnabledSnapshot) throw new Error("Cloud sync is not enabled for this account.");
     if (!consentCategories.has(recordType)) throw new Error("Cloud-sync consent does not cover this record category.");
   };
 
