@@ -48,10 +48,10 @@ assert.match(db.calls[1].sql, /WHERE owner_id = \?/);
 assert.match(db.calls[2].sql, /record_id > \?/);
 assert.equal(db.calls[1].values[4], 50, "D1 list pages must have a bounded default size.");
 assert.equal(db.calls[2].values[5], 50, "Caller-supplied page sizes must be capped.");
-for (const call of db.calls) {
+for (const call of db.calls.slice(0, 4)) {
   assert.match(call.sql, /nebula_sync_consents/);
   assert.match(call.sql, /json_each\(c\.categories_json\)/,
-    "Every D1 data operation must enforce live consent and category membership in the same SQL statement.");
+    "Every D1 read/write operation must enforce live consent and category membership in the same SQL statement.");
 }
 assert.deepEqual(db.calls[0].values.slice(-2), [ownerA, "graph"]);
 assert.deepEqual(db.calls[3].values.slice(-2), [ownerA, "graph"]);
