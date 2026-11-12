@@ -8,9 +8,10 @@ CREATE TABLE IF NOT EXISTS nebula_object_cleanup (
   category TEXT NOT NULL CHECK (length(category) BETWEEN 1 AND 64 AND substr(category, 1, 1) GLOB '[a-z]' AND category NOT GLOB '*[^a-z0-9_-]*'),
   object_key TEXT NOT NULL CHECK (object_key = 'owners/' || owner_id || '/' || category || '/' || object_id),
   created_at TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'quarantined')),
+  status TEXT NOT NULL DEFAULT 'uploading' CHECK (status IN ('uploading', 'pending', 'processing', 'quarantined')),
+  lease_expires_at TEXT,
   PRIMARY KEY (owner_id, category, object_id),
   UNIQUE (object_key)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS idx_nebula_object_cleanup_created
-  ON nebula_object_cleanup (status, created_at, owner_id);
+  ON nebula_object_cleanup (status, created_at, owner_id, lease_expires_at);
