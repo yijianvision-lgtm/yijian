@@ -206,3 +206,13 @@
 - [ ] 当前只有代码与 CI 测试；未部署 Worker，cron 尚未在 Cloudflare 实际启用。
 - [ ] 必须在隔离测试环境应用 migration 0004 并绑定独立 D1/R2 后，验证 scheduled event、D1/R2 部分失败、并发上传超过一小时的边界及重试行为。
 - [ ] 定时任务没有独立审计表或告警通道；当前返回批次结果供运行时执行，不输出对象正文或用户数据。后续真实环境需补充脱敏指标、失败告警和运维可观测性。
+
+
+## 2026-11-12：R2 cleanup 批次公平性修复
+
+- [x] 审计发现非法 cleanup intent 会一直留在最旧的 pending 列表中，可能长期占据每轮 50 条批次名额。
+- [x] migration 0004 增加 status（pending/quarantined）字段，并调整索引优先支持 pending 扫描。
+- [x] 调度器只读取 pending intent；发现 owner/category/object ID/key/timestamp 不符合约束时，将该行标记为 quarantined，保留记录供人工审查，不会调用 R2 删除，也不再重复阻塞后续批次。
+- [x] 增加 55 条非法记录压在有效记录之前的公平性测试，验证第二轮能处理后续有效对象；SQLite migration 集成测试检查状态字段。
+- [ ] 仍需在真实 D1 验证 migration 兼容性及定时任务执行行为。
+- [ ] 超长上传与 scheduler 交错仍未通过原子状态机彻底消除；一小时宽限期只是风险缓解。后续需设计上传完成与 cleanup claim 的原子竞争协议，并增加双 scheduler 并发、上传提交交错及 R2 成功/D1 intent 删除失败测试。
