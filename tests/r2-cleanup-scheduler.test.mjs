@@ -83,7 +83,7 @@ const result = await reconcileNebulaR2UploadCleanup({
 });
 assert.equal(result.scanned, 4, "Fresh intents must remain outside the stale cleanup window.");
 assert.deepEqual(result.outcomes.map(item => item.action), [
-  "intent-cleared", "orphan-removed", "retry-pending", "invalid-intent"
+  "intent-cleared", "orphan-removed", "retry-pending", "invalid-quarantined"
 ]);
 assert.ok(bucket.deleted.includes("owners/" + ownerB + "/private-files/" + orphanId));
 assert.ok(!bucket.deleted.includes("owners/" + ownerA + "/private-files/" + activeId),
