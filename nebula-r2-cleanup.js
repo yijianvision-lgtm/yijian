@@ -32,7 +32,7 @@ export async function reconcileNebulaR2UploadCleanup({
   const cutoff = new Date(currentMs - staleAfterMs).toISOString();
   const leaseUntil = new Date(currentMs + 30 * 60 * 1000).toISOString();
   const pending = await db.prepare(
-    "SELECT owner_id, object_id, category, object_key, created_at, status FROM nebula_object_cleanup WHERE (status = 'pending' AND created_at <= ?) OR (status = 'uploading' AND created_at <= ?) OR (status = 'processing' AND lease_expires_at <= ?) ORDER BY created_at LIMIT ?"
+    "SELECT owner_id, object_id, category, object_key, created_at, status, intent_kind FROM nebula_object_cleanup WHERE (intent_kind = 'delete' AND status = 'pending') OR (status = 'pending' AND created_at <= ?) OR (status = 'uploading' AND created_at <= ?) OR (status = 'processing' AND lease_expires_at <= ?) ORDER BY created_at LIMIT ?"
   ).bind(cutoff, cutoff, new Date(currentMs).toISOString(), limit).all();
 
   const outcomes = [];
@@ -76,8 +76,8 @@ export async function reconcileNebulaR2UploadCleanup({
       // intent is still "uploading"; once claimed, that commit is rejected.
       // The NOT EXISTS predicate prevents claiming an already-committed object.
       const claim = await db.prepare(
-        "UPDATE nebula_object_cleanup SET status = 'processing', lease_expires_at = ? WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND ((status IN ('pending', 'uploading') AND created_at <= ?) OR (status = 'processing' AND lease_expires_at <= ?)) AND NOT EXISTS (SELECT 1 FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.object_id = ? AND o.status = 'active')"
-      ).bind(leaseUntil, ownerId, category, objectId, createdAt, cutoff, new Date(currentMs).toISOString(), ownerId, category, objectId).run();
+        "UPDATE nebula_object_cleanup SET status = 'processing', lease_expires_at = ? WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND ((status = 'pending' AND (intent_kind = 'delete' OR created_at <= ?)) OR (status = 'uploading' AND created_at <= ?) OR (status = 'processing' AND lease_expires_at <= ?)) AND NOT EXISTS (SELECT 1 FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.object_id = ? AND o.status = 'active')"
+      ).bind(leaseUntil, ownerId, category, objectId, createdAt, cutoff, cutoff, new Date(currentMs).toISOString(), ownerId, category, objectId).run();
       if (Number(claim?.meta?.changes || 0) !== 1) {
         const metadata = await db.prepare(
           "SELECT status FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? LIMIT 1"
