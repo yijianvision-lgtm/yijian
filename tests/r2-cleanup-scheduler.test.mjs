@@ -83,7 +83,8 @@ const make = (owner, id, createdAt, category = "private-files") => ({
   object_id: id,
   category,
   object_key: "owners/" + owner + "/" + category + "/" + id,
-  created_at: createdAt
+  created_at: createdAt,
+  status: "pending", intent_kind: "upload"
 });
 const activeId = "123e4567-e89b-12d3-a456-426614174010";
 const orphanId = "123e4567-e89b-12d3-a456-426614174011";
@@ -95,7 +96,7 @@ db.intents = [
   make(ownerA, activeId, old),
   make(ownerB, orphanId, old),
   make(ownerA, failedId, old),
-  make(ownerA, freshId, fresh),
+  make(ownerA, freshId, fresh), status: "uploading",
   { ...make(ownerA, invalidId, old), object_key: "owners/" + ownerB + "/private-files/" + invalidId },
   { ...make(ownerA, deleteId, fresh), status: "pending", intent_kind: "delete" }
 ];
