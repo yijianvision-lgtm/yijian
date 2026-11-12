@@ -49,8 +49,10 @@ class MemoryD1 {
         const owner = values[0];
         return {
           async first() {
-            if (sql.includes("FROM nebula_sync_consents")) return db.consents.get(owner) || null;
+            // The consent-gated object SELECT contains both table names;
+            // resolve its outer metadata table before its consent subquery.
             if (sql.includes("FROM nebula_objects")) return db.objects.get([owner, values[1], values[2]].join("|")) || null;
+            if (sql.includes("FROM nebula_sync_consents")) return db.consents.get(owner) || null;
             if (sql.includes("FROM nebula_records")) return db.records.get([owner, values[1], values[2]].join("|")) || null;
             return null;
           },
