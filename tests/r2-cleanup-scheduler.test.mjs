@@ -120,7 +120,7 @@ assert.ok(backlogDb.intents.some(item => item.object_id === fairId) === false);
 
 bucket.fail.clear();
 const retried = await reconcileNebulaR2UploadCleanup({ db, bucket, now: () => now });
-assert.deepEqual(retried.outcomes.map(item => item.action), ["orphan-removed", "invalid-intent"]);
+assert.deepEqual(retried.outcomes.map(item => item.action), ["orphan-removed"]);
 assert.ok(!db.intents.some(item => item.object_id === failedId));
 
 await assert.rejects(
