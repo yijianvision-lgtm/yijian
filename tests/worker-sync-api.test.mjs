@@ -247,6 +247,11 @@ try {
   const removeAfterRevocation = await call(objectPath, { method: "DELETE" });
   assert.equal(removeAfterRevocation.status, 200, "Owners must retain the ability to delete their own cloud copies after revocation.");
   assert.equal(bucket.values.has("owners/" + [...db.consents.keys()][0] + "/private-files/" + object.objectId), false);
+  const removeRecordAfterRevocation = await call("/sync/records?type=graph&id=root-1", { method: "DELETE" });
+  assert.equal(removeRecordAfterRevocation.status, 200,
+    "Owners must retain the ability to delete their own cloud records after revocation.");
+  assert.equal(db.records.has([...db.consents.keys()][0] + "|graph|root-1"), false,
+    "Revoked users must be able to remove their own cloud record without restoring sync consent.");
   console.log("NEBULA authenticated private sync API integration tests passed.");
 } finally {
   globalThis.fetch = originalFetch;
