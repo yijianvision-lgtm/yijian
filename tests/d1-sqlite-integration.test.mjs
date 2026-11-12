@@ -35,6 +35,18 @@ const d1 = {
         };
       }
     };
+  },
+  async batch(statements) {
+    db.exec("BEGIN");
+    try {
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      db.exec("COMMIT");
+      return results;
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
   }
 };
 
@@ -172,6 +184,38 @@ assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_objects WHERE owne
   "The actual SQLite D1 metadata INSERT must reject a commit after consent revocation.");
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?").get(ownerA, revocationRaceId).count, 0,
   "Successful compensation must clear the rejected upload intent.");
+
+// A user-requested delete must atomically persist a pending cleanup intent.
+// If R2 fails, the scheduled reconciler completes the deletion and removes
+// both the inaccessible D1 metadata row and the durable intent.
+await consentA.setConsent({ status: "enabled", categories: ["graph", "private-files"] });
+const durableDeleteId = "123e4567-e89b-12d3-a456-426614174105";
+const durableDeleteKey = cleanupKey(durableDeleteId);
+const deleteObjects = new Set();
+let failFirstDelete = true;
+const deleteBucket = {
+  async put(key) { deleteObjects.add(key); },
+  async get(key) { return deleteObjects.has(key) ? { body: new Uint8Array([7]) } : null; },
+  async delete(key) {
+    if (failFirstDelete) { failFirstDelete = false; throw new Error("simulated R2 delete outage"); }
+    deleteObjects.delete(key);
+  }
+};
+const durableDeleteRepo = createNebulaR2Repository({
+  bucket: deleteBucket, db: d1, authContext: authA, consentRepository: consentA,
+  idFactory: () => durableDeleteId, now
+});
+await durableDeleteRepo.putObject({ category: "private-files", body: new Uint8Array([7]) });
+await assert.rejects(durableDeleteRepo.deleteObject("private-files", durableDeleteId), /simulated R2 delete outage/);
+assert.equal(db.prepare("SELECT status FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).status, "deleting");
+assert.equal(db.prepare("SELECT status FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).status, "pending");
+assert.equal(deleteObjects.has(durableDeleteKey), true);
+await reconcileNebulaR2UploadCleanup({
+  db: d1, bucket: deleteBucket, now: () => Date.parse("2026-11-12T12:00:00.000Z")
+});
+assert.equal(deleteObjects.has(durableDeleteKey), false);
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).count, 0);
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).count, 0);
 
 db.close();
 console.log("NEBULA SQLite migrations, consent and atomic R2 cleanup integration tests passed.");
