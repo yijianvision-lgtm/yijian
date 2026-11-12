@@ -5,7 +5,7 @@ const ownerA = "own_" + "a".repeat(64);
 const ownerB = "own_" + "b".repeat(64);
 const now = Date.parse("2026-11-12T12:00:00.000Z");
 const old = "2026-11-12T10:00:00.000Z";
-const fresh = "2026-11-12T11:30:00.000Z";
+const fresh = "2026-11-12T11:45:00.000Z";
 
 class FakeD1 {
   intents = [];
