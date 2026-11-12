@@ -266,3 +266,14 @@
 - [x] R2 仓储与 Worker API 回归测试覆盖 D1 batch 持久化和撤销授权后仍允许用户删除自己的云端副本。
 - [x] 最新代码/测试 head `e6ede49a3cfd66989477570fa1d0e65df5b664c5`：NEBULA backend checks #697、local backend validation #199、Jekyll site CI #786 均 success；SQLite 实际迁移/SQL、删除失败自动恢复、即时 delete intent 资格、Worker API 和本地 Wrangler D1/R2 smoke 均通过。
 - [ ] Cloudflare 真实 D1 batch 事务、R2 删除幂等与 Cron 时序仍待隔离云端验证；当前证据来自 SQLite、Fake R2 与本地 Wrangler。
+
+
+## 2026-11-13: preserve owner deletion rights after sync revocation
+
+- [x] 审查发现记录型数据与文件型数据行为不一致：文件允许撤销后删除本人云端副本，但记录删除仍被同步授权检查阻断。
+- [x] `DELETE /sync/records` 现在与 `DELETE /sync/objects/:id` 一样，仅允许经过验证的个人用户删除自己 owner scope 内的数据；其他读取/写入仍必须通过有效授权检查。
+- [x] D1 `deleteRecord()` 只按服务端 owner_id + record_type + record_id 删除，不再要求同步授权有效；读/写仍由请求快照和 SQL 实时授权双重限制。
+- [x] D1 仓储允许以 revoked/paused/无授权快照构造只可删除的实例；任何读取和写入仍会失败关闭。
+- [x] Worker API 与真实 SQLite 集成测试覆盖：撤销后读取被拒绝、本人记录删除成功、删除后记录确实不存在。
+- [x] 最新代码/测试 head `1325d44475ebde423b2e6f1281b1ec9c54f0adfa`：NEBULA backend checks #707、local backend validation #209、Jekyll site CI #796 均 success。
+- [ ] 真实 Clerk + Cloudflare D1/R2 双账户端到端验证仍待隔离云端资源；未部署正式 Worker、未迁移正式数据。
