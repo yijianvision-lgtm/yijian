@@ -96,7 +96,7 @@ db.intents = [
   make(ownerA, activeId, old),
   make(ownerB, orphanId, old),
   make(ownerA, failedId, old),
-  make(ownerA, freshId, fresh), status: "uploading",
+  { ...make(ownerA, freshId, fresh), status: "uploading" },
   { ...make(ownerA, invalidId, old), object_key: "owners/" + ownerB + "/private-files/" + invalidId },
   { ...make(ownerA, deleteId, fresh), status: "pending", intent_kind: "delete" }
 ];
