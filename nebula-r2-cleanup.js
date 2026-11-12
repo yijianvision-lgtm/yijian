@@ -59,6 +59,19 @@ export async function reconcileNebulaR2UploadCleanup({
     }
 
     try {
+      // Fast path for already-committed uploads. The claim below repeats this
+      // protection in its own atomic SQL predicate to close the race window.
+      const existingMetadata = await db.prepare(
+        "SELECT status FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? LIMIT 1"
+      ).bind(ownerId, category, objectId).first();
+      if (existingMetadata?.status === "active") {
+        await db.prepare(
+          "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status IN ('uploading', 'pending')"
+        ).bind(ownerId, category, objectId, createdAt).run();
+        outcomes.push({ action: "intent-cleared" });
+        continue;
+      }
+
       // Claim the intent atomically. Upload metadata can only commit while its
       // intent is still "uploading"; once claimed, that commit is rejected.
       // The NOT EXISTS predicate prevents claiming an already-committed object.
