@@ -38,6 +38,8 @@ const d1 = {
 
 assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'nebula_object_cleanup'").get(),
   "The R2 upload cleanup-intent migration must be applied in SQLite integration.");
+assert.ok(db.prepare("PRAGMA table_info(nebula_object_cleanup)").all().some(column => column.name === "status"),
+  "Cleanup intents must expose pending/quarantined state for fair scheduler batches.");
 
 const ownerA = "own_" + "a".repeat(64);
 const ownerB = "own_" + "b".repeat(64);
