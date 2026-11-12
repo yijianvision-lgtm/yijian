@@ -253,3 +253,16 @@
 - [x] Added ignore rules for local filled test config, local vars, environment files, Wrangler state and node_modules.
 - [x] Latest PR head `85dd5ad34b63530972938ad3b0c36b7ff322fc47`: backend checks #664, local backend validation #166, Jekyll site CI #753 all success.
 - [ ] Cloudflare D1/R2/Worker resources have not been created; no remote migration, secret write or deploy was executed. User authorization remains required before those actions.
+
+
+## 2026-11-13: durable user-requested R2 deletion recovery
+
+- [x] 审查发现旧删除流程在 R2 删除失败或 D1 收尾失败时，可能长期留下 `deleting` 元数据；旧流程没有为主动删除建立独立、持久的恢复意图。
+- [x] `deleteObject()` 现在使用 D1 `batch()` 原子地将对象标记为 `deleting` 并写入 cleanup intent；R2 删除失败时，intent 保留，不丢失对象定位信息。
+- [x] R2 删除成功后，D1 通过 batch 收尾；若收尾失败，scheduler 可重复执行幂等 R2 delete，再删除 `deleting` 元数据与 intent。
+- [x] 新增 migration 0005 `intent_kind`，区分 upload/delete：上传 intent 继续保留一小时安全宽限；用户主动删除 intent 立即可被 scheduler 认领。
+- [x] 系统 scheduler 与 owner-scoped recovery 均在 R2 删除成功后清除 `deleting` 元数据；processing lease 仍通过 lease_expires_at 做条件删除。
+- [x] SQLite 集成测试覆盖：最近 30 秒内创建的 delete intent 即使未满一小时也能恢复；R2 首次删除失败后 scheduler 删除对象并清除 D1 元数据和 intent。
+- [x] R2 仓储与 Worker API 回归测试覆盖 D1 batch 持久化和撤销授权后仍允许用户删除自己的云端副本。
+- [ ] 最新 CI 正在运行；以最新分支 HEAD 对应的三个 workflow 结果作为最终验收依据。
+- [ ] Cloudflare 真实 D1 batch 事务、R2 删除幂等与 Cron 时序仍待隔离云端验证；当前证据来自 SQLite、Fake R2 与本地 Wrangler。
