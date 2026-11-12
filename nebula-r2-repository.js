@@ -147,7 +147,7 @@ export function createNebulaR2Repository({
       if (!Number.isFinite(currentMs)) throw new TypeError("Invalid repository timestamp.");
       const leaseUntil = new Date(currentMs + 30 * 60 * 1000).toISOString();
       const result = await db.prepare(
-        "SELECT owner_id, object_id, category, object_key, created_at FROM nebula_object_cleanup WHERE owner_id = ? AND (status = 'pending' OR (status = 'processing' AND lease_expires_at <= ?)) ORDER BY created_at LIMIT 50"
+        "SELECT owner_id, object_id, category, object_key, created_at FROM nebula_object_cleanup WHERE owner_id = ? AND (status = 'pending' OR (status = 'processing' AND lease_expires_at <= ?) OR (status = 'uploading' AND EXISTS (SELECT 1 FROM nebula_objects o WHERE o.owner_id = nebula_object_cleanup.owner_id AND o.category = nebula_object_cleanup.category AND o.object_id = nebula_object_cleanup.object_id AND o.status = 'active'))) ORDER BY created_at LIMIT 50"
       ).bind(ownerId, new Date(currentMs).toISOString()).all();
       const outcomes = [];
       for (const item of result.results || []) {
@@ -163,6 +163,15 @@ export function createNebulaR2Repository({
             "UPDATE nebula_object_cleanup SET status = 'quarantined', lease_expires_at = NULL WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status IN ('pending', 'processing')"
           ).bind(item.owner_id, item.category, item.object_id, item.created_at).run();
           outcomes.push({ objectId: item.object_id, action: "invalid-quarantined" });
+          continue;
+        }
+
+        const activeMetadata = await findMetadata(item.category, item.object_id);
+        if (activeMetadata?.status === "active") {
+          await db.prepare(
+            "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status = 'uploading' AND EXISTS (SELECT 1 FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.object_id = ? AND o.status = 'active')"
+          ).bind(ownerId, item.category, item.object_id, item.created_at, ownerId, item.category, item.object_id).run();
+          outcomes.push({ objectId: item.object_id, action: "intent-cleared" });
           continue;
         }
 
