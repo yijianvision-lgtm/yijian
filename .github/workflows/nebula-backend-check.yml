@@ -53,3 +53,40 @@ jobs:
         run: node tests/r2-cleanup-scheduler.test.mjs
       - name: Test local database workflows
         run: node tests/backend-runtime.test.mjs
+
+  local-wrangler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply all D1 migrations to the local Miniflare database
+        run: npx --yes wrangler@4 d1 migrations apply nebula-private-local --local --config wrangler.local.example.toml
+      - name: Start isolated local Worker and verify health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 dev --local --config wrangler.local.example.toml --ip 127.0.0.1 --port 8787 > /tmp/nebula-wrangler.log 2>&1 &
+          worker_pid=$!
+          cleanup() {
+            kill "$worker_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          ready=0
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:8787/health > /tmp/nebula-health.json; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$worker_pid" 2>/dev/null; then
+              cat /tmp/nebula-wrangler.log
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/nebula-wrangler.log
+            exit 1
+          fi
+          node -e 'const fs=require("fs");const h=JSON.parse(fs.readFileSync("/tmp/nebula-health.json","utf8"));if(h.ok!==true||h.service!=="NEBULA Cognitive OS Bridge")process.exit(1);console.log("Local Worker /health passed:",h.service,h.version)'
