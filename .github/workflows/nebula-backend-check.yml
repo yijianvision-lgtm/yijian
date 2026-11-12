@@ -90,3 +90,27 @@ jobs:
             exit 1
           fi
           node -e 'const fs=require("fs");const h=JSON.parse(fs.readFileSync("/tmp/nebula-health.json","utf8"));if(h.ok!==true||h.service!=="NEBULA Cognitive OS Bridge")process.exit(1);console.log("Local Worker /health passed:",h.service,h.version)'
+
+      - name: Smoke-test local R2 object put, get, and delete
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_file="$(mktemp)"
+          downloaded_file="$(mktemp)"
+          missing_file="$(mktemp)"
+          object_path="nebula-private-local/ci-smoke/r2-roundtrip.txt"
+          cleanup() {
+            npx --yes wrangler@4 r2 object delete "$object_path" --local --config wrangler.local.example.toml --force >/dev/null 2>&1 || true
+            rm -f "$source_file" "$downloaded_file" "$missing_file"
+          }
+          trap cleanup EXIT
+          printf 'NEBULA local R2 smoke test\\ncommit=%s\\n' "${GITHUB_SHA}" > "$source_file"
+          npx --yes wrangler@4 r2 object put "$object_path" --file "$source_file" --local --config wrangler.local.example.toml --force
+          npx --yes wrangler@4 r2 object get "$object_path" --file "$downloaded_file" --local --config wrangler.local.example.toml
+          cmp "$source_file" "$downloaded_file"
+          npx --yes wrangler@4 r2 object delete "$object_path" --local --config wrangler.local.example.toml --force
+          if npx --yes wrangler@4 r2 object get "$object_path" --file "$missing_file" --local --config wrangler.local.example.toml >/dev/null 2>&1; then
+            echo "R2 object still exists after delete"
+            exit 1
+          fi
+          echo "Local R2 put/get/delete round-trip passed"
