@@ -94,6 +94,11 @@ export async function reconcileNebulaR2UploadCleanup({
       }
 
       await bucket.delete(expectedKey);
+      // User-requested deletes also use this ledger. Remove their inaccessible
+      // metadata only after the R2 delete succeeds; retain the lease if D1 fails.
+      await db.prepare(
+        "DELETE FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting'"
+      ).bind(ownerId, category, objectId).run();
       await db.prepare(
         "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status = 'processing' AND lease_expires_at = ?"
       ).bind(ownerId, category, objectId, createdAt, leaseUntil).run();
