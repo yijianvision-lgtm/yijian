@@ -244,3 +244,12 @@
 - [x] Follow-up regression found during CI: successful uploads can retain an `uploading` intent if the post-commit intent delete fails. Owner-scoped recovery now selects such a row only when matching active metadata exists, then removes the intent with an SQL `EXISTS(active)` guard; it never deletes the R2 object.
 - [x] The same recovery path continues to exclude fresh `uploading` rows without active metadata.
 - [x] Latest code/test head `f52c301e7e270a3d3813088353eb9465f275eb4e` passes NEBULA backend checks #657, local backend validation #160, and Jekyll site CI #746. The preceding head correctly failed on the new committed-intent test; the active-metadata-only recovery selection fixed it.
+
+
+## 2026-11-13: isolated test environment preparation and final CI checkpoint
+
+- [x] Added `wrangler.test.example.toml`: separate `nebula-private-test` Worker, dedicated D1/R2 binding placeholders, Clerk JWT test placeholders and test-only Cron. No production resource identifiers or secrets are included.
+- [x] Added `docs/NEBULA-TEST-ENVIRONMENT-RUNBOOK.md`: gated D1/R2 provisioning, Clerk test configuration, secret setup, remote migration, Worker deployment, two-account E2E matrix and teardown.
+- [x] Added ignore rules for local filled test config, local vars, environment files, Wrangler state and node_modules.
+- [x] Latest PR head `85dd5ad34b63530972938ad3b0c36b7ff322fc47`: backend checks #664, local backend validation #166, Jekyll site CI #753 all success.
+- [ ] Cloudflare D1/R2/Worker resources have not been created; no remote migration, secret write or deploy was executed. User authorization remains required before those actions.
