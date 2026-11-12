@@ -220,5 +220,21 @@ assert.equal(deleteObjects.has(durableDeleteKey), false);
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).count, 0);
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).count, 0);
 
+// Revocation blocks record reads/writes but must not trap the owner's own data
+// in cloud storage. The delete statement remains owner-scoped and consent-free.
+const recordDeleteId = "record-after-revocation";
+const enabledRecordConsent = await consentA.getConsent();
+const recordRepoEnabled = createNebulaD1Repository({
+  db: d1, authContext: authA, syncConsent: enabledRecordConsent, now
+});
+await recordRepoEnabled.putRecord("graph", recordDeleteId, { title: "Owner's cloud record" });
+await consentA.setConsent({ status: "revoked", categories: ["graph", "private-files"] });
+const recordRepoRevoked = createNebulaD1Repository({
+  db: d1, authContext: authA, syncConsent: await consentA.getConsent(), now
+});
+await assert.rejects(recordRepoRevoked.getRecord("graph", recordDeleteId), /Cloud sync is not enabled/);
+assert.deepEqual(await recordRepoRevoked.deleteRecord("graph", recordDeleteId), { deleted: true });
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ? AND record_id = ?").get(ownerA, recordDeleteId).count, 0);
+
 db.close();
 console.log("NEBULA SQLite migrations, consent and atomic R2 cleanup integration tests passed.");
