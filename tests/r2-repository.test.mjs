@@ -24,7 +24,7 @@ class FakeD1 {
           : ({ results: [] }),
         run: async () => {
           if (sql.startsWith("INSERT INTO nebula_object_cleanup")) {
-            const item = { owner_id: values[0], object_id: values[1], category: values[2], object_key: values[3], created_at: values[4] };
+            const item = { owner_id: values[0], object_id: values[1], category: values[2], object_key: values[3], created_at: values[4], status: "uploading" };
             this.cleanup.set(values[1], item);
           } else if (sql.startsWith("DELETE FROM nebula_object_cleanup")) {
             if (this.failCleanupDelete > 0) {
@@ -32,6 +32,12 @@ class FakeD1 {
               throw new Error("simulated cleanup intent delete failure");
             }
             this.cleanup.delete(values[2]);
+          } else if (sql.startsWith("UPDATE nebula_object_cleanup SET status = 'pending'")) {
+            const item = this.cleanup.get(values[2]);
+            if (item && item.status === "uploading") {
+              item.status = "pending";
+              item.lease_expires_at = null;
+            }
           } else if (sql.startsWith("INSERT INTO nebula_objects")) {
             if (this.failMetadataInsert > 0) {
               this.failMetadataInsert -= 1;
@@ -137,6 +143,8 @@ await assert.rejects(
 );
 assert.ok(bucket.objects.has(thirdKey), "Fault injection should leave the R2 object for recovery.");
 assert.ok(db.cleanup.has(thirdId), "Cleanup intent must survive failed compensation.");
+assert.equal(db.cleanup.get(thirdId).status, "pending",
+  "Failed immediate compensation must move an unclaimed intent into the retry queue.");
 assert.deepEqual(await recoveryRepo.reconcilePendingUploads(), [
   { objectId: thirdId, action: "orphan-removed" }
 ]);
