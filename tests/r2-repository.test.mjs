@@ -43,7 +43,7 @@ class FakeD1 {
                 this.cleanup.set(values[3], {
                   owner_id: this.row.owner_id, object_id: this.row.object_id,
                   category: this.row.category, object_key: this.row.object_key,
-                  created_at: values[0], status: "pending", lease_expires_at: null
+                  created_at: values[0], status: "pending", lease_expires_at: null, intent_kind: "delete"
                 });
               }
             } else {
