@@ -55,7 +55,9 @@ for (const call of db.calls) {
 }
 assert.deepEqual(db.calls[0].values.slice(-2), [ownerA, "graph"]);
 assert.deepEqual(db.calls[3].values.slice(-2), [ownerA, "graph"]);
-assert.deepEqual(db.calls[4].values.slice(-2), [ownerA, "graph"]);
+assert.deepEqual(db.calls[4].values, [ownerA, "graph", "node-1"]);
+assert.doesNotMatch(db.calls[4].sql, /nebula_sync_consents/,
+  "Owner-initiated record deletion must remain available after consent revocation.");
 await assert.rejects(repoA.putRecord("graph", "oversized", { data: "x".repeat(256 * 1024) }), /exceeds 256 KiB/);
 assert.match(db.calls[3].sql, /INSERT INTO nebula_records \(owner_id,/);
 assert.match(db.calls[3].sql, /ON CONFLICT\(owner_id, record_type, record_id\)/);
@@ -68,8 +70,16 @@ await repoB.getRecord("graph", "node-1");
 assert.equal(dbB.calls[0].values[0], ownerB, "User B must be scoped to B's server-derived owner ID.");
 
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "shared-service" } }), /verified user identity/);
-assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA } }), /explicit cloud-sync consent/);
-assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA }, syncConsent: { enabled: false, categories: ["graph"], confirmedAt: "2026-11-10T00:00:00.000Z" } }), /explicit cloud-sync consent/);
+const noConsentRepo = createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA } });
+await assert.rejects(noConsentRepo.getRecord("graph", "node-1"), /Cloud sync is not enabled/);
+assert.deepEqual(await noConsentRepo.deleteRecord("graph", "node-1"), { deleted: true },
+  "Owner-initiated deletion remains available even when no active consent snapshot exists.");
+const revokedRepo = createNebulaD1Repository({
+  db, authContext: { kind: "user", ownerId: ownerA },
+  syncConsent: { enabled: false, status: "revoked", categories: ["graph"], confirmedAt: "2026-11-10T00:00:00.000Z" }
+});
+await assert.rejects(revokedRepo.listRecords("graph"), /Cloud sync is not enabled/);
+assert.deepEqual(await revokedRepo.deleteRecord("graph", "node-1"), { deleted: true });
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerB + "x" } }), /verified user identity/);
 assert.throws(() => createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: "own_" + "g".repeat(64) } }), /verified user identity/);
 await assert.rejects(createNebulaD1Repository({ db, authContext: { kind: "user", ownerId: ownerA }, syncConsent }).putRecord("graph", "node-1", []), /payload must be an object/);
