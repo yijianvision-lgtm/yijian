@@ -141,24 +141,56 @@ export function createNebulaR2Repository({
     },
 
     async reconcilePendingUploads() {
+      // User-scoped recovery handles only intents explicitly marked pending
+      // after failed upload compensation. It must never inspect fresh uploads.
+      const currentMs = Date.parse(now());
+      if (!Number.isFinite(currentMs)) throw new TypeError("Invalid repository timestamp.");
+      const leaseUntil = new Date(currentMs + 30 * 60 * 1000).toISOString();
       const result = await db.prepare(
-        "SELECT object_id, category, object_key FROM nebula_object_cleanup WHERE owner_id = ? ORDER BY created_at LIMIT 50"
-      ).bind(ownerId).all();
+        "SELECT owner_id, object_id, category, object_key, created_at FROM nebula_object_cleanup WHERE owner_id = ? AND (status = 'pending' OR (status = 'processing' AND lease_expires_at <= ?)) ORDER BY created_at LIMIT 50"
+      ).bind(ownerId, new Date(currentMs).toISOString()).all();
       const outcomes = [];
-      for (const pending of result.results || []) {
-        const active = await findMetadata(pending.category, pending.object_id);
-        if (active && active.status === "active") {
+      for (const item of result.results || []) {
+        const expectedKey = "owners/" + item.owner_id + "/" + item.category + "/" + item.object_id;
+        if (item.owner_id !== ownerId ||
+            !CATEGORY_PATTERN.test(item.category || "") ||
+            !OBJECT_ID_PATTERN.test(item.object_id || "") ||
+            item.object_key !== expectedKey ||
+            typeof item.created_at !== "string" ||
+            !Number.isFinite(Date.parse(item.created_at)) ||
+            new Date(Date.parse(item.created_at)).toISOString() !== item.created_at) {
           await db.prepare(
-            "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
-          ).bind(ownerId, pending.category, pending.object_id).run();
-          outcomes.push({ objectId: pending.object_id, action: "intent-cleared" });
+            "UPDATE nebula_object_cleanup SET status = 'quarantined', lease_expires_at = NULL WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status IN ('pending', 'processing')"
+          ).bind(item.owner_id, item.category, item.object_id, item.created_at).run();
+          outcomes.push({ objectId: item.object_id, action: "invalid-quarantined" });
           continue;
         }
-        await bucket.delete(pending.object_key);
-        await db.prepare(
-          "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
-        ).bind(ownerId, pending.category, pending.object_id).run();
-        outcomes.push({ objectId: pending.object_id, action: "orphan-removed" });
+
+        const claim = await db.prepare(
+          "UPDATE nebula_object_cleanup SET status = 'processing', lease_expires_at = ? WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND (status = 'pending' OR (status = 'processing' AND lease_expires_at <= ?)) AND NOT EXISTS (SELECT 1 FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.object_id = ? AND o.status = 'active')"
+        ).bind(leaseUntil, ownerId, item.category, item.object_id, item.created_at, new Date(currentMs).toISOString(), ownerId, item.category, item.object_id).run();
+        if (Number(claim?.meta?.changes || 0) !== 1) {
+          const active = await findMetadata(item.category, item.object_id);
+          if (active?.status === "active") {
+            await db.prepare(
+              "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status IN ('pending', 'processing')"
+            ).bind(ownerId, item.category, item.object_id, item.created_at).run();
+            outcomes.push({ objectId: item.object_id, action: "intent-cleared" });
+          } else {
+            outcomes.push({ objectId: item.object_id, action: "claim-skipped" });
+          }
+          continue;
+        }
+
+        try {
+          await bucket.delete(expectedKey);
+          await db.prepare(
+            "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status = 'processing' AND lease_expires_at = ?"
+          ).bind(ownerId, item.category, item.object_id, item.created_at, leaseUntil).run();
+          outcomes.push({ objectId: item.object_id, action: "orphan-removed" });
+        } catch {
+          outcomes.push({ objectId: item.object_id, action: "retry-pending" });
+        }
       }
       return outcomes;
     },
