@@ -24,6 +24,7 @@ jobs:
           node --input-type=module --check < nebula-d1-repository.js
           node --input-type=module --check < nebula-sync-consent.js
           node --input-type=module --check < nebula-r2-repository.js
+          node --input-type=module --check < nebula-r2-cleanup.js
       - name: Install IndexedDB test shim
         run: npm install --no-save fake-indexeddb@6.2.4
       - name: Check inline preview JavaScript syntax
@@ -48,5 +49,7 @@ jobs:
         run: node tests/sync-consent.test.mjs
       - name: Test owner-scoped private R2 repository contracts
         run: node tests/r2-repository.test.mjs
+      - name: Test scheduled R2 cleanup reconciliation
+        run: node tests/r2-cleanup-scheduler.test.mjs
       - name: Test local database workflows
         run: node tests/backend-runtime.test.mjs
