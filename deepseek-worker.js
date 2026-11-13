@@ -349,7 +349,7 @@ export default {
           return content ? who+"：\n"+content : "";
         }).filter(Boolean).join("\n\n");
         return new Response(JSON.stringify({ ok:true, shareId, title:data.title || "DeepSeek 分享对话", messageCount:messages.length, transcript }), { headers:cors });
-      } catch(e) { return new Response(JSON.stringify({ error:String(e.message || e) }), { status:500, headers:cors }); }
+      } catch { return new Response(JSON.stringify({ error:"Share import failed. Please retry." }), { status:500, headers:cors }); }
     }
     const syncObjectPath = url.pathname === "/sync/objects" || /^\/sync\/objects\/[0-9a-f-]{36}$/.test(url.pathname);
     const syncPath = ["/sync/consent", "/sync/records"].includes(url.pathname) || syncObjectPath;
@@ -417,7 +417,7 @@ export default {
         }));
         return new Response(JSON.stringify({ ok: true, provider: "Crossref", items }), { headers: cors });
       } catch (e) {
-        return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers: cors });
+        return new Response(JSON.stringify({ error: "Research provider request failed. Please retry." }), { status: 502, headers: cors });
       }
     }
 
@@ -481,12 +481,12 @@ export default {
           reply = String(data.choices?.[0]?.message?.content || "").trim();
         }
         if (!upstream.ok)
-          return new Response(JSON.stringify({ error: data.error?.message || data.message || (provider + " chat request failed"), provider }), { status: 502, headers: cors });
+          return new Response(JSON.stringify({ error: provider + " chat request failed", provider }), { status: 502, headers: cors });
         if (!reply)
           return new Response(JSON.stringify({ error: "AI 没有返回可显示的回答，请重试。", provider }), { status: 502, headers: cors });
         return new Response(JSON.stringify({ ok: true, provider, reply, model: data.model || model, usage: data.usage || null }), { headers: cors });
       } catch (error) {
-        return new Response(JSON.stringify({ error: String(error.message || error) }), { status: 500, headers: cors });
+        return new Response(JSON.stringify({ error: "AI request failed. Please retry." }), { status: 500, headers: cors });
       }
     }
 
@@ -517,11 +517,11 @@ export default {
           })
         });
         const data = await readJsonLimited(upstream);
-        if (!upstream.ok) return new Response(JSON.stringify({ error: data.error?.message || "DeepSeek request failed" }), { status: 502, headers: cors });
+        if (!upstream.ok) return new Response(JSON.stringify({ error: "DeepSeek request failed. Please retry." }), { status: 502, headers: cors });
         const result = JSON.parse(data.choices?.[0]?.message?.content || "{}");
         return new Response(JSON.stringify({ ok: true, result, usage: data.usage || null }), { headers: cors });
       } catch (e) {
-        return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers: cors });
+        return new Response(JSON.stringify({ error: "AI review request failed. Please retry." }), { status: 502, headers: cors });
       }
     }
     if (!env.DEEPSEEK_API_KEY)
@@ -554,13 +554,13 @@ export default {
         })
       });
       const data = await readJsonLimited(response);
-      if (!response.ok) return new Response(JSON.stringify({ error: data.error?.message || "DeepSeek API request failed", status:response.status }), { status:502, headers:cors });
+      if (!response.ok) return new Response(JSON.stringify({ error: "DeepSeek API request failed. Please retry.", status:response.status }), { status:502, headers:cors });
       const raw = data.choices?.[0]?.message?.content || "{}";
       let result;
       try { result = JSON.parse(raw); } catch { throw new Error("DeepSeek returned invalid JSON; please retry with a smaller export."); }
       return new Response(JSON.stringify({ ok:true, result, usage:data.usage || null }), { headers:cors });
     } catch (error) {
-      return new Response(JSON.stringify({ error:String(error.message || error) }), { status:500, headers:cors });
+      return new Response(JSON.stringify({ error:"Knowledge analysis failed. Please retry." }), { status:500, headers:cors });
     }
   }
 };
