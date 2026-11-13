@@ -413,7 +413,11 @@ export default {
         return await handleNebulaSyncRequest(request, env, authContext, cors, url);
       } catch (error) {
         const message = String(error?.message || error);
-        const denied = /consent|not enabled|not authorized/i.test(message);
+        const denied = new Set([
+          "Cloud sync is not enabled for this account.",
+          "Cloud-sync consent does not cover this record category.",
+          "Active server-side cloud-sync consent is required for this category."
+        ]).has(message);
         const clientInputMessage =
           /^(Invalid record type|Invalid record ID|Invalid object category|Invalid object ID|Invalid data category|Record payload must be an object|Invalid object content type|Object body must be bytes or a readable stream|Object stream must yield Uint8Array chunks)\.$/.test(message) ||
           /^(Record payload exceeds 256 KiB|Object exceeds the configured upload size limit)\.$/.test(message);
