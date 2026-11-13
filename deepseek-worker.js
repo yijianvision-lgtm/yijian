@@ -279,14 +279,36 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
 
 export default {
   async scheduled(controller, env) {
-    // Cron is inert until an isolated test environment binds both resources.
-    // The reconciler only touches intents older than its one-hour safety grace.
-    if (!env.NEBULA_DB || !env.NEBULA_BUCKET) return;
-    await reconcileNebulaR2UploadCleanup({
-      db: env.NEBULA_DB,
-      bucket: env.NEBULA_BUCKET,
-      limit: 50
-    });
+    // Never fall back to another environment or infer resource bindings.
+    // Upload intents retain a one-hour grace; explicit delete intents are
+    // eligible immediately and are distinguished by the cleanup ledger.
+    if (!env.NEBULA_DB || !env.NEBULA_BUCKET) {
+      console.warn(JSON.stringify({ event: "nebula_cleanup_skipped", reason: "missing_bindings" }));
+      return;
+    }
+    try {
+      const result = await reconcileNebulaR2UploadCleanup({
+        db: env.NEBULA_DB,
+        bucket: env.NEBULA_BUCKET,
+        limit: 50
+      });
+      const counts = Object.create(null);
+      for (const outcome of result.outcomes) {
+        counts[outcome.action] = (counts[outcome.action] || 0) + 1;
+      }
+      // Aggregate counters only: never log owner IDs, object keys, payloads,
+      // credentials, or raw exception messages.
+      console.log(JSON.stringify({
+        event: "nebula_cleanup_completed",
+        scanned: result.scanned,
+        outcomes: counts
+      }));
+    } catch {
+      console.error(JSON.stringify({ event: "nebula_cleanup_failed" }));
+      // Mark the scheduled invocation failed without exposing the underlying
+      // D1/R2 error text to logs or callers.
+      throw new Error("NEBULA scheduled cleanup failed.");
+    }
   },
 
   async fetch(request, env) {
