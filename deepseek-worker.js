@@ -415,7 +415,10 @@ export default {
         const message = String(error?.message || error);
         const denied = /consent|not enabled|not authorized/i.test(message);
         const badInput = error instanceof TypeError || error instanceof RangeError;
-        return new Response(JSON.stringify({ error: denied || badInput ? message : "Private sync operation failed." }), {
+        const clientSafeMessage = denied
+          ? "Cloud sync is not enabled or does not cover this category."
+          : badInput ? "Invalid private sync request." : "Private sync operation failed.";
+        return new Response(JSON.stringify({ error: clientSafeMessage }), {
           status: denied ? 403 : badInput ? 400 : 500, headers: cors
         });
       }
