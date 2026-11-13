@@ -195,9 +195,9 @@ try {
   const backendTypeError = await call("/sync/records?type=graph", {
     envOverride: { ...env, NEBULA_DB: { prepare() { throw new TypeError("sensitive D1 SQL, table and binding details"); } } }
   });
-  assert.equal(backendTypeError.status, 400);
+  assert.equal(backendTypeError.status, 500, "Backend TypeErrors must remain server failures, not be misclassified as client input.");
   const backendTypeErrorBody = await backendTypeError.text();
-  assert.match(backendTypeErrorBody, /Invalid private sync request/);
+  assert.match(backendTypeErrorBody, /Private sync operation failed/);
   assert.doesNotMatch(backendTypeErrorBody, /sensitive D1 SQL|table and binding details/,
     "Backend TypeError details must never be reflected to private sync API clients.");
 
