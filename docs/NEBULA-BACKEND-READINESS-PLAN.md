@@ -100,7 +100,7 @@
 - [x] /share 与受保护 AI/研究路由统一经过中间件；移除重复的路由级共享令牌判断。
 - [x] 新增中间件测试和 Worker 真实 RSA/JWKS 合成验签集成测试。
 - [ ] 真实 Clerk 测试实例及 session token claims 验证（尚未获授权创建第三方实例）。
-- [ ] 通过 D1/R2 owner-scoped repository 层把认证上下文的 ownerId 强制用于每一条私有资源操作。
+- [x] 代码层已通过 D1/R2 owner-scoped repository 将服务端认证上下文 ownerId 绑定到私有资源操作；真实 Clerk 与 Cloudflare D1/R2 仍待验证。
 - [ ] 两个独立合成用户 A/B 的越权读写、搜索、导出、下载、备份/恢复负向测试。
 - [ ] 真实浏览器 E2E、撤销窗口和线上运行时安全验证。
 
@@ -112,7 +112,7 @@
 - [x] 新增统一 owner-scoped D1 repository：GET/LIST/UPSERT/DELETE 全部绑定服务端 owner ID。
 - [x] 新增 records schema migration：复合 owner 主键、owner/type/update 索引、JSON object 与 256 KiB payload 限制。
 - [x] 新增模拟 D1 binding 契约测试：验证 owner 参数固定、客户端 owner_id 不能覆盖归属、分页与 payload 上限。
-- [ ] 将 repository 接入 Worker 私有数据 API（仅 clerk-jwt 用户上下文允许，shared-service 永远拒绝）。
+- [x] 已将 repository 接入 Worker `/sync/records`、`/sync/objects` 私有 API；仅用户认证上下文可访问，shared-service 被拒绝。真实身份和云端服务仍待验证。
 - [ ] 在真实隔离的 D1 测试数据库应用 migration，完成双用户 A/B 实际 SQL 越权测试。
 - [ ] 增加 R2 owner 前缀与元数据绑定层，并完成跨用户下载/删除负向测试。
 
@@ -127,11 +127,11 @@
 - [x] 新增 `migrations/0002_sync_consent_ledger.sql`：保存 categories、enabled/paused/revoked 状态、确认时间、更新时间和撤销时间。
 - [x] 撤销采用保留记录的 tombstone，不自动删除云端数据；后续删除云端副本必须另设明确操作与确认。
 - [x] 增加测试覆盖 owner 绑定、类别授权、暂停、撤销、无效类别和无效身份。
-- [ ] 将账本接入 Worker 的认证用户专属授权/撤销 API；共享令牌上下文必须永久拒绝。
-- [ ] 由 Worker 在每次 D1/R2 操作前读取此账本，并把服务端确认的授权状态交给 repository；不得信任请求体里的 ownerId 或 consent 状态。
+- [x] 已将账本接入 Worker `/sync/consent` 用户专属授权/暂停/撤销 API；shared-service 被拒绝。真实 Clerk issuer/claims 尚未验证。
+- [x] Worker 已在私有数据操作中读取服务端 consent ledger，并由 repository 的 SQL 条件再次校验授权；不信任请求体 ownerId 或 consent 状态。
 - [ ] 把授权写入与云数据读写置于一致的撤销检查边界，并覆盖并发撤销/正在进行的上传。
 
-当前仍是独立 repository + migration 原型；未接入 Worker 路由，未应用真实 D1 migration，未创建 Cloudflare 资源，也未部署。
+repository、consent ledger 与私有同步 API 已完成代码集成及模拟/SQLite 测试；真实 D1 migration、真实 Clerk、Cloudflare D1/R2 资源和部署均未完成。
 
 
 ## 2026-11-10 后续推进：R2 私有对象仓储原型
@@ -141,7 +141,7 @@
 - [x] D1 对象元数据读写按 owner_id + category + object_id 绑定；删除时先标记 deleting，再删 R2 对象与元数据，允许失败后重试。
 - [x] 上传前先写入 D1 cleanup intent，再写 R2、再写 active 元数据；D1 元数据失败时执行 R2 补偿删除，补偿失败则保留可追踪 cleanup intent。
 - [x] 新增 `migrations/0003_owner_scoped_objects.sql` 和模拟 R2/D1 契约测试，限制上传体积并校验 owner 前缀。
-- [ ] R2/D1 repository 仍未接入 Worker 私有 API；必须在 Worker 中从服务端 consent ledger 读取授权并创建 repository，不得从请求体传入授权对象。
+- [x] R2/D1 repository 已接入 Worker 私有 API；Worker 从服务端认证上下文和 consent ledger 创建 repository，不接受客户端 raw R2 key 或 ownerId。真实 Cloudflare D1/R2 仍待验证。
 - [ ] 完成真实 D1/R2 测试环境应用迁移、A/B 用户跨账户上传/下载/列举/删除负向测试、失败补偿与并发撤销测试。
 
 注意：当前上传体积限制通过有界缓冲后再写入 R2，属于受限体积原型，不是大文件流式上传方案。真实 Cloudflare R2/D1 未连接、未创建、未部署，未上传任何用户私人文件。
