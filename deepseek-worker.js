@@ -414,12 +414,14 @@ export default {
       } catch (error) {
         const message = String(error?.message || error);
         const denied = /consent|not enabled|not authorized/i.test(message);
-        const badInput = error instanceof TypeError || error instanceof RangeError;
+        const clientInputMessage =
+          /^(Invalid record type|Invalid record ID|Invalid object category|Invalid object ID|Invalid data category|Record payload must be an object|Invalid object content type|Object body must be bytes or a readable stream|Object stream must yield Uint8Array chunks)\\.$/.test(message) ||
+          /^(Record payload exceeds 256 KiB|Object exceeds the configured upload size limit)\\.$/.test(message);
         const clientSafeMessage = denied
           ? "Cloud sync is not enabled or does not cover this category."
-          : badInput ? "Invalid private sync request." : "Private sync operation failed.";
+          : clientInputMessage ? "Invalid private sync request." : "Private sync operation failed.";
         return new Response(JSON.stringify({ error: clientSafeMessage }), {
-          status: denied ? 403 : badInput ? 400 : 500, headers: cors
+          status: denied ? 403 : clientInputMessage ? 400 : 500, headers: cors
         });
       }
     }
