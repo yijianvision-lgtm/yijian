@@ -200,6 +200,12 @@ try {
   assert.match(backendTypeErrorBody, /Private sync operation failed/);
   assert.doesNotMatch(backendTypeErrorBody, /sensitive D1 SQL|table and binding details/,
     "Backend TypeError details must never be reflected to private sync API clients.");
+  const backendConsentTypeError = await call("/sync/records?type=graph", {
+    envOverride: { ...env, NEBULA_DB: { prepare() { throw new TypeError("consent table schema mismatch: missing status column"); } } }
+  });
+  assert.equal(backendConsentTypeError.status, 500,
+    "An internal error mentioning consent must not be misclassified as a user authorization denial.");
+  assert.match(await backendConsentTypeError.text(), /Private sync operation failed/);
 
   const putRecord = await call("/sync/records?type=graph", {
     method: "POST",
