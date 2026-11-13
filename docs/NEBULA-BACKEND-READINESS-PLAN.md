@@ -310,3 +310,7 @@
 - [x] Latest code/test HEAD `fe532390a250dbf1c98eff66b394ad4e086e7966`: NEBULA backend checks #718, local backend validation #220, and Jekyll site CI #807 all success.
 - [ ] Real Cloudflare D1/R2 lease expiry, long-running R2 delete overlap, and live binding exception behavior remain unverified; current evidence is SQLite plus Fake R2 and Worker mocks.
 - [ ] The 30-minute lease remains a retry/recovery window rather than an external R2 fencing token. R2 delete must remain idempotent, and real Cloudflare concurrency testing is still required.
+
+
+- [x] Follow-up hardening: only an explicit allowlist of known validation messages is classified as HTTP 400. Unexpected backend `TypeError` / `RangeError` now remains HTTP 500 with a generic body; this avoids misclassifying infrastructure faults as client errors while still redacting details.
+- [x] Final code/test HEAD `3d9ce60a0f9f98cc6c58e6c81814ed4c3c278c73`: backend checks #722, local backend validation #224, and Jekyll site CI #811 all success.
