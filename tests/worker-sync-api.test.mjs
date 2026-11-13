@@ -192,6 +192,14 @@ try {
     envOverride: { ...env, NEBULA_DB: revocationRaceDb }
   });
   assert.equal(revokedDuringRequest.status, 403, "A D1 operation must re-check live consent after the request-start snapshot.");
+  const backendTypeError = await call("/sync/records?type=graph", {
+    envOverride: { ...env, NEBULA_DB: { prepare() { throw new TypeError("sensitive D1 SQL, table and binding details"); } } }
+  });
+  assert.equal(backendTypeError.status, 400);
+  const backendTypeErrorBody = await backendTypeError.text();
+  assert.match(backendTypeErrorBody, /Invalid private sync request/);
+  assert.doesNotMatch(backendTypeErrorBody, /sensitive D1 SQL|table and binding details/,
+    "Backend TypeError details must never be reflected to private sync API clients.");
 
   const putRecord = await call("/sync/records?type=graph", {
     method: "POST",
