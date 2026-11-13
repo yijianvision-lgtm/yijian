@@ -79,6 +79,11 @@ assert.equal((await repoA.putRecord("graph", "root", { title: "A private node" }
 assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
 assert.deepEqual((await repoB.listRecords("graph")), []);
 assert.equal(await repoB.getRecord("graph", "root"), null);
+assert.deepEqual(await repoB.deleteRecord("graph", "root"), { deleted: false },
+  "A different owner must not delete another user's record.");
+assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
+assert.deepEqual(await repoA.deleteRecord("graph", "missing-record"), { deleted: false },
+  "Deleting a nonexistent owner-scoped record must report deleted:false.");
 
 // Revoke consent after constructing the repository (stale in-memory snapshot).
 // Every SQL operation must independently consult the live consent row.
@@ -137,6 +142,41 @@ assert.equal(racedDeleteCalls, 1, "Only one scheduler may issue the R2 delete fo
 releaseDelete();
 await firstScheduler;
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHERE object_id = ?").get(racedId).count, 0);
+
+// An expired processing lease may be reclaimed, but a stale worker must not
+// clear the newer worker's lease when its delayed R2 delete eventually returns.
+const leaseRaceId = "123e4567-e89b-12d3-a456-426614174106";
+insertCleanupIntent(leaseRaceId);
+let releaseOldDelete;
+let releaseNewDelete;
+let oldDeleteStarted;
+let newDeleteStarted;
+const oldDeleteGate = new Promise(resolve => { releaseOldDelete = resolve; });
+const newDeleteGate = new Promise(resolve => { releaseNewDelete = resolve; });
+const oldStartedGate = new Promise(resolve => { oldDeleteStarted = resolve; });
+const newStartedGate = new Promise(resolve => { newDeleteStarted = resolve; });
+const oldLeaseScheduler = reconcileNebulaR2UploadCleanup({
+  db: d1, now: () => cleanupNow,
+  bucket: { async delete() { oldDeleteStarted(); await oldDeleteGate; } }
+});
+await oldStartedGate;
+const renewedLeaseTime = cleanupNow + 31 * 60 * 1000;
+const newLeaseScheduler = reconcileNebulaR2UploadCleanup({
+  db: d1, now: () => renewedLeaseTime,
+  bucket: { async delete() { newDeleteStarted(); await newDeleteGate; } }
+});
+await newStartedGate;
+releaseOldDelete();
+await oldLeaseScheduler;
+const renewedLease = db.prepare(
+  "SELECT status, lease_expires_at FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?"
+).get(ownerA, leaseRaceId);
+assert.equal(renewedLease.status, "processing");
+assert.equal(renewedLease.lease_expires_at, new Date(renewedLeaseTime + 30 * 60 * 1000).toISOString(),
+  "A stale worker must not delete a cleanup row claimed under a newer lease.");
+releaseNewDelete();
+await newLeaseScheduler;
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?").get(ownerA, leaseRaceId).count, 0);
 
 // An active upload that commits before the scheduler's claim remains protected.
 const commitFirstId = "123e4567-e89b-12d3-a456-426614174103";
