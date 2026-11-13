@@ -297,3 +297,16 @@
 - [x] Added Worker runtime regression tests for sanitized upstream errors, missing scheduler bindings, aggregate-only success telemetry, and sanitized scheduler failure.
 - [x] Latest HEAD `ecd0cd24ca18f07259a3dc7791b3c77a7daf9e08`: backend checks #714, local backend validation #216, and Jekyll site CI #803 all success.
 - [ ] Live Cloudflare scheduled-trigger behavior, dashboard log ingestion, and actual D1/R2 failure telemetry remain unverified until isolated cloud resources are available.
+
+
+
+## 2026-11-13: deletion semantics, lease-expiry fencing, and sync error redaction
+
+- [x] Extended the real SQLite integration suite to prove a different owner cannot delete another owner's record and a nonexistent record returns `deleted: false`.
+- [x] Added a two-worker lease-expiry race: a second scheduler can reclaim an expired 30-minute processing lease, while the delayed first worker cannot clear the renewed lease when it eventually returns from R2.
+- [x] Security review found the Worker sync-route catch handler returned raw `TypeError` / `RangeError` messages. A binding or storage implementation could throw one of these types with internal SQL, table, or infrastructure details.
+- [x] Sync API errors now return fixed client-safe messages for consent denial, invalid request, and internal failure; raw exception text is never reflected to the caller.
+- [x] Added a Worker API regression test with a synthetic backend `TypeError` containing sensitive D1 details; the response is verified not to disclose them.
+- [x] Latest code/test HEAD `fe532390a250dbf1c98eff66b394ad4e086e7966`: NEBULA backend checks #718, local backend validation #220, and Jekyll site CI #807 all success.
+- [ ] Real Cloudflare D1/R2 lease expiry, long-running R2 delete overlap, and live binding exception behavior remain unverified; current evidence is SQLite plus Fake R2 and Worker mocks.
+- [ ] The 30-minute lease remains a retry/recovery window rather than an external R2 fencing token. R2 delete must remain idempotent, and real Cloudflare concurrency testing is still required.
