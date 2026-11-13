@@ -287,3 +287,13 @@
 - [x] Latest code/test head `e0fa8ecc35c32c2a370332bd5eabc594dc2562b7`: backend checks #710, local backend validation #213, and Jekyll site CI #800 all success.
 - [ ] The bounded buffer uses memory proportional to the configured object ceiling (10 MiB in Worker production defaults); large-object streaming/download design remains a separate future requirement.
 - [ ] Cloudflare R2 stream behavior and live consent revocation under real concurrent network traffic still require isolated Cloudflare E2E validation.
+
+
+## 2026-11-13: sanitize Worker errors and instrument scheduled cleanup
+
+- [x] Replaced raw caught exception messages on share import, research, chat, coach/mnemonic, and knowledge-analysis routes with stable client-safe errors. Provider error payload details are no longer echoed on AI routes.
+- [x] Scheduled cleanup now explicitly skips when either isolated D1/R2 binding is absent, and emits only aggregate counters (scanned count and action counts) on success. It never logs owner IDs, object keys, payloads, credentials, or exception text.
+- [x] Scheduler failures emit a fixed event and throw a stable generic error so the scheduled invocation is marked failed without exposing D1/R2 internals.
+- [x] Added Worker runtime regression tests for sanitized upstream errors, missing scheduler bindings, aggregate-only success telemetry, and sanitized scheduler failure.
+- [x] Latest HEAD `ecd0cd24ca18f07259a3dc7791b3c77a7daf9e08`: backend checks #714, local backend validation #216, and Jekyll site CI #803 all success.
+- [ ] Live Cloudflare scheduled-trigger behavior, dashboard log ingestion, and actual D1/R2 failure telemetry remain unverified until isolated cloud resources are available.
