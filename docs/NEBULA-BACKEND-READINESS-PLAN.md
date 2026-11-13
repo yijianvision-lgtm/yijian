@@ -314,3 +314,9 @@
 
 - [x] Follow-up hardening: only an explicit allowlist of known validation messages is classified as HTTP 400. Unexpected backend `TypeError` / `RangeError` now remains HTTP 500 with a generic body; this avoids misclassifying infrastructure faults as client errors while still redacting details.
 - [x] Final code/test HEAD `3d9ce60a0f9f98cc6c58e6c81814ed4c3c278c73`: backend checks #722, local backend validation #224, and Jekyll site CI #811 all success.
+
+
+- [x] Final consent-error classification review: replaced broad substring matching (which could misclassify an internal D1 error mentioning "consent" as HTTP 403) with exact matching for the three known consent-denial messages.
+- [x] Added a Worker regression case: a synthetic backend TypeError mentioning a missing consent-table column must remain HTTP 500 and return only the generic internal-failure message.
+- [x] Code/test HEAD `cd2042961ff5671e481f4714b74784829e76dce6`: backend checks #725 (including local Wrangler D1 migration, Worker health, and R2 put/get/delete smoke test) passed; local backend validation #227 passed; Jekyll site CI #814 passed.
+- [ ] Real Cloudflare D1/R2 resources, deployed Cron execution, and two-account cloud E2E remain pending external environment prerequisites and explicit isolated-environment validation.
