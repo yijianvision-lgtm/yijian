@@ -415,8 +415,8 @@ export default {
         const message = String(error?.message || error);
         const denied = /consent|not enabled|not authorized/i.test(message);
         const clientInputMessage =
-          /^(Invalid record type|Invalid record ID|Invalid object category|Invalid object ID|Invalid data category|Record payload must be an object|Invalid object content type|Object body must be bytes or a readable stream|Object stream must yield Uint8Array chunks)\\.$/.test(message) ||
-          /^(Record payload exceeds 256 KiB|Object exceeds the configured upload size limit)\\.$/.test(message);
+          /^(Invalid record type|Invalid record ID|Invalid object category|Invalid object ID|Invalid data category|Record payload must be an object|Invalid object content type|Object body must be bytes or a readable stream|Object stream must yield Uint8Array chunks)\.$/.test(message) ||
+          /^(Record payload exceeds 256 KiB|Object exceeds the configured upload size limit)\.$/.test(message);
         const clientSafeMessage = denied
           ? "Cloud sync is not enabled or does not cover this category."
           : clientInputMessage ? "Invalid private sync request." : "Private sync operation failed.";
