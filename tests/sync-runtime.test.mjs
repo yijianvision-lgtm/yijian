@@ -40,7 +40,6 @@ const fetchImpl = async (url, init = {}) => {
     return new Response(JSON.stringify({ ok: true, conflict: false }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (String(url).includes("/sync/records") && init.method === "GET") {
-    const isDeleted = String(url).includes("tombstone-preview");
     return new Response(JSON.stringify({ records: [{
       recordType: "graph", recordId: isDeleted ? "tombstone-preview" : "cloud-1",
       payload: isDeleted ? null : { nodes: [{ id: "cloud-1", name: "Cloud graph" }], links: [] },
