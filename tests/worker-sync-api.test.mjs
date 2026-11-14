@@ -82,7 +82,7 @@ class MemoryD1 {
               });
             } else if (sql.startsWith("UPDATE nebula_records SET deleted_at")) {
               const row = db.records.get([values[2], values[3], values[4]].join("|"));
-              if (row && !row.deleted_at) { row.deleted_at = values[0]; row.updated_at = values[1]; return { meta: { changes: 1 } }; }
+              if (row && !row.deleted_at) { row.payload_json = "{}"; row.deleted_at = values[1]; row.updated_at = values[1]; return { meta: { changes: 1 } }; }
               return { meta: { changes: 0 } };
             } else if (sql.startsWith("UPDATE nebula_records")) {
               const key = [values[2], values[3], values[4]].join("|");
