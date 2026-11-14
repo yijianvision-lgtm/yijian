@@ -36,9 +36,11 @@ assert.equal(calls[0].token, "test-token");
 assert.equal(calls[0].idempotencyKey, "up-1");
 assert.equal((await queue.list()).length, 0);
 
+const appliedRemote = [];
 let conflictQueue = createNebulaSyncQueue({
   store, auth, clock: () => now,
-  send: async () => ({ status: 409, remoteVersion: "v2", remotePayload: { title: "Cloud" } })
+  send: async () => ({ status: 409, remoteVersion: "v2", remotePayload: { title: "Cloud" } }),
+  applyRemote: async update => { appliedRemote.push(update); }
 });
 await conflictQueue.enqueue({ id: "conflict-1", category: "graph", recordId: "root", kind: "upsert", payload: { title: "Local v3" }, baseVersion: "v1" });
 await conflictQueue.drain();
@@ -46,6 +48,8 @@ let conflict = (await conflictQueue.list())[0];
 assert.equal(conflict.status, "conflict");
 assert.equal(conflict.conflict.remoteVersion, "v2");
 assert.equal(await conflictQueue.resolveConflict("conflict-1", "keep-cloud").then(x => x.action), "kept-cloud");
+assert.deepEqual(appliedRemote[0], { category: "graph", recordId: "root", payload: { title: "Cloud" }, version: "v2", deleted: false },
+  "Choosing the cloud version must apply it to local storage before removing the conflict.");
 assert.equal((await conflictQueue.list()).length, 0);
 
 await conflictQueue.enqueue({ id: "conflict-2", category: "graph", recordId: "root", kind: "upsert", payload: { title: "Local v4" }, baseVersion: "v1" });
