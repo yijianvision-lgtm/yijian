@@ -52,7 +52,7 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
     if (currentLocalSnapshot !== expectedLocalSnapshot) {
       throw new Error("The local graph changed after preview. Refresh the preview before applying.");
     }
-    const result = await localApplier({ category: current.recordType, recordId: current.recordId, payload: current.payload, version: current.updatedAt, deleted: false });
+    const result = await localApplier({ category: current.recordType, recordId: current.recordId, payload: current.payload, version: current.updatedAt, deleted: current.deleted === true });
     previewSnapshots.delete(preview.previewId);
     return Object.freeze({ ...result, recordId: current.recordId, version: current.updatedAt });
   }
