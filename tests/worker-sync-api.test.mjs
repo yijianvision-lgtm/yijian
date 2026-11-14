@@ -64,7 +64,7 @@ class MemoryD1 {
             return null;
           },
           async all() {
-            if (sql.includes("FROM nebula_records")) return { results: [...db.records.values()].filter(row => row.owner_id === owner && row.record_type === values[1] && (values.length < 3 || !sql.includes("record_id > ?") || row.record_id > values[2])).sort((a,b) => a.record_id.localeCompare(b.record_id)).slice(-1 * (values.at(-1) || 50)) };
+            if (sql.includes("FROM nebula_records")) return { results: [...db.records.values()].filter(row => row.owner_id === owner && row.record_type === values[1] && (values.length < 3 || !sql.includes("record_id > ?") || row.record_id > values[2])).sort((a,b) => a.record_id.localeCompare(b.record_id)).slice(0, values.at(-1) || 50) };
             if (sql.includes("FROM nebula_objects")) return { results: [...db.objects.values()].filter(row => row.owner_id === owner && row.category === values[1]) };
             return { results: [] };
           },
@@ -80,6 +80,10 @@ class MemoryD1 {
                 owner_id: owner, record_type: values[1], record_id: values[2],
                 payload_json: values[3], created_at: values[4], updated_at: values[5], deleted_at: null
               });
+            } else if (sql.startsWith("UPDATE nebula_records SET deleted_at")) {
+              const row = db.records.get([values[2], values[3], values[4]].join("|"));
+              if (row && !row.deleted_at) { row.deleted_at = values[0]; row.updated_at = values[1]; return { meta: { changes: 1 } }; }
+              return { meta: { changes: 0 } };
             } else if (sql.startsWith("UPDATE nebula_records")) {
               const key = [values[2], values[3], values[4]].join("|");
               const row = db.records.get(key);
@@ -319,6 +323,22 @@ try {
     "Account B may delete only its own same-ID record.");
   assert.equal(db.records.get(ownerBId + "|graph|root-1").deleted_at !== null, true,
     "Account B deletion must leave a versioned tombstone.");
+  const tombstonesB = await call("/sync/records?type=graph", { token: tokenB });
+  const deletedRecordB = (await tombstonesB.json()).records.find(row => row.recordId === "root-1");
+  assert.equal(deletedRecordB.deleted, true, "Other devices must be able to discover the deletion tombstone.");
+  assert.equal(deletedRecordB.payload, null, "Deleted record payload must not be exposed in tombstone listings.");
+  const recreateWithoutVersion = await call("/sync/records?type=graph", {
+    token: tokenB, method: "POST",
+    body: JSON.stringify({ recordType: "graph", recordId: "root-1", payload: { title: "Unobserved resurrection" } })
+  });
+  assert.equal(recreateWithoutVersion.status, 409, "A create without observing the tombstone version must not resurrect deleted data.");
+  const recreateWithVersion = await call("/sync/records?type=graph", {
+    token: tokenB, method: "POST",
+    body: JSON.stringify({ recordType: "graph", recordId: "root-1", payload: { title: "Explicitly restored graph" }, baseVersion: deletedRecordB.updatedAt })
+  });
+  assert.equal(recreateWithVersion.status, 200, "An explicit CAS update against the tombstone may restore the record.");
+  const restoredB = (await call("/sync/records?type=graph", { token: tokenB })).json();
+  assert.equal((await restoredB).records.find(row => row.recordId === "root-1").deleted, false);
   assert.equal(db.records.get(ownerAId + "|graph|root-1").deleted_at, null,
     "Account B deleting its own same-ID record must leave account A's record intact.");
 
