@@ -152,8 +152,8 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       // paused or revoked. The server-derived owner scope is still mandatory.
       const deletedAt = timestamp(now());
       const result = await db.prepare(
-        "UPDATE nebula_records SET deleted_at = ?, updated_at = ? WHERE owner_id = ? AND record_type = ? AND record_id = ? AND deleted_at IS NULL"
-      ).bind(deletedAt, deletedAt, ownerId, type, id).run();
+        "UPDATE nebula_records SET payload_json = '{}', deleted_at = CASE WHEN updated_at >= ? THEN strftime('%Y-%m-%dT%H:%M:%fZ', updated_at, '+0.001 seconds') ELSE ? END, updated_at = CASE WHEN updated_at >= ? THEN strftime('%Y-%m-%dT%H:%M:%fZ', updated_at, '+0.001 seconds') ELSE ? END WHERE owner_id = ? AND record_type = ? AND record_id = ? AND deleted_at IS NULL"
+      ).bind(deletedAt, deletedAt, deletedAt, deletedAt, ownerId, type, id).run();
       return Object.freeze({ deleted: Number(result.meta?.changes || 0) > 0, deletedAt });
     }
   });
