@@ -51,18 +51,21 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       const id = assertRecordId(recordId);
       assertConsentedCategory(type);
       const row = await db.prepare(
-        "SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) LIMIT 1"
+        "SELECT record_type, record_id, payload_json, created_at, updated_at, deleted_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) LIMIT 1"
       ).bind(ownerId, type, id, ownerId, type).first();
       if (!row) return null;
-      let payload;
-      try { payload = JSON.parse(row.payload_json); }
-      catch { throw new Error("Stored NEBULA record is invalid JSON."); }
+      let payload = null;
+      if (!row.deleted_at) {
+        try { payload = JSON.parse(row.payload_json); }
+        catch { throw new Error("Stored NEBULA record is invalid JSON."); }
+      }
       return Object.freeze({
         recordType: row.record_type,
         recordId: row.record_id,
         payload,
+        deleted: Boolean(row.deleted_at),
         createdAt: row.created_at,
-        updatedAt: row.updated_at
+        updatedAt: row.deleted_at || row.updated_at
       });
     },
 
@@ -72,19 +75,22 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       const boundedLimit = Math.max(1, Math.min(50, Number.isInteger(limit) ? limit : 50));
       const cursor = after === null ? null : assertRecordId(after);
       const statement = cursor === null
-        ? db.prepare("SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) ORDER BY record_id LIMIT ?").bind(ownerId, type, ownerId, type, boundedLimit)
-        : db.prepare("SELECT record_type, record_id, payload_json, created_at, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id > ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) ORDER BY record_id LIMIT ?").bind(ownerId, type, cursor, ownerId, type, boundedLimit);
+        ? db.prepare("SELECT record_type, record_id, payload_json, created_at, updated_at, deleted_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) ORDER BY record_id LIMIT ?").bind(ownerId, type, ownerId, type, boundedLimit)
+        : db.prepare("SELECT record_type, record_id, payload_json, created_at, updated_at, deleted_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id > ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) ORDER BY record_id LIMIT ?").bind(ownerId, type, cursor, ownerId, type, boundedLimit);
       const result = await statement.all();
       return (result.results || []).map(row => {
-        let payload;
-        try { payload = JSON.parse(row.payload_json); }
-        catch { throw new Error("Stored NEBULA record is invalid JSON."); }
+        let payload = null;
+        if (!row.deleted_at) {
+          try { payload = JSON.parse(row.payload_json); }
+          catch { throw new Error("Stored NEBULA record is invalid JSON."); }
+        }
         return Object.freeze({
           recordType: row.record_type,
           recordId: row.record_id,
           payload,
+          deleted: Boolean(row.deleted_at),
           createdAt: row.created_at,
-          updatedAt: row.updated_at
+          updatedAt: row.deleted_at || row.updated_at
         });
       });
     },
@@ -112,8 +118,8 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
         // Updates are compare-and-swap: only the exact version previously read
         // by this client may be replaced. A stale version yields a conflict.
         result = await db.prepare(
-          "UPDATE nebula_records SET payload_json = ?, updated_at = ? WHERE owner_id = ? AND record_type = ? AND record_id = ? AND updated_at = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?))"
-        ).bind(serialized, updatedAt, ownerId, type, id, expectedUpdatedAt, ownerId, type).run();
+          "UPDATE nebula_records SET payload_json = ?, updated_at = ?, deleted_at = NULL WHERE owner_id = ? AND record_type = ? AND record_id = ? AND (updated_at = ? OR deleted_at = ?) AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?))"
+        ).bind(serialized, updatedAt, ownerId, type, id, expectedUpdatedAt, expectedUpdatedAt, ownerId, type).run();
       }
       const changes = Number(result.meta?.changes || 0);
       if (changes > 0) return Object.freeze({ ok: true, conflict: false, changes, updatedAt });
@@ -124,17 +130,18 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       ).bind(ownerId, type).first();
       if (!liveConsent) throw new Error("Cloud-sync consent does not cover this record category.");
       const remoteRow = await db.prepare(
-        "SELECT payload_json, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) LIMIT 1"
+        "SELECT payload_json, updated_at, deleted_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) LIMIT 1"
       ).bind(ownerId, type, id, ownerId, type).first();
       let remotePayload = null;
-      if (remoteRow) {
+      if (remoteRow && !remoteRow.deleted_at) {
         try { remotePayload = JSON.parse(remoteRow.payload_json); }
         catch { throw new Error("Stored NEBULA record is invalid JSON."); }
       }
       return Object.freeze({
         ok: true, conflict: true, changes: 0,
-        remoteVersion: remoteRow?.updated_at ?? null,
-        remotePayload
+        remoteVersion: remoteRow?.deleted_at || remoteRow?.updated_at || null,
+        remotePayload,
+        remoteDeleted: Boolean(remoteRow?.deleted_at)
       });
     },
 
@@ -143,10 +150,11 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       const id = assertRecordId(recordId);
       // Owner-initiated deletion remains available after sync consent is
       // paused or revoked. The server-derived owner scope is still mandatory.
+      const deletedAt = timestamp(now());
       const result = await db.prepare(
-        "DELETE FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ?"
-      ).bind(ownerId, type, id).run();
-      return Object.freeze({ deleted: Number(result.meta?.changes || 0) > 0 });
+        "UPDATE nebula_records SET deleted_at = ?, updated_at = ? WHERE owner_id = ? AND record_type = ? AND record_id = ? AND deleted_at IS NULL"
+      ).bind(deletedAt, deletedAt, ownerId, type, id).run();
+      return Object.freeze({ deleted: Number(result.meta?.changes || 0) > 0, deletedAt });
     }
   });
 }
