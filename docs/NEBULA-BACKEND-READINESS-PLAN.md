@@ -413,7 +413,7 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Added transport and runtime tests for authenticated GET, cursor construction, read-only preview, confirmation requirement, successful graph application, and stale local snapshot rejection.
 - [ ] CI for this checkpoint is running against the latest PR head; record final outcomes after all three workflows complete.
 - [ ] This is a runtime/library capability only, not a user-facing feature: no Clerk SDK provider, account session, Worker origin, category-consent UI, cloud preview screen, or apply confirmation UI is wired into the app.
-- [ ] The endpoint lists currently existing records only. It does not emit tombstones, so remote deletions are not discoverable through this preview path and cross-device delete propagation remains incomplete.
+- [x] Record tombstones are now returned by the records listing path. The earlier limitation below is superseded by the 2026-11-15 tombstone checkpoint; R2 object deletion markers and retention/compaction remain open.
 - [ ] Applying a previewed record is supported only for `graph`. Private files, lecture sources, AI conversation archives, and research records remain local-only and are not migrated or uploaded.
 - [ ] The local snapshot guard is in-memory and scoped to the current runtime instance; browser reload invalidates previews, which is intentional. A preview can scan up to 1,000 records when revalidating a selected ID; larger categories may require a dedicated owner-scoped single-record GET endpoint.
 
@@ -421,7 +421,7 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 ## 2026-11-15: Versioned record tombstones
 
 - [x] Added migration `0006_record_tombstones.sql` with nullable `deleted_at` on owner-scoped records. Existing records remain active after migration.
-- [x] Changed owner-scoped record DELETE from physical removal to a timestamped soft delete. The row remains in the same owner namespace and retains a deletion version.
+- [x] Changed owner-scoped record DELETE from physical removal to a timestamped soft delete. The row remains in the same owner namespace and retains a monotonic deletion version; the former payload is scrubbed to `{}` so the tombstone retains no deleted content.
 - [x] Remote record listing returns tombstones as `{ deleted: true, payload: null, updatedAt: deleted_at }`; deleted payload content is not returned. Active records return `deleted: false`.
 - [x] A stale create-only POST cannot silently resurrect a tombstoned ID. An explicit CAS update using the observed tombstone version can restore that ID and clears `deleted_at`.
 - [x] The client transport validates tombstone response shape. Confirmed runtime apply forwards remote deletion to the reviewed graph applier, which clears the local graph; preview remains read-only.
