@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const files = ["nebula-worker-auth.js", "nebula-sync-consent.js", "nebula-d1-repository.js", "nebula-r2-repository.js"];
+const files = ["nebula-worker-auth.js", "nebula-sync-consent.js", "nebula-d1-repository.js", "nebula-r2-repository.js", "nebula-r2-cleanup.js"];
 let source = await readFile(new URL("../deepseek-worker.js", import.meta.url), "utf8");
 for (const file of files) source = source.replaceAll('"./' + file + '"', JSON.stringify(new URL("../" + file, import.meta.url).href));
 const { default: worker } = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
@@ -42,6 +42,12 @@ class MemoryD1 {
   consents = new Map();
   records = new Map();
   objects = new Map();
+  cleanup = new Map();
+  async batch(statements) {
+    const results = [];
+    for (const statement of statements) results.push(await statement.run());
+    return results;
+  }
   prepare(sql) {
     const db = this;
     return {
@@ -49,8 +55,10 @@ class MemoryD1 {
         const owner = values[0];
         return {
           async first() {
-            if (sql.includes("FROM nebula_sync_consents")) return db.consents.get(owner) || null;
+            // The consent-gated object SELECT contains both table names;
+            // resolve its outer metadata table before its consent subquery.
             if (sql.includes("FROM nebula_objects")) return db.objects.get([owner, values[1], values[2]].join("|")) || null;
+            if (sql.includes("FROM nebula_sync_consents")) return db.consents.get(owner) || null;
             if (sql.includes("FROM nebula_records")) return db.records.get([owner, values[1], values[2]].join("|")) || null;
             return null;
           },
@@ -70,6 +78,21 @@ class MemoryD1 {
                 owner_id: owner, record_type: values[1], record_id: values[2],
                 payload_json: values[3], created_at: values[4], updated_at: values[5]
               });
+            } else if (sql.startsWith("INSERT INTO nebula_object_cleanup")) {
+              if (sql.includes("SELECT owner_id, object_id")) {
+                const row = db.objects.get([values[1], values[2], values[3]].join("|"));
+                if (row?.status === "deleting") db.cleanup.set([values[1], values[2], values[3]].join("|"), {
+                  owner_id: row.owner_id, object_id: row.object_id, category: row.category,
+                  object_key: row.object_key, created_at: values[0], status: "pending", lease_expires_at: null, intent_kind: "delete"
+                });
+              } else {
+                db.cleanup.set([owner, values[2], values[1]].join("|"), {
+                  owner_id: owner, object_id: values[1], category: values[2], object_key: values[3],
+                  created_at: values[4], status: "uploading"
+                });
+              }
+            } else if (sql.startsWith("DELETE FROM nebula_object_cleanup")) {
+              db.cleanup.delete([owner, values[1], values[2]].join("|"));
             } else if (sql.startsWith("INSERT INTO nebula_objects")) {
               db.objects.set([owner, values[2], values[1]].join("|"), {
                 owner_id: owner, object_id: values[1], category: values[2], object_key: values[3],
@@ -143,6 +166,47 @@ try {
   assert.equal(enabled.status, 200);
   assert.equal((await enabled.json()).consent.status, "enabled");
 
+  // Simulate revocation after the request-start snapshot but before the D1
+  // repository operation. The live ledger re-check must fail closed.
+  let consentReads = 0;
+  const revocationRaceDb = {
+    prepare(sql) {
+      const statement = db.prepare(sql);
+      return {
+        bind(...values) {
+          const bound = statement.bind(...values);
+          if (!sql.includes("FROM nebula_sync_consents")) return bound;
+          return {
+            ...bound,
+            async first() {
+              const row = await bound.first();
+              consentReads += 1;
+              return consentReads === 1 ? row : { ...row, status: "revoked" };
+            }
+          };
+        }
+      };
+    }
+  };
+  const revokedDuringRequest = await call("/sync/records?type=graph", {
+    envOverride: { ...env, NEBULA_DB: revocationRaceDb }
+  });
+  assert.equal(revokedDuringRequest.status, 403, "A D1 operation must re-check live consent after the request-start snapshot.");
+  const backendTypeError = await call("/sync/records?type=graph", {
+    envOverride: { ...env, NEBULA_DB: { prepare() { throw new TypeError("sensitive D1 SQL, table and binding details"); } } }
+  });
+  assert.equal(backendTypeError.status, 500, "Backend TypeErrors must remain server failures, not be misclassified as client input.");
+  const backendTypeErrorBody = await backendTypeError.text();
+  assert.match(backendTypeErrorBody, /Private sync operation failed/);
+  assert.doesNotMatch(backendTypeErrorBody, /sensitive D1 SQL|table and binding details/,
+    "Backend TypeError details must never be reflected to private sync API clients.");
+  const backendConsentTypeError = await call("/sync/records?type=graph", {
+    envOverride: { ...env, NEBULA_DB: { prepare() { throw new TypeError("consent table schema mismatch: missing status column"); } } }
+  });
+  assert.equal(backendConsentTypeError.status, 500,
+    "An internal error mentioning consent must not be misclassified as a user authorization denial.");
+  assert.match(await backendConsentTypeError.text(), /Private sync operation failed/);
+
   const putRecord = await call("/sync/records?type=graph", {
     method: "POST",
     body: JSON.stringify({ recordType: "graph", recordId: "root-1", payload: { title: "Knowledge graph" } })
@@ -165,6 +229,14 @@ try {
   assert.equal(downloaded.status, 200);
   assert.equal(await downloaded.text(), "private file body");
 
+  const largerUploadBody = new Uint8Array(1024 * 1024 + 1);
+  largerUploadBody.fill(7);
+  const largerUpload = await call("/sync/objects?category=private-files", {
+    method: "POST", body: largerUploadBody, contentType: "application/octet-stream"
+  });
+  assert.equal(largerUpload.status, 201, "Private file uploads above 1 MiB must be accepted up to the documented 10 MiB limit.");
+  assert.equal((await largerUpload.json()).object.sizeBytes, largerUploadBody.byteLength);
+
   const enableB = await call("/sync/consent", {
     token: tokenB, method: "POST",
     body: JSON.stringify({ status: "enabled", confirm: true, categories: ["graph", "private-files"] })
@@ -178,6 +250,46 @@ try {
   assert.equal(foreignList.status, 200);
   assert.deepEqual((await foreignList.json()).records, [], "A second account with matching consent must see only its own records.");
 
+  // Cross-account write/delete isolation: matching logical IDs remain in
+  // separate owner namespaces, and guessed foreign object IDs are inert.
+  const recordB = await call("/sync/records?type=graph", {
+    token: tokenB, method: "POST",
+    body: JSON.stringify({ recordType: "graph", recordId: "root-1", payload: { title: "Account B graph" } })
+  });
+  assert.equal(recordB.status, 200);
+  const ownerAId = [...db.consents.keys()].find(owner => db.records.has(owner + "|graph|root-1"));
+  const ownerBId = [...db.consents.keys()].find(owner => owner !== ownerAId);
+  assert.ok(ownerAId && ownerBId, "Both accounts must have distinct server-derived owner namespaces.");
+  assert.equal(JSON.parse(db.records.get(ownerAId + "|graph|root-1").payload_json).title, "Knowledge graph",
+    "Writing the same record ID as account B must not overwrite account A's record.");
+  assert.equal(JSON.parse(db.records.get(ownerBId + "|graph|root-1").payload_json).title, "Account B graph");
+
+  const deleteForeignRecord = await call("/sync/records?type=graph&id=root-1", {
+    token: tokenB, method: "DELETE"
+  });
+  assert.equal(deleteForeignRecord.status, 200);
+  assert.equal((await deleteForeignRecord.json()).deleted, true,
+    "Account B may delete only its own same-ID record.");
+  assert.equal(db.records.has(ownerBId + "|graph|root-1"), false);
+  assert.equal(db.records.has(ownerAId + "|graph|root-1"), true,
+    "Account B deleting its own same-ID record must leave account A's record intact.");
+
+  const overwriteForeignObject = await call(objectPath, {
+    token: tokenB, method: "PUT", body: "attacker overwrite", contentType: "text/plain"
+  });
+  assert.equal(overwriteForeignObject.status, 405,
+    "The object API must not expose an ID-addressed overwrite operation.");
+  const deleteForeignObject = await call(objectPath, { token: tokenB, method: "DELETE" });
+  assert.equal(deleteForeignObject.status, 200);
+  assert.equal((await deleteForeignObject.json()).deleted, false,
+    "Account B must not delete account A's object even when it knows the object ID.");
+  assert.equal(bucket.values.has("owners/" + ownerAId + "/private-files/" + object.objectId), true,
+    "A foreign delete attempt must not remove account A's R2 object.");
+  const ownerARecordAfterForeignDelete = await call("/sync/records?type=graph");
+  assert.equal(ownerARecordAfterForeignDelete.status, 200);
+  assert.equal((await ownerARecordAfterForeignDelete.json()).records[0].recordId, "root-1",
+    "A's record must remain readable after B's cross-account delete attempt.");
+
   const paused = await call("/sync/consent", { method: "POST", body: JSON.stringify({ status: "paused" }) });
   assert.equal(paused.status, 200);
   const blockedAfterPause = await call("/sync/records?type=graph");
@@ -189,6 +301,11 @@ try {
   const removeAfterRevocation = await call(objectPath, { method: "DELETE" });
   assert.equal(removeAfterRevocation.status, 200, "Owners must retain the ability to delete their own cloud copies after revocation.");
   assert.equal(bucket.values.has("owners/" + [...db.consents.keys()][0] + "/private-files/" + object.objectId), false);
+  const removeRecordAfterRevocation = await call("/sync/records?type=graph&id=root-1", { method: "DELETE" });
+  assert.equal(removeRecordAfterRevocation.status, 200,
+    "Owners must retain the ability to delete their own cloud records after revocation.");
+  assert.equal(db.records.has([...db.consents.keys()][0] + "|graph|root-1"), false,
+    "Revoked users must be able to remove their own cloud record without restoring sync consent.");
   console.log("NEBULA authenticated private sync API integration tests passed.");
 } finally {
   globalThis.fetch = originalFetch;

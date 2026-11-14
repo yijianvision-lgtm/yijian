@@ -24,6 +24,9 @@ jobs:
           node --input-type=module --check < nebula-d1-repository.js
           node --input-type=module --check < nebula-sync-consent.js
           node --input-type=module --check < nebula-r2-repository.js
+          node --input-type=module --check < nebula-r2-cleanup.js
+      - name: Verify Wrangler environment isolation
+        run: node tests/wrangler-config-safety.test.mjs
       - name: Install IndexedDB test shim
         run: npm install --no-save fake-indexeddb@6.2.4
       - name: Check inline preview JavaScript syntax
@@ -42,9 +45,74 @@ jobs:
         run: node tests/worker-sync-api.test.mjs
       - name: Test owner-scoped D1 repository contracts
         run: node tests/d1-repository.test.mjs
+      - name: Execute D1 migrations and consent-gated SQL in SQLite
+        run: node --experimental-sqlite tests/d1-sqlite-integration.test.mjs
       - name: Test server-side sync consent ledger
         run: node tests/sync-consent.test.mjs
       - name: Test owner-scoped private R2 repository contracts
         run: node tests/r2-repository.test.mjs
+      - name: Test scheduled R2 cleanup reconciliation
+        run: node tests/r2-cleanup-scheduler.test.mjs
       - name: Test local database workflows
         run: node tests/backend-runtime.test.mjs
+
+  local-wrangler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply all D1 migrations to the local Miniflare database
+        run: npx --yes wrangler@4 d1 migrations apply nebula-private-local --local --config wrangler.local.example.toml
+      - name: Start isolated local Worker and verify health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 dev --local --config wrangler.local.example.toml --ip 127.0.0.1 --port 8787 > /tmp/nebula-wrangler.log 2>&1 &
+          worker_pid=$!
+          cleanup() {
+            kill "$worker_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          ready=0
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:8787/health > /tmp/nebula-health.json; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$worker_pid" 2>/dev/null; then
+              cat /tmp/nebula-wrangler.log
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/nebula-wrangler.log
+            exit 1
+          fi
+          node -e 'const fs=require("fs");const h=JSON.parse(fs.readFileSync("/tmp/nebula-health.json","utf8"));if(h.ok!==true||h.service!=="NEBULA Cognitive OS Bridge")process.exit(1);console.log("Local Worker /health passed:",h.service,h.version)'
+
+      - name: Smoke-test local R2 object put, get, and delete
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_file="$(mktemp)"
+          downloaded_file="$(mktemp)"
+          missing_file="$(mktemp)"
+          object_path="nebula-private-local/ci-smoke/r2-roundtrip.txt"
+          cleanup() {
+            npx --yes wrangler@4 r2 object delete "$object_path" --local --config wrangler.local.example.toml --force >/dev/null 2>&1 || true
+            rm -f "$source_file" "$downloaded_file" "$missing_file"
+          }
+          trap cleanup EXIT
+          printf 'NEBULA local R2 smoke test\\ncommit=%s\\n' "${GITHUB_SHA}" > "$source_file"
+          npx --yes wrangler@4 r2 object put "$object_path" --file "$source_file" --local --config wrangler.local.example.toml --force
+          npx --yes wrangler@4 r2 object get "$object_path" --file "$downloaded_file" --local --config wrangler.local.example.toml
+          cmp "$source_file" "$downloaded_file"
+          npx --yes wrangler@4 r2 object delete "$object_path" --local --config wrangler.local.example.toml --force
+          if npx --yes wrangler@4 r2 object get "$object_path" --file "$missing_file" --local --config wrangler.local.example.toml >/dev/null 2>&1; then
+            echo "R2 object still exists after delete"
+            exit 1
+          fi
+          echo "Local R2 put/get/delete round-trip passed"

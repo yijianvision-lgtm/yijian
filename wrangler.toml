@@ -29,7 +29,7 @@ namespace_id = "82640731"
 # NEBULA_JWT_ISSUER = "https://<verified-clerk-issuer>"
 # NEBULA_JWT_AUDIENCE = "<verified-nebula-api-audience>"
 # NEBULA_JWKS_URL = "https://<verified-clerk-jwks-endpoint>"
-# NEBULA_AUTHORIZED_PARTIES = '["https://<approved-app-origin>"]'
+# NEBULA_AUTHORIZED_PARTIES = '[\"https://<approved-app-origin>\"]'
 # Configure NEBULA_OWNER_NAMESPACE_SECRET as a Worker secret (32+ random chars).
 
 # Private sync bindings are intentionally not active until a separate test

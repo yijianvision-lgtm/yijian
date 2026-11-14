@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 // Load the Cloudflare module as an isolated ESM data URL; no package.json or live secrets required.
 const source = await readFile(new URL("../deepseek-worker.js", import.meta.url), "utf8");
-const moduleFiles = ["nebula-worker-auth.js", "nebula-sync-consent.js", "nebula-d1-repository.js", "nebula-r2-repository.js"];
+const moduleFiles = ["nebula-worker-auth.js", "nebula-sync-consent.js", "nebula-d1-repository.js", "nebula-r2-repository.js", "nebula-r2-cleanup.js"];
 let runnableSource = source;
 for (const file of moduleFiles) {
   runnableSource = runnableSource.replaceAll('"./' + file + '"', JSON.stringify(new URL("../" + file, import.meta.url).href));
@@ -191,8 +191,42 @@ try {
     body: JSON.stringify({ text: "response-size boundary test" })
   });
   assert.equal(oversizedUpstream.status, 500, "Analyze must reject an upstream response whose declared size exceeds 8 MiB.");
-  assert.match(await oversizedUpstream.text(), /Upstream response exceeds the 8 MiB limit/);
+  const oversizedError = await oversizedUpstream.text();
+  assert.match(oversizedError, /Knowledge analysis failed/);
+  assert.doesNotMatch(oversizedError, /Upstream response exceeds|8 MiB limit/,
+    "Internal body-limit errors must not be exposed to API clients.");
   assert.equal(upstreamCalls, 1, "The oversized upstream response test should make exactly one mocked provider call.");
+
+  // Scheduler must fail closed on incomplete bindings and emit only aggregate,
+  // non-identifying telemetry. Failures are marked without exposing raw errors.
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+  const originalError = console.error;
+  const logLines = [];
+  console.log = value => logLines.push(String(value));
+  console.warn = value => logLines.push(String(value));
+  console.error = value => logLines.push(String(value));
+  try {
+    await worker.scheduled({}, {});
+    assert.match(logLines.at(-1), /nebula_cleanup_skipped/);
+    const emptyDb = { prepare() { return { bind() { return { all: async () => ({ results: [] }) }; } }; } };
+    await worker.scheduled({}, { NEBULA_DB: emptyDb, NEBULA_BUCKET: { delete: async () => {} } });
+    const completed = JSON.parse(logLines.at(-1));
+    assert.equal(completed.event, "nebula_cleanup_completed");
+    assert.equal(completed.scanned, 0);
+    assert.equal(Object.hasOwn(completed, "ownerId"), false);
+    const brokenDb = { prepare() { throw new Error("sensitive SQL and binding details"); } };
+    await assert.rejects(
+      worker.scheduled({}, { NEBULA_DB: brokenDb, NEBULA_BUCKET: { delete: async () => {} } }),
+      /NEBULA scheduled cleanup failed/
+    );
+    assert.match(logLines.at(-1), /nebula_cleanup_failed/);
+    assert.doesNotMatch(logLines.join("\n"), /sensitive SQL and binding details/);
+  } finally {
+    console.log = originalLog;
+    console.warn = originalWarn;
+    console.error = originalError;
+  }
   console.log("NEBULA Worker runtime security checks passed.");
 } finally {
   globalThis.fetch = originalFetch;
