@@ -25,6 +25,7 @@ jobs:
           node --input-type=module --check < nebula-sync-consent.js
           node --input-type=module --check < nebula-r2-repository.js
           node --input-type=module --check < nebula-r2-cleanup.js
+          node --input-type=module --check < nebula-sync-queue.js
       - name: Verify Wrangler environment isolation
         run: node tests/wrangler-config-safety.test.mjs
       - name: Install IndexedDB test shim
@@ -33,6 +34,8 @@ jobs:
         run: node tests/ui-script-syntax.test.mjs
       - name: Check backend contracts
         run: node tests/backend-contract.test.mjs
+      - name: Test local-first sync outbox and conflict handling
+        run: node tests/sync-queue.test.mjs
       - name: Test provider-neutral auth and explicit sync consent
         run: node tests/auth-adapter.test.mjs
       - name: Test JWT verification and owner derivation
