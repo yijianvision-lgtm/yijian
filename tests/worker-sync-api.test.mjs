@@ -141,7 +141,6 @@ const env = {
   NEBULA_OWNER_NAMESPACE_SECRET: "sync-api-test-owner-namespace-secret-32-bytes-minimum",
   NEBULA_DB: db,
   NEBULA_BUCKET: bucket,
-  NEBULA_TEST_DIAGNOSTICS: "true",
   NEBULA_RATE_LIMITER: { limit: async () => ({ success: true }) }
 };
 async function call(path, { method = "GET", token = tokenA, body, contentType = "application/json", envOverride = env } = {}) {
