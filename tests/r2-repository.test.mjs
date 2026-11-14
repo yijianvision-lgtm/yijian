@@ -203,7 +203,7 @@ const retryRepo = createNebulaR2Repository({
 const second = await retryRepo.putObject({ category: "private-files", body: new Uint8Array([1]) });
 const secondKey = "owners/" + ownerA + "/private-files/" + second.objectId;
 db.failMetadataDelete = 1;
-await assert.rejects(retryRepo.deleteObject("private-files", second.objectId), /simulated metadata delete failure/);
+await assert.rejects(retryRepo.deleteObject("private-files", second.objectId), /simulated metadata tombstone failure/);
 assert.equal(db.row.status, "deleting");
 assert.equal(db.cleanup.get(second.objectId).status, "pending");
 assert.equal(bucket.objects.has(secondKey), false);
