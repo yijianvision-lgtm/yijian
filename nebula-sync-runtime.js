@@ -2,6 +2,7 @@ import { createNebulaAuthAdapter } from "./nebula-auth-adapter.js";
 import { createNebulaSyncQueue } from "./nebula-sync-queue.js";
 import { createNebulaRecordsTransport } from "./nebula-sync-records-transport.js";
 import { createNebulaWorkerConsentStore } from "./nebula-worker-consent-store.js";
+import { createNebulaLocalRecordApplier } from "./nebula-local-record-applier.js";
 
 /**
  * Compose local persistence, provider-neutral identity, server consent, and
@@ -30,8 +31,9 @@ export function createNebulaSyncRuntime({
   });
   const auth = createNebulaAuthAdapter({ provider, consentStore });
   const send = createNebulaRecordsTransport({ baseUrl: workerBaseUrl, fetchImpl });
+  const localApplier = applyRemote || createNebulaLocalRecordApplier({ local });
   const queue = createNebulaSyncQueue({
-    store: local.getSyncOutboxStore(), auth, send, applyRemote
+    store: local.getSyncOutboxStore(), auth, send, applyRemote: localApplier
   });
 
   return Object.freeze({
