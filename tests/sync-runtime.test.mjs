@@ -1,0 +1,67 @@
+import assert from "node:assert/strict";
+import { createNebulaSyncRuntime } from "../nebula-sync-runtime.js";
+
+const rows = new Map();
+const local = {
+  getSyncOutboxStore() {
+    return {
+      async list() { return [...rows.values()].map(value => structuredClone(value)); },
+      async put(item) { rows.set(item.id, structuredClone(item)); },
+      async remove(id) { rows.delete(id); }
+    };
+  }
+};
+let session = null;
+let consent = null;
+const requests = [];
+const provider = {
+  async getSession() { return session; },
+  async getAccessToken() { return session ? "synthetic-session-token" : null; },
+  async signIn() { session = { issuer: "https://issuer.example", subject: "user-a" }; },
+  async signOut() { session = null; }
+};
+const fetchImpl = async (url, init = {}) => {
+  requests.push({ url: String(url), init });
+  if (String(url).endsWith("/sync/consent") && init.method === "GET") {
+    return new Response(JSON.stringify({ consent }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  if (String(url).endsWith("/sync/consent") && init.method === "POST") {
+    const body = JSON.parse(init.body);
+    consent = body.status === "enabled"
+      ? { status: "enabled", categories: body.categories, confirmedAt: "2026-11-15T00:00:00.000Z" }
+      : { status: body.status, categories: consent?.categories ?? [], confirmedAt: consent?.confirmedAt ?? null };
+    return new Response(JSON.stringify({ consent }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  if (String(url).includes("/sync/records") && init.method === "POST") {
+    return new Response(JSON.stringify({ ok: true, conflict: false }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  throw new Error("Unexpected test request: " + url);
+};
+
+const runtime = createNebulaSyncRuntime({
+  local, provider, workerBaseUrl: "https://nebula-worker.example", fetchImpl
+});
+assert.equal(requests.length, 0, "Runtime construction must not make network requests.");
+await runtime.signIn();
+assert.deepEqual(await runtime.getConsent(), { enabled: false, categories: [] },
+  "Authentication must not imply cloud-sync consent.");
+await runtime.enqueueRecord({ category: "graph", recordId: "root-1", payload: { title: "Synthetic local graph" } });
+assert.equal(requests.filter(x => String(x.url).includes("/sync/records")).length, 0,
+  "Enqueue must remain local and never upload by itself.");
+await assert.doesNotReject(runtime.enableCloudSync({ categories: ["graph"], confirmed: true }));
+assert.equal(consent.status, "enabled");
+assert.equal(requests.filter(x => String(x.url).includes("/sync/records")).length, 0,
+  "Granting consent alone must not drain the queue.");
+const statusBeforeDrain = await runtime.getStatus();
+assert.equal(statusBeforeDrain.pendingCount, 1);
+assert.equal(statusBeforeDrain.syncEnabled, true);
+const drained = await runtime.drain();
+assert.equal(drained.sent, 1);
+assert.equal((await runtime.listPending()).length, 0);
+assert.equal(requests.filter(x => String(x.url).includes("/sync/records")).length, 1);
+await runtime.disableCloudSync();
+assert.equal(consent.status, "revoked");
+assert.equal((await runtime.getStatus()).syncEnabled, false);
+await runtime.signOut();
+assert.equal((await runtime.getStatus()).signedIn, false);
+console.log("NEBULA explicit sync runtime composition tests passed.");
