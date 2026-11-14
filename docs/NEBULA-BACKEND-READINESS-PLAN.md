@@ -1,16 +1,16 @@
 # NEBULA 后台接入准备计划
 
-状态：**前端保持 local-first；测试后台尚未接入；正式后台禁止接入。**
+状态：**前端保持 local-first；Worker 私有同步 API 已完成代码集成与模拟/SQLite 验证；测试后台尚未部署及验收；正式后台禁止接入。**
 
-本计划基于 2026-11-10 对 `index.html`、`nebula-local.js`、`deepseek-worker.js`、`wrangler.toml` 与身份隔离契约的代码审计。它是执行清单，不代表 Cloudflare 资源已创建或任何服务已部署。
+本计划最初基于 2026-11-10 代码审计，后续状态已按 2026-11-14 隔离分支代码更新。它是执行清单；代码集成和模拟/SQLite 测试不代表 Cloudflare 资源已创建或服务已部署。
 
 ## 当前代码事实
 
 - 知识图谱、原始参考文件、对话档案和提取内容由浏览器 IndexedDB 保存；LocalStorage 仅有兼容缓存及少量 UI/同步设置。
-- 当前页面中的 DeepSeek 分享导入流程把 `NEBULA_SYNC_TOKEN` 放在用户输入框并由浏览器发起 Worker 请求；它是部署级共享令牌，不是用户登录凭据。
-- 当前 Worker 的 `/share`、`/analyze`、`/research`、`/chat`、`/coach`、`/mnemonic` 路由使用共享令牌鉴权；没有真实用户 JWT 验证，也没有 D1/R2 owner-scoped 私有数据 API。
-- 2026-11-10 后续安全加固：JWT 验证原型增加 JWKS 大小/超时、RSA 最低强度、重复 kid 拒绝、authorized party allowlist、iat/exp 生命周期限制；Worker 入站 body 1 MiB / 15 秒限制、上游 8 MiB / 20 秒限制与共享令牌常量时间比较。仍未接入真实身份。
-- 当前没有可验证的云端账户身份、数据同步或私人讲义云存储实现。
+- 当前页面中的 DeepSeek 分享导入流程仍使用部署级 `NEBULA_SYNC_TOKEN` 兼容路径；它不是用户登录凭据。
+- Worker 已有可选 `clerk-jwt` 身份验证模式及 `/sync/consent`、`/sync/records`、`/sync/objects` 私有 API；这些路径已通过合成 JWT、模拟 D1/R2 和 SQLite 测试。真实 Clerk token 与 Cloudflare D1/R2 尚未验证。既有共享令牌模式仍只代表 shared-service，不代表用户身份。
+- JWT/JWKS 验证代码已接入 Worker 的可选 `clerk-jwt` 模式，包含 JWKS/超时、RSA 强度、重复 kid、authorized party、iat/exp 等约束；合成身份测试已通过。真实 Clerk issuer、session token claims 和浏览器登录流程仍待验证。Worker 另有请求体/上游响应大小及超时限制。
+- 当前没有真实云端账户身份验证、真实云同步或私人讲义云存储验收；现有同步能力仅达到代码原型及本地模拟/SQLite 验证阶段。
 - `wrangler.toml` 中的 Rate Limiter namespace 尚未确认；不得部署或声称线上限流生效。
 
 ## 已确认的产品决策：本地优先＋自主云同步（2026-11-10）
@@ -30,31 +30,31 @@
 
 ## 里程碑
 
-### M0 — 前置选择与环境准备（未完成）
+### M0 — 前置选择与环境准备（部分完成；外部环境阻塞）
 
-身份提供方比较记录见 [NEBULA 第三方身份服务选型评估](./NEBULA-AUTH-PROVIDER-EVALUATION.md)。当前 Clerk 为第一候选、Auth0 为备选，尚未最终选定或创建供应商账户。
+身份提供方比较记录见 [NEBULA 第三方身份服务选型评估](./NEBULA-AUTH-PROVIDER-EVALUATION.md)。用户已确认测试阶段优先 Clerk；真实测试实例、回调域名及供应商配置尚未完成。
 
 - [x] 用户确认 Clerk 作为测试阶段首选身份提供方；实际测试实例、回调域名及账户生命周期仍待配置。
 - [ ] 明确测试环境域名、回调地址、issuer、audience、JWKS URL。
 - [ ] 确认独立 Cloudflare 测试环境及账号权限。
 - [ ] 确认 Rate Limiter namespace 唯一性与 Wrangler CLI 版本。
 
-### M1 — 真实身份认证（原型阶段；Worker 尚未接入）
+### M1 — 身份认证（Worker 集成代码完成；真实 Clerk 验证待完成）
 
 - [x] 建立供应商无关 RS256/JWKS 验证原语，固定配置 issuer、audience、HTTPS JWKS URL。
 - [x] 建立合成 RSA/JWKS 测试：签名、过期、错误 issuer/audience、空 subject、iat/exp 生命周期、未来 nbf、alg=none、恶意 jku、未知 kid、签名错误、密钥轮换及 JWKS 故障。
 - [x] 建立基于服务端 namespace secret 的 HMAC-SHA-256 owner_id 派生原语。
-- [ ] Worker 服务端验证真实 Clerk API access token；完成前现有共享令牌仍在用，不能称为用户身份认证。
+- [x] Worker 已有可选 `clerk-jwt` 模式，使用服务端固定 issuer/audience/JWKS/authorized parties 验证 JWT，并派生服务端 owner ID；合成 RSA/JWKS Worker 集成测试通过。
 - [ ] 固定测试环境 issuer、audience、JWKS URL，完成 Clerk 真实测试实例验证。
-- [ ] 拒绝客户端 userId、ownerId、tenantId 作为身份依据，并将验证结果接入私有 API 授权层。
+- [x] 私有同步 API 从认证上下文派生 owner ID，不接受客户端 userId/ownerId/tenantId 作为归属依据；共享令牌上下文被拒绝访问用户私有同步 API。
 
-### M2 — 隔离存储与 API（未完成）
+### M2 — 隔离存储与 API（代码集成完成；真实云端验收待完成）
 
 - [ ] 仅在独立测试环境创建 D1/R2。
-- [ ] D1 每个私有读写删、关联、搜索、导出和后台任务均 owner-scoped。
-- [ ] R2 对象 key 由服务端派生 owner 命名空间；下载/签名 URL 先校验归属。
-- [ ] A/B 两个合成用户的跨用户访问、枚举、覆盖、删除、导出负向测试全部通过。
-- [ ] 不把现有共享令牌接口升级包装成用户级数据 API。
+- [x] 当前 D1 records CRUD 与 R2 object list/read/upload/delete repository 操作均绑定服务端 owner ID，并由服务端 consent ledger 控制；SQLite 与模拟 binding 测试通过。关联、搜索、导出及后台任务的完整 owner-scope 覆盖仍需专项验收。
+- [x] R2 object key 由服务端 owner/category/object ID 派生；下载和删除通过 owner-scoped D1 metadata 校验，不接受客户端 raw key。真实 R2 运行时仍待验证。
+- [x] Worker 集成测试已覆盖 A/B 用户记录列表隔离及 B 无法下载 A 对象；[ ] 跨用户覆盖、删除、导出、搜索和备份恢复负向测试仍待补齐。
+- [x] shared-service 身份不能访问用户私有同步 API；共享令牌不派生 owner ID。
 
 ### M3 — 前端适配与数据安全（未完成）
 
