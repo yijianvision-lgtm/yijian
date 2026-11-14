@@ -357,3 +357,8 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [ ] Current implementation is a queue kernel with injected storage and transport, not yet wired to IndexedDB, Clerk browser sessions, or the Worker endpoints. No cloud sync UI or user-facing status is connected.
 - [ ] Next M3 steps: implement IndexedDB outbox store with schema migration and restart recovery; implement a Worker transport adapter for records/objects; add a read-only status surface and explicit per-category consent controls; then run browser tests. Do not upload existing local graph/files by default.
 - [ ] CI initially exposed a test assertion that counted a deliberately retained, consent-blocked upsert as a failed delete. The test was corrected to assert that the delete is removed while the unrelated upsert remains queued. Awaiting final CI on the corrected test head.
+
+
+- [x] Follow-up: bumped the local IndexedDB schema from v6 to v7 additively and added a `syncOutbox` object store. `NEBULA_LOCAL.getSyncOutboxStore()` exposes list/put/remove to the queue without initiating network activity.
+- [x] Added a fake-indexeddb persistence test that writes an outbox item, reloads the module, verifies the item remains, then verifies deletion.
+- [ ] Browser restart/reload and quota/transaction-failure behavior still require browser-level validation. Existing local knowledge stores are retained; this migration only adds the outbox store.
