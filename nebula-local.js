@@ -5,8 +5,8 @@
 const DB_MODE = new URL(import.meta.url).searchParams.get("env") || "production";
 const DB_ENVIRONMENT = DB_MODE === "preview" ? "preview" : "production";
 const DB_NAME = DB_ENVIRONMENT === "preview" ? "nebula_local_preview_v1" : "nebula_local_v2";
-const DB_VERSION = 6;
-const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence", "frameworkPlacements", "explorationPaths", "explorationSteps"];
+const DB_VERSION = 7;
+const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence", "frameworkPlacements", "explorationPaths", "explorationSteps", "syncOutbox"];
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -14,7 +14,7 @@ function openDB() {
     req.onupgradeneeded = () => {
       const db = req.result;
       for (const name of STORES) if (!db.objectStoreNames.contains(name)) {
-        if (["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence","frameworkPlacements","explorationPaths","explorationSteps"].includes(name)) db.createObjectStore(name, { keyPath: "id" });
+        if (["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence","frameworkPlacements","explorationPaths","explorationSteps","syncOutbox"].includes(name)) db.createObjectStore(name, { keyPath: "id" });
         else db.createObjectStore(name);
       }
     };
@@ -2235,5 +2235,26 @@ Object.assign(NEBULA_LOCAL, {
     if(!path) throw new Error("探索路径不存在。");
     const steps=await this.listExplorationSteps(pathId);
     return {path,steps,branchPoints:steps.map(s=>({stepId:s.id,nodeId:s.toNodeId,canFork:true}))};
+  }
+});
+
+
+/* Durable outbox adapter for the injected sync queue. This is local-only:
+ * opening or writing the outbox never initiates a cloud request.
+ */
+Object.assign(NEBULA_LOCAL, {
+  getSyncOutboxStore() {
+    return Object.freeze({
+      async list() {
+        return request("syncOutbox", "readonly", store => store.getAll());
+      },
+      async put(item) {
+        if (!item || typeof item.id !== "string" || !item.id) throw new TypeError("Outbox item ID is required.");
+        await request("syncOutbox", "readwrite", store => store.put(item));
+      },
+      async remove(id) {
+        await request("syncOutbox", "readwrite", store => store.delete(String(id)));
+      }
+    });
   }
 });
