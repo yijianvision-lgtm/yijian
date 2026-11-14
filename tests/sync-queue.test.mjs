@@ -59,12 +59,16 @@ consent = false;
 const deleteQueue = createNebulaSyncQueue({ store, auth, clock: () => now, send: async () => ({ status: 204 }) });
 await deleteQueue.enqueue({ id: "delete-1", category: "graph", recordId: "root", kind: "delete" });
 await deleteQueue.drain();
-assert.equal((await deleteQueue.list()).length, 0, "Explicit owner deletion must remain possible after consent revocation.");
+const remainingAfterDelete = await deleteQueue.list();
+assert.equal(remainingAfterDelete.some(item => item.id === "delete-1"), false,
+  "Explicit owner deletion must remain possible after consent revocation.");
+assert.equal(remainingAfterDelete.some(item => item.id === "conflict-2"), true,
+  "Unresolved local upserts must remain queued while category consent is revoked.");
 
 session = false;
 await deleteQueue.enqueue({ id: "delete-2", category: "graph", recordId: "root-2", kind: "delete" });
 assert.equal((await deleteQueue.drain()).blocked, "sign-in-required");
-assert.equal((await deleteQueue.list()).length, 1);
+assert.deepEqual((await deleteQueue.list()).map(item => item.id).sort(), ["conflict-2", "delete-2"]);
 
 assert.throws(() => createNebulaSyncQueue({ store, auth, send: null }), /transport/);
 console.log("NEBULA local-first sync outbox tests passed.");
