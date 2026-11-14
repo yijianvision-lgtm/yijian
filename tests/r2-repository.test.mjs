@@ -87,13 +87,15 @@ class FakeD1 {
               owner_id: values[0], object_id: values[1], category: values[2], object_key: values[3],
               content_type: values[4], size_bytes: values[5], status: "active", created_at: values[6]
             };
+          } else if (sql.startsWith("UPDATE nebula_objects SET status = 'deleted'")) {
+            if (this.failMetadataDelete > 0) {
+              this.failMetadataDelete -= 1;
+              throw new Error("simulated metadata tombstone failure");
+            }
+            if (this.row) { this.row.status = "deleted"; this.row.deleted_at = values[0]; this.row.updated_at = values[1]; }
           } else if (sql.startsWith("UPDATE nebula_objects")) {
             if (this.row) this.row.status = "deleting";
           } else if (sql.startsWith("DELETE FROM nebula_objects")) {
-            if (this.failMetadataDelete > 0) {
-              this.failMetadataDelete -= 1;
-              throw new Error("simulated metadata delete failure");
-            }
             this.row = null;
           }
           return { meta: { changes: 1 } };
@@ -186,7 +188,8 @@ assert.ok(bucket.objects.has(expectedKey));
 assert.deepEqual(await repo.reconcilePendingUploads(), [
   { objectId: fixedId, action: "orphan-removed" }
 ]);
-assert.equal(db.row, null);
+assert.equal(db.row.status, "deleted", "Successful cleanup must retain an object tombstone.");
+assert.ok(db.row.deleted_at);
 assert.equal(db.cleanup.has(fixedId), false);
 assert.equal(bucket.objects.has(expectedKey), false);
 
@@ -207,7 +210,8 @@ assert.equal(bucket.objects.has(secondKey), false);
 assert.deepEqual(await retryRepo.reconcilePendingUploads(), [
   { objectId: second.objectId, action: "orphan-removed" }
 ]);
-assert.equal(db.row, null);
+assert.equal(db.row.status, "deleted", "A retried cleanup must retain the deletion marker.");
+assert.ok(db.row.deleted_at);
 assert.equal(db.cleanup.has(second.objectId), false);
 
 // If the D1 metadata insert and immediate R2 compensation both fail, the
@@ -296,6 +300,9 @@ const migration = await readFile(new URL("../migrations/0003_owner_scoped_object
 assert.match(migration, /PRIMARY KEY \(owner_id, category, object_id\)/);
 assert.match(migration, /object_key LIKE 'owners\/' \|\| owner_id/);
 assert.match(migration, /status IN \('active', 'deleting'\)/);
+const tombstoneMigration = await readFile(new URL("../migrations/0007_r2_object_tombstones.sql", import.meta.url), "utf8");
+assert.match(tombstoneMigration, /status IN \('active', 'deleting', 'deleted'\)/);
+assert.match(tombstoneMigration, /deleted_at TEXT/);
 
 const cleanupMigration = await readFile(new URL("../migrations/0004_r2_upload_cleanup_intents.sql", import.meta.url), "utf8");
 assert.match(cleanupMigration, /CREATE TABLE IF NOT EXISTS nebula_object_cleanup/);
