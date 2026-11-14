@@ -297,8 +297,11 @@ const recordRepoRevoked = createNebulaD1Repository({
   db: d1, authContext: authA, syncConsent: await consentA.getConsent(), now
 });
 await assert.rejects(recordRepoRevoked.getRecord("graph", recordDeleteId), /Cloud sync is not enabled/);
-assert.deepEqual(await recordRepoRevoked.deleteRecord("graph", recordDeleteId), { deleted: true });
-assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ? AND record_id = ?").get(ownerA, recordDeleteId).count, 0);
+assert.equal((await recordRepoRevoked.deleteRecord("graph", recordDeleteId)).deleted, true);
+const revokedTombstone = db.prepare("SELECT deleted_at, payload_json FROM nebula_records WHERE owner_id = ? AND record_id = ?").get(ownerA, recordDeleteId);
+assert.ok(revokedTombstone.deleted_at);
+assert.equal(revokedTombstone.payload_json, "{}");
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ? AND record_id = ?").get(ownerA, recordDeleteId).count, 1);
 
 db.close();
 console.log("NEBULA SQLite migrations, consent and atomic R2 cleanup integration tests passed.");
