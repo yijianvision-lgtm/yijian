@@ -64,7 +64,7 @@ class MemoryD1 {
             return null;
           },
           async all() {
-            if (sql.includes("FROM nebula_records")) return { results: [...db.records.values()].filter(row => row.owner_id === owner && row.record_type === values[1]) };
+            if (sql.includes("FROM nebula_records")) return { results: [...db.records.values()].filter(row => row.owner_id === owner && row.record_type === values[1] && (values.length < 3 || !sql.includes("record_id > ?") || row.record_id > values[2])).sort((a,b) => a.record_id.localeCompare(b.record_id)).slice(-1 * (values.at(-1) || 50)) };
             if (sql.includes("FROM nebula_objects")) return { results: [...db.objects.values()].filter(row => row.owner_id === owner && row.category === values[1]) };
             return { results: [] };
           },
@@ -78,14 +78,15 @@ class MemoryD1 {
               const key = [owner, values[1], values[2]].join("|");
               if (!db.records.has(key)) db.records.set(key, {
                 owner_id: owner, record_type: values[1], record_id: values[2],
-                payload_json: values[3], created_at: values[4], updated_at: values[5]
+                payload_json: values[3], created_at: values[4], updated_at: values[5], deleted_at: null
               });
             } else if (sql.startsWith("UPDATE nebula_records")) {
               const key = [values[2], values[3], values[4]].join("|");
               const row = db.records.get(key);
-              if (row && row.updated_at === values[5]) {
+              if (row && (row.updated_at === values[5] || row.deleted_at === values[6])) {
                 row.payload_json = values[0];
                 row.updated_at = values[1];
+                row.deleted_at = null;
                 return { meta: { changes: 1 } };
               }
               return { meta: { changes: 0 } };
@@ -109,8 +110,10 @@ class MemoryD1 {
                 owner_id: owner, object_id: values[1], category: values[2], object_key: values[3],
                 content_type: values[4], size_bytes: values[5], status: "active", created_at: values[6]
               });
-            } else if (sql.startsWith("DELETE FROM nebula_records")) {
-              db.records.delete([owner, values[1], values[2]].join("|"));
+            } else if (sql.startsWith("UPDATE nebula_records SET deleted_at")) {
+              const row = db.records.get([values[2], values[3], values[4]].join("|"));
+              if (row && !row.deleted_at) { row.deleted_at = values[0]; row.updated_at = values[1]; return { meta: { changes: 1 } }; }
+              return { meta: { changes: 0 } };
             } else if (sql.startsWith("DELETE FROM nebula_objects")) {
               db.objects.delete([owner, values[1], values[2]].join("|"));
             } else if (sql.startsWith("UPDATE nebula_objects")) {
@@ -314,8 +317,9 @@ try {
   assert.equal(deleteForeignRecord.status, 200);
   assert.equal((await deleteForeignRecord.json()).deleted, true,
     "Account B may delete only its own same-ID record.");
-  assert.equal(db.records.has(ownerBId + "|graph|root-1"), false);
-  assert.equal(db.records.has(ownerAId + "|graph|root-1"), true,
+  assert.equal(db.records.get(ownerBId + "|graph|root-1").deleted_at !== null, true,
+    "Account B deletion must leave a versioned tombstone.");
+  assert.equal(db.records.get(ownerAId + "|graph|root-1").deleted_at, null,
     "Account B deleting its own same-ID record must leave account A's record intact.");
 
   const overwriteForeignObject = await call(objectPath, {
@@ -362,8 +366,8 @@ try {
   const removeRecordAfterRevocation = await call("/sync/records?type=graph&id=root-1", { method: "DELETE" });
   assert.equal(removeRecordAfterRevocation.status, 200,
     "Owners must retain the ability to delete their own cloud records after revocation.");
-  assert.equal(db.records.has([...db.consents.keys()][0] + "|graph|root-1"), false,
-    "Revoked users must be able to remove their own cloud record without restoring sync consent.");
+  assert.equal(db.records.get([...db.consents.keys()][0] + "|graph|root-1").deleted_at !== null, true,
+    "Revoked users must be able to tombstone their own cloud record without restoring sync consent.");
   console.log("NEBULA authenticated private sync API integration tests passed.");
 } finally {
   globalThis.fetch = originalFetch;
