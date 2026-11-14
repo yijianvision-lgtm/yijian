@@ -384,3 +384,14 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Corrected test-harness issues encountered during integration: a fake D1 outer records query was being shadowed by its nested consent subquery; a synthetic 204 response was constructed with an invalid body; and a SQLite assertion still expected the pre-CAS value. The fixtures/assertions were corrected; no production error-detail logging remains.
 - [x] Verified HEAD `0e7fd5159db2d34d781cc18ad30204fa749fb0d0`: NEBULA backend checks #767, local backend validation #269, and Jekyll CI #856 all passed.
 - [ ] The transport and queue are still not instantiated by the application UI. A concrete local `applyRemote` implementation, real Clerk provider/session, configured Worker origin, and explicit category-consent/status UI remain pending. Do not drain the queue until these are wired and reviewed.
+
+
+## 2026-11-15: M3 runtime composition and server-backed consent
+
+- [x] Added `nebula-worker-consent-store.js`: consent reads/writes/revocation use the authenticated Worker `/sync/consent` ledger; signed-out reads return disabled consent without attempting an authenticated request.
+- [x] Added `nebula-sync-runtime.js`: composes injected identity provider, server-backed consent, IndexedDB outbox, and HTTPS records transport. It exposes sign-in/out, consent activation/revocation, record enqueue, explicit cloud delete enqueue, queue status, conflict resolution, and manual drain.
+- [x] Construction, sign-in, consent activation, and enqueue do not drain or upload. Only an explicit `drain()` call can send queued records. No local data enumeration or automatic full-library upload is implemented.
+- [x] Added runtime composition tests: authentication does not imply consent; granting consent does not upload; enqueue remains local; manual drain sends one explicitly queued synthetic record; revoke and sign-out update status.
+- [x] A first runtime CI run found signed-out status queried the authenticated consent endpoint and threw. The consent store now treats unauthenticated reads as disabled consent, while still rejecting unauthenticated writes. Corrected HEAD `9450fb4c48313f34bb26450c930e4edba6f2d830` passed backend checks #773, local backend validation #275, and Jekyll CI #862.
+- [ ] No concrete Clerk SDK provider, browser session, production/test Worker URL, category-consent UI, visible sync status, or local remote-version applier is wired into the application. Runtime remains an injectable library, not a user-facing enabled feature.
+- [ ] Before UI integration, implement/test a category-aware `applyRemote` adapter against the actual local knowledge object schema; verify idempotent remote delete application and record provenance/version mapping. Do not run the queue until this is connected.
