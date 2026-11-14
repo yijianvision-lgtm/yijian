@@ -36,6 +36,8 @@ jobs:
         run: node tests/backend-contract.test.mjs
       - name: Test local-first sync outbox and conflict handling
         run: node tests/sync-queue.test.mjs
+      - name: Test durable IndexedDB outbox storage
+        run: node tests/local-outbox-store.test.mjs
       - name: Test provider-neutral auth and explicit sync consent
         run: node tests/auth-adapter.test.mjs
       - name: Test JWT verification and owner derivation
