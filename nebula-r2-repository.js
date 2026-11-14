@@ -114,7 +114,7 @@ export function createNebulaR2Repository({
 
   async function findMetadata(category, objectId) {
     return db.prepare(
-      "SELECT object_id, category, object_key, content_type, size_bytes, created_at, status FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? LIMIT 1"
+      "SELECT object_id, category, object_key, content_type, size_bytes, created_at, updated_at, status, deleted_at FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? LIMIT 1"
     ).bind(ownerId, category, objectId).first();
   }
 
@@ -276,23 +276,28 @@ export function createNebulaR2Repository({
       await consentRepository.requireCategory(safeCategory);
       const boundedLimit = Math.max(1, Math.min(50, Number.isInteger(limit) ? limit : 50));
       const cursor = after === null ? null : assertObjectId(after);
+      // Include deleting/deleted metadata as payload-free tombstones. Devices
+      // must observe deletion even after the R2 bytes have been removed.
       const statement = cursor === null
-        ? db.prepare("SELECT o.object_id, o.category, o.content_type, o.size_bytes, o.created_at FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.status = 'active' AND EXISTS (SELECT 1 FROM nebula_sync_consents c, json_each(c.categories_json) AS allowed_category WHERE c.owner_id = o.owner_id AND c.status = 'enabled' AND allowed_category.value = o.category) ORDER BY o.object_id LIMIT ?").bind(ownerId, safeCategory, boundedLimit)
-        : db.prepare("SELECT o.object_id, o.category, o.content_type, o.size_bytes, o.created_at FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.status = 'active' AND o.object_id > ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c, json_each(c.categories_json) AS allowed_category WHERE c.owner_id = o.owner_id AND c.status = 'enabled' AND allowed_category.value = o.category) ORDER BY o.object_id LIMIT ?").bind(ownerId, safeCategory, cursor, boundedLimit);
+        ? db.prepare("SELECT o.object_id, o.category, o.content_type, o.size_bytes, o.created_at, o.updated_at, o.deleted_at, o.status FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.status IN ('active', 'deleting', 'deleted') AND EXISTS (SELECT 1 FROM nebula_sync_consents c, json_each(c.categories_json) AS allowed_category WHERE c.owner_id = o.owner_id AND c.status = 'enabled' AND allowed_category.value = o.category) ORDER BY o.object_id LIMIT ?").bind(ownerId, safeCategory, boundedLimit)
+        : db.prepare("SELECT o.object_id, o.category, o.content_type, o.size_bytes, o.created_at, o.updated_at, o.deleted_at, o.status FROM nebula_objects o WHERE o.owner_id = ? AND o.category = ? AND o.object_id > ? AND o.status IN ('active', 'deleting', 'deleted') AND EXISTS (SELECT 1 FROM nebula_sync_consents c, json_each(c.categories_json) AS allowed_category WHERE c.owner_id = o.owner_id AND c.status = 'enabled' AND allowed_category.value = o.category) ORDER BY o.object_id LIMIT ?").bind(ownerId, safeCategory, cursor, boundedLimit);
       const result = await statement.all();
       return (result.results || []).map(row => Object.freeze({
-        objectId: row.object_id, category: row.category, contentType: row.content_type,
-        sizeBytes: row.size_bytes, createdAt: row.created_at
+        objectId: row.object_id, category: row.category,
+        contentType: row.status === "active" ? row.content_type : null,
+        sizeBytes: row.status === "active" ? row.size_bytes : null,
+        createdAt: row.created_at, deleted: row.status !== "active",
+        updatedAt: row.deleted_at || row.updated_at
       }));
     },
 
     async deleteObject(category, objectId) {
       const safeCategory = assertCategory(category);
       const safeId = assertObjectId(objectId);
-      // Deletion remains available after consent is paused/revoked so users can
-      // remove their own cloud copies. Ownership is still enforced by D1.
+      // Deletion remains available after sync consent is paused/revoked.
       const row = await findMetadata(safeCategory, safeId);
       if (!row) return Object.freeze({ deleted: false });
+      if (row.status === "deleted") return Object.freeze({ deleted: true, alreadyDeleted: true });
       const updatedAt = now();
       if (typeof updatedAt !== "string" || !Number.isFinite(Date.parse(updatedAt))) {
         throw new TypeError("Invalid repository timestamp.");
@@ -300,7 +305,8 @@ export function createNebulaR2Repository({
       if (typeof db.batch !== "function") {
         throw new TypeError("D1 batch transactions are required for durable object deletion.");
       }
-      // Atomically mark metadata deleting and persist a retry intent.
+      // Publish a metadata tombstone before deleting bytes. If R2 is unavailable,
+      // listObjects still propagates the deletion and the cleanup ledger retries.
       await db.batch([
         db.prepare(
           "UPDATE nebula_objects SET status = 'deleting', updated_at = ? WHERE owner_id = ? AND category = ? AND object_id = ? AND status IN ('active', 'deleting')"
@@ -310,11 +316,12 @@ export function createNebulaR2Repository({
         ).bind(updatedAt, ownerId, safeCategory, safeId)
       ]);
       await bucket.delete(row.object_key);
-      // If this final batch fails, the durable intent remains for scheduler retry.
+      // Retain a minimal tombstone until all devices have acknowledged a safe
+      // version watermark; never compact it merely because the bytes are gone.
       await db.batch([
         db.prepare(
-          "DELETE FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting'"
-        ).bind(ownerId, safeCategory, safeId),
+          "UPDATE nebula_objects SET status = 'deleted', deleted_at = ?, updated_at = ? WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting'"
+        ).bind(updatedAt, updatedAt, ownerId, safeCategory, safeId),
         db.prepare(
           "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ?"
         ).bind(ownerId, safeCategory, safeId)
