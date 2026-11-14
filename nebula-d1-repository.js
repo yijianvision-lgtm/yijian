@@ -97,7 +97,10 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       if (expectedUpdatedAt !== null) timestamp(expectedUpdatedAt);
       const serialized = JSON.stringify(payload);
       if (new TextEncoder().encode(serialized).byteLength > MAX_PAYLOAD_BYTES) throw new RangeError("Record payload exceeds 256 KiB.");
-      const updatedAt = timestamp(now());
+      const observedNow = timestamp(now());
+      const updatedAt = expectedUpdatedAt === null
+        ? observedNow
+        : new Date(Math.max(Date.parse(observedNow), Date.parse(expectedUpdatedAt) + 1)).toISOString();
       let result;
       if (expectedUpdatedAt === null) {
         // A null base version is create-only. It must never silently replace an
