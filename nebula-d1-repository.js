@@ -120,11 +120,18 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
         "SELECT 1 AS active FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?) LIMIT 1"
       ).bind(ownerId, type).first();
       if (!liveConsent) throw new Error("Cloud-sync consent does not cover this record category.");
-      const remote = await this.getRecord(type, id);
+      const remoteRow = await db.prepare(
+        "SELECT payload_json, updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) LIMIT 1"
+      ).bind(ownerId, type, id, ownerId, type).first();
+      let remotePayload = null;
+      if (remoteRow) {
+        try { remotePayload = JSON.parse(remoteRow.payload_json); }
+        catch { throw new Error("Stored NEBULA record is invalid JSON."); }
+      }
       return Object.freeze({
         ok: true, conflict: true, changes: 0,
-        remoteVersion: remote?.updatedAt ?? null,
-        remotePayload: remote?.payload ?? null
+        remoteVersion: remoteRow?.updated_at ?? null,
+        remotePayload
       });
     },
 
