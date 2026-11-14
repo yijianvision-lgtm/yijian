@@ -40,12 +40,12 @@ const fetchImpl = async (url, init = {}) => {
     return new Response(JSON.stringify({ ok: true, conflict: false }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (String(url).includes("/sync/records") && init.method === "GET") {
-    return new Response(JSON.stringify({ records: [{
-      recordType: "graph", recordId: isDeleted ? "tombstone-preview" : "cloud-1",
-      payload: isDeleted ? null : { nodes: [{ id: "cloud-1", name: "Cloud graph" }], links: [] },
-      deleted: isDeleted,
-      createdAt: "2026-11-14T00:00:00.000Z", updatedAt: isDeleted ? "2026-11-15T00:00:01.000Z" : "2026-11-15T00:00:00.000Z"
-    }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ records: [
+      { recordType: "graph", recordId: "cloud-1", payload: { nodes: [{ id: "cloud-1", name: "Cloud graph" }], links: [] }, deleted: false,
+        createdAt: "2026-11-14T00:00:00.000Z", updatedAt: "2026-11-15T00:00:00.000Z" },
+      { recordType: "graph", recordId: "tombstone-preview", payload: null, deleted: true,
+        createdAt: "2026-11-14T00:00:00.000Z", updatedAt: "2026-11-15T00:00:01.000Z" }
+    ] }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   throw new Error("Unexpected test request: " + url);
 };
