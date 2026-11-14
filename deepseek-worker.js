@@ -414,7 +414,6 @@ export default {
       try {
         return await handleNebulaSyncRequest(request, env, authContext, cors, url);
       } catch (error) {
-        if (env.NEBULA_TEST_DIAGNOSTICS === "true") console.error("NEBULA_SYNC_TEST_DIAGNOSTIC", error?.stack || String(error));
         const message = String(error?.message || error);
         const denied = new Set([
           "Cloud sync is not enabled for this account.",
