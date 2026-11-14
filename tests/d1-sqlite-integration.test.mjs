@@ -77,6 +77,30 @@ const repoB = createNebulaD1Repository({
 
 assert.equal((await repoA.putRecord("graph", "root", { title: "A private node" })).changes, 1);
 assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
+
+// Versioned record writes use create-only semantics followed by compare-and-swap.
+// A stale writer receives the current remote version and payload instead of
+// silently replacing another device's changes.
+let versionClock = Date.parse("2026-11-15T00:00:00.000Z");
+const versionRepo = createNebulaD1Repository({
+  db: d1, authContext: authA, syncConsent: await consentA.getConsent(),
+  now: () => new Date(versionClock += 1000).toISOString()
+});
+const initialVersion = (await versionRepo.getRecord("graph", "root")).updatedAt;
+const versionUpdate = await versionRepo.putRecord("graph", "root", { title: "A private node v2" }, {
+  expectedUpdatedAt: initialVersion
+});
+assert.equal(versionUpdate.conflict, false);
+const staleWrite = await versionRepo.putRecord("graph", "root", { title: "stale device overwrite" }, {
+  expectedUpdatedAt: initialVersion
+});
+assert.equal(staleWrite.conflict, true);
+assert.equal(staleWrite.remoteVersion, versionUpdate.updatedAt);
+assert.deepEqual(staleWrite.remotePayload, { title: "A private node v2" });
+const blindCreate = await versionRepo.putRecord("graph", "root", { title: "blind overwrite" });
+assert.equal(blindCreate.conflict, true, "A write without a base version must not replace an existing record.");
+assert.deepEqual((await versionRepo.getRecord("graph", "root")).payload, { title: "A private node v2" });
+
 assert.deepEqual((await repoB.listRecords("graph")), []);
 assert.equal(await repoB.getRecord("graph", "root"), null);
 assert.deepEqual(await repoB.deleteRecord("graph", "root"), { deleted: false },
@@ -90,7 +114,7 @@ assert.deepEqual(await repoA.deleteRecord("graph", "missing-record"), { deleted:
 await consentA.setConsent({ status: "revoked", categories: ["graph"] });
 assert.equal(await repoA.getRecord("graph", "root"), null);
 assert.deepEqual(await repoA.listRecords("graph"), []);
-assert.equal((await repoA.putRecord("graph", "blocked", { title: "must not persist" })).changes, 0);
+await assert.rejects(repoA.putRecord("graph", "blocked", { title: "must not persist" }), /consent does not cover/);
 assert.deepEqual(await repoA.deleteRecord("graph", "root"), { deleted: true });
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ?").get(ownerA).count, 0,
   "Revocation blocks reads and writes but preserves the owner's ability to explicitly delete their own cloud data.");
