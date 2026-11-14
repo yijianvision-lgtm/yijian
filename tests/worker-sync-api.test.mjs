@@ -250,6 +250,46 @@ try {
   assert.equal(foreignList.status, 200);
   assert.deepEqual((await foreignList.json()).records, [], "A second account with matching consent must see only its own records.");
 
+  // Cross-account write/delete isolation: matching logical IDs remain in
+  // separate owner namespaces, and guessed foreign object IDs are inert.
+  const recordB = await call("/sync/records?type=graph", {
+    token: tokenB, method: "POST",
+    body: JSON.stringify({ recordType: "graph", recordId: "root-1", payload: { title: "Account B graph" } })
+  });
+  assert.equal(recordB.status, 200);
+  const ownerAId = [...db.consents.keys()].find(owner => db.records.has(owner + "|graph|root-1"));
+  const ownerBId = [...db.consents.keys()].find(owner => owner !== ownerAId);
+  assert.ok(ownerAId && ownerBId, "Both accounts must have distinct server-derived owner namespaces.");
+  assert.equal(JSON.parse(db.records.get(ownerAId + "|graph|root-1").payload_json).title, "Knowledge graph",
+    "Writing the same record ID as account B must not overwrite account A's record.");
+  assert.equal(JSON.parse(db.records.get(ownerBId + "|graph|root-1").payload_json).title, "Account B graph");
+
+  const deleteForeignRecord = await call("/sync/records?type=graph&id=root-1", {
+    token: tokenB, method: "DELETE"
+  });
+  assert.equal(deleteForeignRecord.status, 200);
+  assert.equal((await deleteForeignRecord.json()).deleted, true,
+    "Account B may delete only its own same-ID record.");
+  assert.equal(db.records.has(ownerBId + "|graph|root-1"), false);
+  assert.equal(db.records.has(ownerAId + "|graph|root-1"), true,
+    "Account B deleting its own same-ID record must leave account A's record intact.");
+
+  const overwriteForeignObject = await call(objectPath, {
+    token: tokenB, method: "PUT", body: "attacker overwrite", contentType: "text/plain"
+  });
+  assert.equal(overwriteForeignObject.status, 405,
+    "The object API must not expose an ID-addressed overwrite operation.");
+  const deleteForeignObject = await call(objectPath, { token: tokenB, method: "DELETE" });
+  assert.equal(deleteForeignObject.status, 200);
+  assert.equal((await deleteForeignObject.json()).deleted, false,
+    "Account B must not delete account A's object even when it knows the object ID.");
+  assert.equal(bucket.values.has("owners/" + ownerAId + "/private-files/" + object.objectId), true,
+    "A foreign delete attempt must not remove account A's R2 object.");
+  const ownerARecordAfterForeignDelete = await call("/sync/records?type=graph");
+  assert.equal(ownerARecordAfterForeignDelete.status, 200);
+  assert.equal((await ownerARecordAfterForeignDelete.json()).records[0].recordId, "root-1",
+    "A's record must remain readable after B's cross-account delete attempt.");
+
   const paused = await call("/sync/consent", { method: "POST", body: JSON.stringify({ status: "paused" }) });
   assert.equal(paused.status, 200);
   const blockedAfterPause = await call("/sync/records?type=graph");
