@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { createNebulaSyncRuntime } from "../nebula-sync-runtime.js";
 
 const rows = new Map();
+const appliedGraphs = [];
 const local = {
-  async saveGraph() {},
+  async saveGraph(nodes, links) { appliedGraphs.push({ nodes, links }); },
   getSyncOutboxStore() {
     return {
       async list() { return [...rows.values()].map(value => structuredClone(value)); },
