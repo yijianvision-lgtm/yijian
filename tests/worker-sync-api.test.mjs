@@ -80,8 +80,8 @@ class MemoryD1 {
                 owner_id: owner, record_type: values[1], record_id: values[2],
                 payload_json: values[3], created_at: values[4], updated_at: values[5], deleted_at: null
               });
-            } else if (sql.startsWith("UPDATE nebula_records SET deleted_at")) {
-              const row = db.records.get([values[2], values[3], values[4]].join("|"));
+            } else if (sql.startsWith("UPDATE nebula_records SET payload_json = '{}'")) {
+              const row = db.records.get([values[4], values[5], values[6]].join("|"));
               if (row && !row.deleted_at) { row.payload_json = "{}"; row.deleted_at = values[1]; row.updated_at = values[1]; return { meta: { changes: 1 } }; }
               return { meta: { changes: 0 } };
             } else if (sql.startsWith("UPDATE nebula_records")) {
