@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { createNebulaSyncQueue } from "../nebula-sync-queue.js";
+import { readFile } from "node:fs/promises";
+const moduleSource = await readFile(new URL("../nebula-sync-queue.js", import.meta.url), "utf8");
+const { createNebulaSyncQueue } = await import("data:text/javascript;base64," + Buffer.from(moduleSource).toString("base64"));
 
 const rows = new Map();
 const store = {
