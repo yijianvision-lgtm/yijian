@@ -101,7 +101,7 @@
 - [x] 新增中间件测试和 Worker 真实 RSA/JWKS 合成验签集成测试。
 - [ ] 真实 Clerk 测试实例及 session token claims 验证（尚未获授权创建第三方实例）。
 - [x] 代码层已通过 D1/R2 owner-scoped repository 将服务端认证上下文 ownerId 绑定到私有资源操作；真实 Clerk 与 Cloudflare D1/R2 仍待验证。
-- [x] 两个独立合成用户 A/B 的记录同 ID 写入/删除隔离、对象 ID 猜测后的覆盖/删除拒绝及 A 数据完整性回归测试。
+- [x] 两个独立合成用户 A/B 的记录同 ID 写入/删除隔离、双账户记录列表与对象列表隔离、对象 ID 猜测后的覆盖/删除拒绝及 A 数据完整性回归测试。
 - [x] Worker 路由测试确认 `/sync/search`、`/sync/export`、`/sync/backup`、`/sync/backup/restore` 对已认证用户仍返回 404；这些能力尚未实现，因此当前不存在可被跨账户调用的私有搜索/导出/备份恢复接口。
 - [ ] 在实现上述功能前，补齐各自 owner-scoped repository、显式授权范围、跨账户负向测试和备份恢复完整性验证。
 - [ ] 真实浏览器 E2E、撤销窗口和线上运行时安全验证。
@@ -341,3 +341,6 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Confirmed current private sync surface is limited to consent, owner-scoped records, and owner-scoped objects; no private search/export/backup/restore handler is currently registered.
 - [ ] Before implementing these capabilities, define category-scoped consent, owner-bound queries, export authorization and audit semantics, backup integrity/versioning, and restore conflict/deletion behavior. Add A/B negative tests before enabling any route.
 - [ ] Real Clerk and Cloudflare D1/R2 two-account E2E remain pending. No private data uploaded and no production Worker deployed.
+
+
+- Follow-up test commit `40483f84ec8953ce120b497a10e32ec960fb1cf7`: extended the Worker API integration test to list both users' records after same-ID writes and prove each receives only its own payload; also proved B's object listing is empty while A owns the uploaded object.
