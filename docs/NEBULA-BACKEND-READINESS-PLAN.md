@@ -401,3 +401,18 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Added local graph applier tests for valid snapshot application, explicit remote deletion, unsupported category rejection, and malformed payload rejection.
 - [x] Verified HEAD `ece5ca7246247c55a026c3daea53da6822bba567`: backend checks #778, local backend validation #280, and Jekyll CI #867 all passed.
 - [ ] Only graph record conflict application is mapped. Private files, lecture source blobs, AI conversation archives, and other stores are not mapped to cloud records/objects; no automatic migration or upload is enabled. Category-specific serialization, source provenance, blob handling, and delete semantics need separate review.
+
+
+
+## 2026-11-15: M3 remote record preview and confirmed local application
+
+- [x] Extended the HTTPS records transport with authenticated `GET /sync/records` reads, category validation, bounded page sizes (1–50), cursor validation, response-shape validation, and a client-derived next cursor. The Worker/D1 endpoint already enforces per-user ownership and live category consent.
+- [x] Added `previewCloudRecords({ category, after, limit })` to the runtime. It requires a signed-in session and active consent for the requested category; it only reads remote records and does not mutate IndexedDB or drain the outbox.
+- [x] Added `applyCloudRecord({ preview, recordId, confirmed: true })`. Applying requires explicit confirmation, re-reads the remote category to ensure the selected record still has the previewed server version, and compares the local graph snapshot captured at preview time. A changed/deleted remote record or a locally edited graph fails closed and requires a fresh preview.
+- [x] The application mapping remains deliberately limited to the reviewed `graph` schema through `NEBULA_LOCAL.saveGraph(nodes, links)`. Unknown categories and malformed graph payloads still fail closed.
+- [x] Added transport and runtime tests for authenticated GET, cursor construction, read-only preview, confirmation requirement, successful graph application, and stale local snapshot rejection.
+- [ ] CI for this checkpoint is running against the latest PR head; record final outcomes after all three workflows complete.
+- [ ] This is a runtime/library capability only, not a user-facing feature: no Clerk SDK provider, account session, Worker origin, category-consent UI, cloud preview screen, or apply confirmation UI is wired into the app.
+- [ ] The endpoint lists currently existing records only. It does not emit tombstones, so remote deletions are not discoverable through this preview path and cross-device delete propagation remains incomplete.
+- [ ] Applying a previewed record is supported only for `graph`. Private files, lecture sources, AI conversation archives, and research records remain local-only and are not migrated or uploaded.
+- [ ] The local snapshot guard is in-memory and scoped to the current runtime instance; browser reload invalidates previews, which is intentional. A preview can scan up to 1,000 records when revalidating a selected ID; larger categories may require a dedicated owner-scoped single-record GET endpoint.
