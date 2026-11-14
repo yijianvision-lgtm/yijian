@@ -294,8 +294,8 @@ try {
     "B's list must contain B's same-ID record and never A's record.");
   const listRecordsAWithBothRows = await call("/sync/records?type=graph", { token: tokenA });
   assert.equal(listRecordsAWithBothRows.status, 200);
-  assert.deepEqual((await listRecordsAWithBothRows.json()).records.map(row => row.payload.title), ["Knowledge graph"],
-    "A's list must remain unchanged after B writes the same logical ID.");
+  assert.deepEqual((await listRecordsAWithBothRows.json()).records.map(row => row.payload.title), ["Knowledge graph v2"],
+    "A's list must reflect A's own versioned update and remain isolated from B.");
   const listObjectsB = await call("/sync/objects?category=private-files", { token: tokenB });
   assert.equal(listObjectsB.status, 200);
   assert.deepEqual((await listObjectsB.json()).objects, [],
