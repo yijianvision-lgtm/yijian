@@ -71,7 +71,7 @@ export function createNebulaSyncQueue({ store, auth, send, clock = Date.now, max
       if (item.status === "conflict" || item.status === "blocked" || item.status === "syncing") continue;
       if (item.nextAttemptAt > clock()) continue;
       if (item.kind !== "delete" && !(await auth.canSyncCategory(item.category))) {
-        item.status = "blocked";
+        item.status = "pending";
         item.lastError = "category-consent-required";
         item.updatedAt = nowIso(clock);
         await store.put(item);
