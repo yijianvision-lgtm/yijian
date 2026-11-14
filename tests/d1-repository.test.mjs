@@ -86,6 +86,15 @@ await casUpdateRepo.putRecord("graph", "cas-node", { title: "update" }, {
 assert.match(casUpdateDb.calls[0].sql, /^UPDATE nebula_records SET/);
 assert.equal(casUpdateDb.calls[0].values[5], "2026-11-14T23:59:00.000Z",
   "Updates must compare the exact version read by the client.");
+const sameClockRepo = createNebulaD1Repository({
+  db: new FakeD1(), authContext: { kind: "user", ownerId: ownerA }, syncConsent,
+  now: () => "2026-11-14T23:59:00.000Z"
+});
+const monotonic = await sameClockRepo.putRecord("graph", "same-ms", { title: "v2" }, {
+  expectedUpdatedAt: "2026-11-14T23:59:00.000Z"
+});
+assert.ok(Date.parse(monotonic.updatedAt) > Date.parse("2026-11-14T23:59:00.000Z"),
+  "A successful update must advance its version even when the wall clock has not advanced.");
 
 const dbB = new FakeD1();
 const repoB = createNebulaD1Repository({ db: dbB, authContext: { kind: "user", ownerId: ownerB }, syncConsent });
