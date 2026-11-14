@@ -53,7 +53,7 @@
 - [ ] 仅在独立测试环境创建 D1/R2。
 - [x] 当前 D1 records CRUD 与 R2 object list/read/upload/delete repository 操作均绑定服务端 owner ID，并由服务端 consent ledger 控制；SQLite 与模拟 binding 测试通过。关联、搜索、导出及后台任务的完整 owner-scope 覆盖仍需专项验收。
 - [x] R2 object key 由服务端 owner/category/object ID 派生；下载和删除通过 owner-scoped D1 metadata 校验，不接受客户端 raw key。真实 R2 运行时仍待验证。
-- [x] Worker 集成测试已覆盖 A/B 用户记录列表隔离及 B 无法下载 A 对象；[ ] 跨用户覆盖、删除、导出、搜索和备份恢复负向测试仍待补齐。
+- [x] Worker 集成测试已覆盖 A/B 用户记录列表隔离、B 无法下载 A 对象、同 ID 记录写入不覆盖另一 owner、B 删除自己的同 ID 记录不影响 A、B 无法覆盖或删除 A 的对象；[ ] 跨用户导出、搜索和备份恢复负向测试仍待补齐。
 - [x] shared-service 身份不能访问用户私有同步 API；共享令牌不派生 owner ID。
 
 ### M3 — 前端适配与数据安全（未完成）
@@ -101,7 +101,8 @@
 - [x] 新增中间件测试和 Worker 真实 RSA/JWKS 合成验签集成测试。
 - [ ] 真实 Clerk 测试实例及 session token claims 验证（尚未获授权创建第三方实例）。
 - [x] 代码层已通过 D1/R2 owner-scoped repository 将服务端认证上下文 ownerId 绑定到私有资源操作；真实 Clerk 与 Cloudflare D1/R2 仍待验证。
-- [ ] 两个独立合成用户 A/B 的越权读写、搜索、导出、下载、备份/恢复负向测试。
+- [x] 两个独立合成用户 A/B 的记录同 ID 写入/删除隔离、对象 ID 猜测后的覆盖/删除拒绝及 A 数据完整性回归测试。
+- [ ] 两个独立合成用户 A/B 的搜索、导出、下载扩展场景、备份/恢复负向测试。
 - [ ] 真实浏览器 E2E、撤销窗口和线上运行时安全验证。
 
 当前身份中间件尚未启用 Clerk 模式；未部署 Worker、未创建 Cloudflare 资源、未迁移数据。不能将身份上下文原型等同于完成多用户数据隔离。
@@ -320,3 +321,14 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Added a Worker regression case: a synthetic backend TypeError mentioning a missing consent-table column must remain HTTP 500 and return only the generic internal-failure message.
 - [x] Code/test HEAD `cd2042961ff5671e481f4714b74784829e76dce6`: backend checks #725 (including local Wrangler D1 migration, Worker health, and R2 put/get/delete smoke test) passed; local backend validation #227 passed; Jekyll site CI #814 passed.
 - [ ] Real Cloudflare D1/R2 resources, deployed Cron execution, and two-account cloud E2E remain pending external environment prerequisites and explicit isolated-environment validation.
+
+
+## 2026-11-14: A/B cross-account write/delete isolation and frontend M3 audit
+
+- [x] Added Worker integration coverage for two independently authenticated synthetic users using the same logical record ID: B's write creates B's own row and cannot overwrite A's row.
+- [x] Verified B can delete its own same-ID record while A's record remains readable and unchanged.
+- [x] Verified an ID-addressed object overwrite attempt is not supported (HTTP 405), and B's guessed DELETE against A's object returns `deleted: false`; the original R2 object remains present and A can still read it.
+- [x] Backend checks #729, local backend validation #231, and Jekyll site CI #818 passed on code/test HEAD `0cbfb3ce418c7a46df6ff1e2e5c2a3c0b37614bc`.
+- [x] Frontend audit of `index.html` and `nebula-local.js`: IndexedDB/local persistence exists, but there is no implemented Clerk login/session UI, cloud-sync consent UI, sync queue, conflict resolver, or user-facing sync status. Existing DeepSeek history sync is a separate feature and is not cloud knowledge sync.
+- [ ] M3 remains unimplemented: design and implement an isolated auth adapter + explicit category-scoped cloud consent + outbox/retry/conflict/deletion state machine without changing accepted UI visuals or uploading private data before explicit consent.
+- [ ] Cross-account search/export/backup-restore negative tests and real Cloudflare D1/R2 two-account E2E remain pending. CI uses synthetic JWT, in-memory bindings, SQLite, and local Wrangler; it does not prove live Clerk or Cloudflare behavior.
