@@ -15,7 +15,8 @@ const migrations = [
   "0002_sync_consent_ledger.sql",
   "0003_owner_scoped_objects.sql",
   "0004_r2_upload_cleanup_intents.sql",
-  "0005_r2_delete_intent_kind.sql"
+  "0005_r2_delete_intent_kind.sql",
+  "0006_record_tombstones.sql"
 ];
 for (const migration of migrations) {
   const sql = await readFile(new URL("../migrations/" + migration, import.meta.url), "utf8");
@@ -103,10 +104,10 @@ assert.deepEqual((await versionRepo.getRecord("graph", "root")).payload, { title
 
 assert.deepEqual((await repoB.listRecords("graph")), []);
 assert.equal(await repoB.getRecord("graph", "root"), null);
-assert.deepEqual(await repoB.deleteRecord("graph", "root"), { deleted: false },
+assert.equal((await repoB.deleteRecord("graph", "root")).deleted, false,
   "A different owner must not delete another user's record.");
 assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node v2");
-assert.deepEqual(await repoA.deleteRecord("graph", "missing-record"), { deleted: false },
+assert.equal((await repoA.deleteRecord("graph", "missing-record")).deleted, false,
   "Deleting a nonexistent owner-scoped record must report deleted:false.");
 
 // Revoke consent after constructing the repository (stale in-memory snapshot).
@@ -115,9 +116,12 @@ await consentA.setConsent({ status: "revoked", categories: ["graph"] });
 assert.equal(await repoA.getRecord("graph", "root"), null);
 assert.deepEqual(await repoA.listRecords("graph"), []);
 await assert.rejects(repoA.putRecord("graph", "blocked", { title: "must not persist" }), /consent does not cover/);
-assert.deepEqual(await repoA.deleteRecord("graph", "root"), { deleted: true });
-assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ?").get(ownerA).count, 0,
-  "Revocation blocks reads and writes but preserves the owner's ability to explicitly delete their own cloud data.");
+const deletion = await repoA.deleteRecord("graph", "root");
+assert.equal(deletion.deleted, true);
+const tombstone = db.prepare("SELECT deleted_at, payload_json FROM nebula_records WHERE owner_id = ? AND record_type = 'graph' AND record_id = 'root'").get(ownerA);
+assert.ok(tombstone.deleted_at, "Owner-initiated deletion must retain a versioned tombstone.");
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ?").get(ownerA).count, 1,
+  "Revocation blocks reads and writes but preserves a minimal deletion marker for cross-device propagation.");
 
 // Exercise the actual cleanup-claim SQL against SQLite, not only Fake D1.
 const cleanupNow = Date.parse("2026-11-13T12:00:00.000Z");
