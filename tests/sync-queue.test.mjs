@@ -70,5 +70,18 @@ await deleteQueue.enqueue({ id: "delete-2", category: "graph", recordId: "root-2
 assert.equal((await deleteQueue.drain()).blocked, "sign-in-required");
 assert.deepEqual((await deleteQueue.list()).map(item => item.id).sort(), ["conflict-2", "delete-2"]);
 
+// A process restart must recover a persisted in-flight marker.
+await store.put({ id: "interrupted-1", category: "graph", recordId: "recovered", kind: "upsert",
+  payload: { title: "Recovered" }, baseVersion: null, status: "syncing", attempts: 0,
+  createdAt: new Date(now).toISOString(), updatedAt: new Date(now).toISOString(),
+  nextAttemptAt: 0, lastError: null, conflict: null });
+session = true;
+consent = true;
+const recoveryQueue = createNebulaSyncQueue({ store, auth, clock: () => now,
+  send: async () => ({ status: 200 }) });
+await recoveryQueue.drain();
+assert.equal((await recoveryQueue.list()).some(item => item.id === "interrupted-1"), false,
+  "An operation interrupted while syncing must be retried after restart.");
+
 assert.throws(() => createNebulaSyncQueue({ store, auth, send: null }), /transport/);
 console.log("NEBULA local-first sync outbox tests passed.");
