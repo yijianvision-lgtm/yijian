@@ -257,6 +257,18 @@ try {
     body: JSON.stringify({ recordType: "graph", recordId: "root-1", payload: { title: "Account B graph" } })
   });
   assert.equal(recordB.status, 200);
+  const listRecordsBWithOwnRow = await call("/sync/records?type=graph", { token: tokenB });
+  assert.equal(listRecordsBWithOwnRow.status, 200);
+  assert.deepEqual((await listRecordsBWithOwnRow.json()).records.map(row => row.payload.title), ["Account B graph"],
+    "B's list must contain B's same-ID record and never A's record.");
+  const listRecordsAWithBothRows = await call("/sync/records?type=graph", { token: tokenA });
+  assert.equal(listRecordsAWithBothRows.status, 200);
+  assert.deepEqual((await listRecordsAWithBothRows.json()).records.map(row => row.payload.title), ["Knowledge graph"],
+    "A's list must remain unchanged after B writes the same logical ID.");
+  const listObjectsB = await call("/sync/objects?category=private-files", { token: tokenB });
+  assert.equal(listObjectsB.status, 200);
+  assert.deepEqual((await listObjectsB.json()).objects, [],
+    "B's object listing must not reveal A's uploaded objects.");
   const ownerAId = [...db.consents.keys()].find(owner => db.records.has(owner + "|graph|root-1"));
   const ownerBId = [...db.consents.keys()].find(owner => owner !== ownerAId);
   assert.ok(ownerAId && ownerBId, "Both accounts must have distinct server-derived owner namespaces.");
