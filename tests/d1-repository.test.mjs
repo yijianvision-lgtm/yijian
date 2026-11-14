@@ -39,8 +39,9 @@ await assert.rejects(repoA.getRecord("sources", "source-1"), /does not cover thi
 assert.equal(db.calls.length, 5, "A category without explicit consent must not reach D1.");
 
 assert.equal(db.calls.length, 5);
-for (const call of db.calls) {
-  assert.equal(call.values[0], ownerA, "Every query must bind the server-derived owner ID as its first parameter.");
+for (const [index, call] of db.calls.entries()) {
+  assert.equal(call.values[index === 4 ? 4 : 0], ownerA,
+    "Every query must bind the server-derived owner ID; tombstone writes bind its timestamp before owner scope.");
   assert.match(call.sql, /owner_id/);
 }
 assert.match(db.calls[0].sql, /WHERE owner_id = \?/);
