@@ -74,10 +74,20 @@ class MemoryD1 {
                 updated_at: values[4], revoked_at: values[5]
               });
             } else if (sql.startsWith("INSERT INTO nebula_records")) {
-              db.records.set([owner, values[1], values[2]].join("|"), {
+              const key = [owner, values[1], values[2]].join("|");
+              if (!db.records.has(key)) db.records.set(key, {
                 owner_id: owner, record_type: values[1], record_id: values[2],
                 payload_json: values[3], created_at: values[4], updated_at: values[5]
               });
+            } else if (sql.startsWith("UPDATE nebula_records")) {
+              const key = [values[2], values[3], values[4]].join("|");
+              const row = db.records.get(key);
+              if (row && row.updated_at === values[5]) {
+                row.payload_json = values[0];
+                row.updated_at = values[1];
+                return { meta: { changes: 1 } };
+              }
+              return { meta: { changes: 0 } };
             } else if (sql.startsWith("INSERT INTO nebula_object_cleanup")) {
               if (sql.includes("SELECT owner_id, object_id")) {
                 const row = db.objects.get([values[1], values[2], values[3]].join("|"));
@@ -212,6 +222,25 @@ try {
     body: JSON.stringify({ recordType: "graph", recordId: "root-1", payload: { title: "Knowledge graph" } })
   });
   assert.equal(putRecord.status, 200);
+  const createdRecord = await putRecord.json();
+  assert.equal(createdRecord.conflict, false, "A new record is created only when no remote version exists.");
+  const updateRecord = await call("/sync/records?type=graph", {
+    method: "POST",
+    body: JSON.stringify({ recordType: "graph", recordId: "root-1",
+      payload: { title: "Knowledge graph v2" }, baseVersion: createdRecord.updatedAt })
+  });
+  assert.equal(updateRecord.status, 200, "A compare-and-swap update with the observed version must succeed.");
+  const updatedRecord = await updateRecord.json();
+  assert.notEqual(updatedRecord.updatedAt, createdRecord.updatedAt);
+  const staleUpdate = await call("/sync/records?type=graph", {
+    method: "POST",
+    body: JSON.stringify({ recordType: "graph", recordId: "root-1",
+      payload: { title: "Stale overwrite" }, baseVersion: createdRecord.updatedAt })
+  });
+  assert.equal(staleUpdate.status, 409, "A stale client version must never silently overwrite a newer record.");
+  const conflict = await staleUpdate.json();
+  assert.equal(conflict.remoteVersion, updatedRecord.updatedAt);
+  assert.deepEqual(conflict.remotePayload, { title: "Knowledge graph v2" });
   const listRecords = await call("/sync/records?type=graph");
   assert.equal(listRecords.status, 200);
   assert.equal((await listRecords.json()).records[0].recordId, "root-1");
@@ -272,7 +301,7 @@ try {
   const ownerAId = [...db.consents.keys()].find(owner => db.records.has(owner + "|graph|root-1"));
   const ownerBId = [...db.consents.keys()].find(owner => owner !== ownerAId);
   assert.ok(ownerAId && ownerBId, "Both accounts must have distinct server-derived owner namespaces.");
-  assert.equal(JSON.parse(db.records.get(ownerAId + "|graph|root-1").payload_json).title, "Knowledge graph",
+  assert.equal(JSON.parse(db.records.get(ownerAId + "|graph|root-1").payload_json).title, "Knowledge graph v2",
     "Writing the same record ID as account B must not overwrite account A's record.");
   assert.equal(JSON.parse(db.records.get(ownerBId + "|graph|root-1").payload_json).title, "Account B graph");
 
