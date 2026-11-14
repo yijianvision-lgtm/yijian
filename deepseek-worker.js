@@ -220,8 +220,10 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
       if (body.recordType !== type || typeof body.recordId !== "string") {
         return jsonResponse({ error: "Record type or ID is invalid." }, 400, cors);
       }
-      const result = await repository.putRecord(type, body.recordId, body.payload);
-      return jsonResponse({ ok: true, ...result }, 200, cors);
+      const result = await repository.putRecord(type, body.recordId, body.payload, {
+        expectedUpdatedAt: body.baseVersion ?? null
+      });
+      return jsonResponse({ ok: true, ...result }, result.conflict ? 409 : 200, cors);
     }
     if (request.method === "DELETE") {
       const recordId = url.searchParams.get("id");
