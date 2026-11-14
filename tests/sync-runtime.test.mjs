@@ -3,8 +3,10 @@ import { createNebulaSyncRuntime } from "../nebula-sync-runtime.js";
 
 const rows = new Map();
 const appliedGraphs = [];
+let localGraph = { nodes: [{ id: "local-1", name: "Local graph" }], links: [] };
 const local = {
-  async saveGraph(nodes, links) { appliedGraphs.push({ nodes, links }); },
+  async saveGraph(nodes, links) { localGraph = { nodes, links }; appliedGraphs.push({ nodes, links }); },
+  async loadGraph() { return structuredClone(localGraph); },
   getSyncOutboxStore() {
     return {
       async list() { return [...rows.values()].map(value => structuredClone(value)); },
@@ -73,7 +75,11 @@ assert.equal(preview.records.length, 1);
 assert.equal(appliedGraphs.length, 0, "Preview must never mutate local graph data.");
 await assert.rejects(runtime.applyCloudRecord({ preview, recordId: "cloud-1" }), /confirmation/);
 assert.equal(appliedGraphs.length, 0, "Unconfirmed apply must not mutate local graph data.");
-const applied = await runtime.applyCloudRecord({ preview, recordId: "cloud-1", confirmed: true });
+localGraph = { nodes: [{ id: "local-2", name: "Changed locally after preview" }], links: [] };
+await assert.rejects(runtime.applyCloudRecord({ preview, recordId: "cloud-1", confirmed: true }), /local graph changed/);
+assert.equal(appliedGraphs.length, 0, "A stale preview must not overwrite a newer local graph.");
+const freshPreview = await runtime.previewCloudRecords({ category: "graph", limit: 10 });
+const applied = await runtime.applyCloudRecord({ preview: freshPreview, recordId: "cloud-1", confirmed: true });
 assert.equal(applied.applied, true);
 assert.equal(appliedGraphs.length, 1);
 assert.equal(appliedGraphs[0].nodes[0].name, "Cloud graph");
