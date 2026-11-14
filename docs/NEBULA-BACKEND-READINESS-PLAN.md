@@ -434,7 +434,7 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 
 - [x] Added migration `0007_r2_object_tombstones.sql` to extend private object metadata with `deleted_at` and a `deleted` status while preserving existing active/deleting rows.
 - [x] R2 owner-initiated delete publishes `deleting` metadata before attempting byte deletion; list responses expose it as a payload-free tombstone immediately.
-- [x] Successful direct deletion or scheduled retry changes metadata to `deleted`, removes the cleanup intent, and retains only minimal object identity metadata. The R2 bytes are deleted independently.
+- [x] Successful direct deletion or scheduled retry changes metadata to `deleted`, removes the cleanup intent, and retains only owner/category/object ID, deletion version, and the deterministic object key; content type and byte size are scrubbed. The R2 bytes are deleted independently.
 - [x] Object listings include active objects and deleting/deleted tombstones; tombstones omit content type and size so no object content metadata is returned.
 - [x] SQLite integration covers migration application, failed R2 delete recovery, persistent tombstone metadata, and tombstone discovery through the owner-scoped list path.
 - [ ] Migration 0007 is committed only; it has not been applied to remote D1. No R2 bucket, Worker, or production data was touched.
