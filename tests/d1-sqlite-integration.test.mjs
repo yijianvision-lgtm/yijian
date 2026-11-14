@@ -16,13 +16,26 @@ const migrations = [
   "0003_owner_scoped_objects.sql",
   "0004_r2_upload_cleanup_intents.sql",
   "0005_r2_delete_intent_kind.sql",
-  "0006_record_tombstones.sql",
-  "0007_r2_object_tombstones.sql"
+  "0006_record_tombstones.sql"
 ];
 for (const migration of migrations) {
   const sql = await readFile(new URL("../migrations/" + migration, import.meta.url), "utf8");
   db.exec(sql);
 }
+// Seed an existing object before migration 0007 to prove the table rebuild
+// preserves already-uploaded private object metadata.
+const migrationOwner = "own_" + "c".repeat(64);
+const migrationObjectId = "123e4567-e89b-12d3-a456-426614174199";
+const migrationObjectKey = "owners/" + migrationOwner + "/private-files/" + migrationObjectId;
+db.prepare(
+  "INSERT INTO nebula_objects (owner_id, object_id, category, object_key, content_type, size_bytes, status, created_at, updated_at) VALUES (?, ?, 'private-files', ?, 'application/pdf', 2048, 'active', ?, ?)"
+).run(migrationOwner, migrationObjectId, migrationObjectKey, "2026-11-10T00:00:00.000Z", "2026-11-10T00:00:00.000Z");
+const objectTombstoneMigration = await readFile(new URL("../migrations/0007_r2_object_tombstones.sql", import.meta.url), "utf8");
+db.exec(objectTombstoneMigration);
+const preservedObject = db.prepare("SELECT status, deleted_at, content_type, size_bytes FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(migrationOwner, migrationObjectId);
+assert.deepEqual(preservedObject, {
+  status: "active", deleted_at: null, content_type: "application/pdf", size_bytes: 2048
+}, "Migration 0007 must preserve pre-existing active object metadata without marking it deleted.");
 
 const d1 = {
   prepare(sql) {
