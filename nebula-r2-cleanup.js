@@ -99,7 +99,7 @@ export async function reconcileNebulaR2UploadCleanup({
       // Explicit user deletes become payload-free metadata tombstones.
       // Orphan uploads have no metadata row and remain simple cleanup.
       await db.prepare(
-        "UPDATE nebula_objects SET status = 'deleted', deleted_at = ?, updated_at = ? WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting'"
+        "UPDATE nebula_objects SET status = 'deleted', deleted_at = ?, updated_at = ?, content_type = 'application/octet-stream', size_bytes = 0 WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting'"
       ).bind(new Date(currentMs).toISOString(), new Date(currentMs).toISOString(), ownerId, category, objectId).run();
       await db.prepare(
         "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status = 'processing' AND lease_expires_at = ?"
