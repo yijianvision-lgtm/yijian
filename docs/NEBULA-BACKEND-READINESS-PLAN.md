@@ -344,3 +344,16 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 
 
 - Follow-up test commit `40483f84ec8953ce120b497a10e32ec960fb1cf7`: extended the Worker API integration test to list both users' records after same-ID writes and prove each receives only its own payload; also proved B's object listing is empty while A owns the uploaded object.
+
+
+## 2026-11-15: M3 local-first sync outbox foundation
+
+- [x] Added `nebula-sync-queue.js` as an injected, side-effect-free outbox state machine. It does not open network connections or upload data on import/enqueue; durable storage, identity/consent, and transport are injected by the application.
+- [x] Upserts require live category-scoped consent at drain time. Missing consent leaves the operation pending locally so it can resume after consent is restored.
+- [x] Explicit owner deletion operations remain eligible after sync consent revocation, while a valid signed-in session and access token are still required.
+- [x] HTTP 409 is persisted as a conflict with remote version/payload metadata. Resolution requires an explicit `keep-local` or `keep-cloud` choice; no silent last-write-wins overwrite is performed.
+- [x] Transport failures use bounded exponential retry; operation IDs are passed as idempotency keys.
+- [x] Added `tests/sync-queue.test.mjs` and wired syntax + queue contract tests into NEBULA backend CI.
+- [ ] Current implementation is a queue kernel with injected storage and transport, not yet wired to IndexedDB, Clerk browser sessions, or the Worker endpoints. No cloud sync UI or user-facing status is connected.
+- [ ] Next M3 steps: implement IndexedDB outbox store with schema migration and restart recovery; implement a Worker transport adapter for records/objects; add a read-only status surface and explicit per-category consent controls; then run browser tests. Do not upload existing local graph/files by default.
+- [ ] CI initially exposed a test assertion that counted a deliberately retained, consent-blocked upsert as a failed delete. The test was corrected to assert that the delete is removed while the unrelated upsert remains queued. Awaiting final CI on the corrected test head.
