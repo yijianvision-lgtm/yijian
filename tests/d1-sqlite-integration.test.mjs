@@ -105,7 +105,7 @@ assert.deepEqual((await repoB.listRecords("graph")), []);
 assert.equal(await repoB.getRecord("graph", "root"), null);
 assert.deepEqual(await repoB.deleteRecord("graph", "root"), { deleted: false },
   "A different owner must not delete another user's record.");
-assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
+assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node v2");
 assert.deepEqual(await repoA.deleteRecord("graph", "missing-record"), { deleted: false },
   "Deleting a nonexistent owner-scoped record must report deleted:false.");
 
