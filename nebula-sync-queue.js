@@ -67,8 +67,17 @@ export function createNebulaSyncQueue({ store, auth, send, clock = Date.now, max
     if (!token) return { sent: 0, blocked: "token-unavailable" };
     let sent = 0;
     const items = (await store.list()).sort((a,b) => a.createdAt.localeCompare(b.createdAt));
+    // A page/process may close while an operation is in flight. A persisted
+    // "syncing" marker is not a permanent lock: restore it to pending and rely
+    // on server-side create-only/CAS semantics for safe retry.
     for (const item of items) {
-      if (item.status === "conflict" || item.status === "blocked" || item.status === "syncing") continue;
+      if (item.status === "syncing") {
+        item.status = "pending";
+        item.lastError = "recovered-after-interruption";
+        item.updatedAt = nowIso(clock);
+        await store.put(item);
+      }
+      if (item.status === "conflict" || item.status === "blocked") continue;
       if (item.nextAttemptAt > clock()) continue;
       if (item.kind !== "delete" && !(await auth.canSyncCategory(item.category))) {
         item.status = "pending";
