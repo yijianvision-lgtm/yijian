@@ -55,7 +55,7 @@ for (const call of db.calls.slice(0, 4)) {
 }
 assert.deepEqual(db.calls[0].values.slice(-2), [ownerA, "graph"]);
 assert.deepEqual(db.calls[3].values.slice(6, 8), [ownerA, "graph"]);
-assert.deepEqual(db.calls[4].values.slice(2), [ownerA, "graph", "node-1"]);
+assert.deepEqual(db.calls[4].values.slice(4), [ownerA, "graph", "node-1"]);
 assert.doesNotMatch(db.calls[4].sql, /nebula_sync_consents/,
   "Owner-initiated record deletion must remain available after consent revocation.");
 await assert.rejects(repoA.putRecord("graph", "oversized", { data: "x".repeat(256 * 1024) }), /exceeds 256 KiB/);
