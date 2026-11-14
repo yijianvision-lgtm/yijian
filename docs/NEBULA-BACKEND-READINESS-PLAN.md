@@ -395,3 +395,9 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] A first runtime CI run found signed-out status queried the authenticated consent endpoint and threw. The consent store now treats unauthenticated reads as disabled consent, while still rejecting unauthenticated writes. Corrected HEAD `9450fb4c48313f34bb26450c930e4edba6f2d830` passed backend checks #773, local backend validation #275, and Jekyll CI #862.
 - [ ] No concrete Clerk SDK provider, browser session, production/test Worker URL, category-consent UI, visible sync status, or local remote-version applier is wired into the application. Runtime remains an injectable library, not a user-facing enabled feature.
 - [ ] Before UI integration, implement/test a category-aware `applyRemote` adapter against the actual local knowledge object schema; verify idempotent remote delete application and record provenance/version mapping. Do not run the queue until this is connected.
+
+
+- [x] Added `nebula-local-record-applier.js` and wired it as the runtime's default conflict applier. It maps only the reviewed `graph` category to the existing `NEBULA_LOCAL.saveGraph(nodes, links)` schema; explicit remote deletion clears the graph to an empty snapshot. Unknown categories or malformed remote graph payloads fail closed.
+- [x] Added local graph applier tests for valid snapshot application, explicit remote deletion, unsupported category rejection, and malformed payload rejection.
+- [x] Verified HEAD `ece5ca7246247c55a026c3daea53da6822bba567`: backend checks #778, local backend validation #280, and Jekyll CI #867 all passed.
+- [ ] Only graph record conflict application is mapped. Private files, lecture source blobs, AI conversation archives, and other stores are not mapped to cloud records/objects; no automatic migration or upload is enabled. Category-specific serialization, source provenance, blob handling, and delete semantics need separate review.
