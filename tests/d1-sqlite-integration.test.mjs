@@ -16,7 +16,8 @@ const migrations = [
   "0003_owner_scoped_objects.sql",
   "0004_r2_upload_cleanup_intents.sql",
   "0005_r2_delete_intent_kind.sql",
-  "0006_record_tombstones.sql"
+  "0006_record_tombstones.sql",
+  "0007_r2_object_tombstones.sql"
 ];
 for (const migration of migrations) {
   const sql = await readFile(new URL("../migrations/" + migration, import.meta.url), "utf8");
@@ -251,8 +252,8 @@ assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHE
   "Successful compensation must clear the rejected upload intent.");
 
 // A user-requested delete must atomically persist a pending cleanup intent.
-// If R2 fails, the scheduled reconciler completes the deletion and removes
-// both the inaccessible D1 metadata row and the durable intent.
+// If R2 fails, the scheduled reconciler completes the deletion, preserves
+// a payload-free object tombstone, and removes only the durable cleanup intent.
 await consentA.setConsent({ status: "enabled", categories: ["graph", "private-files"] });
 const durableDeleteId = "123e4567-e89b-12d3-a456-426614174105";
 const durableDeleteKey = cleanupKey(durableDeleteId);
@@ -281,8 +282,21 @@ await reconcileNebulaR2UploadCleanup({
   db: d1, bucket: deleteBucket, now: () => Date.parse("2026-11-12T12:00:00.000Z")
 });
 assert.equal(deleteObjects.has(durableDeleteKey), false);
-assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).count, 0);
+const objectTombstone = db.prepare("SELECT status, deleted_at, object_key FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId);
+assert.equal(objectTombstone.status, "deleted");
+assert.ok(objectTombstone.deleted_at);
+assert.equal(objectTombstone.object_key, durableDeleteKey, "The minimal object key metadata remains available for owner-scoped audit and tombstone identity.");
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).count, 1);
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).count, 0);
+// The object listing path exposes the marker without content metadata, allowing
+// another authorized device to learn that the object was deleted.
+const objectListRepo = createNebulaR2Repository({
+  bucket: deleteBucket, db: d1, authContext: authA, consentRepository: consentA, now
+});
+const listedTombstone = (await objectListRepo.listObjects("private-files")).find(item => item.objectId === durableDeleteId);
+assert.equal(listedTombstone.deleted, true);
+assert.equal(listedTombstone.contentType, null);
+assert.equal(listedTombstone.sizeBytes, null);
 
 // Revocation blocks record reads/writes but must not trap the owner's own data
 // in cloud storage. The delete statement remains owner-scoped and consent-free.
