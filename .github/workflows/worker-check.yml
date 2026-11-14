@@ -46,7 +46,7 @@ jobs:
           html = Path("index.html").read_text(encoding="utf-8")
           worker = Path("deepseek-worker.js").read_text(encoding="utf-8")
           required_local = [
-              'DB_VERSION = 6', 'lectureSources', 'aiConversations',
+              'DB_VERSION = 7', 'lectureSources', 'aiConversations', 'syncOutbox', 'getSyncOutboxStore',
               'extractionBatches', 'extractionItems', 'filterCases', 'filterDecisions',
               'frameworks', 'frameworkVersions', 'nodePositions', 'relationEvidence', 'frameworkPlacements', 'explorationPaths', 'explorationSteps',
               'createExtractionFromParsedSource',
