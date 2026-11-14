@@ -120,6 +120,7 @@ const deletion = await repoA.deleteRecord("graph", "root");
 assert.equal(deletion.deleted, true);
 const tombstone = db.prepare("SELECT deleted_at, payload_json FROM nebula_records WHERE owner_id = ? AND record_type = 'graph' AND record_id = 'root'").get(ownerA);
 assert.ok(tombstone.deleted_at, "Owner-initiated deletion must retain a versioned tombstone.");
+assert.equal(tombstone.payload_json, "{}", "Deleting a cloud record must scrub its former payload, retaining only the minimal tombstone.");
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ?").get(ownerA).count, 1,
   "Revocation blocks reads and writes but preserves a minimal deletion marker for cross-device propagation.");
 
