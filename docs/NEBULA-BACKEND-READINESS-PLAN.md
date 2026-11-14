@@ -428,3 +428,14 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Worker integration coverage now checks owner-isolated tombstones, deletion discovery, no-payload tombstone reads, rejection of unobserved resurrection, explicit CAS restoration, and preservation of another user's record.
 - [ ] Migration 0006 is committed but not applied to any remote D1 database. Production and live cloud remain untouched.
 - [ ] Current tombstone support covers record rows and the graph mapping only. R2 object deletion tombstones, per-node graph deletion semantics, and tombstone retention/compaction policies are not implemented.
+
+
+## 2026-11-15: R2 object deletion tombstones
+
+- [x] Added migration `0007_r2_object_tombstones.sql` to extend private object metadata with `deleted_at` and a `deleted` status while preserving existing active/deleting rows.
+- [x] R2 owner-initiated delete publishes `deleting` metadata before attempting byte deletion; list responses expose it as a payload-free tombstone immediately.
+- [x] Successful direct deletion or scheduled retry changes metadata to `deleted`, removes the cleanup intent, and retains only minimal object identity metadata. The R2 bytes are deleted independently.
+- [x] Object listings include active objects and deleting/deleted tombstones; tombstones omit content type and size so no object content metadata is returned.
+- [x] SQLite integration covers migration application, failed R2 delete recovery, persistent tombstone metadata, and tombstone discovery through the owner-scoped list path.
+- [ ] Migration 0007 is committed only; it has not been applied to remote D1. No R2 bucket, Worker, or production data was touched.
+- [ ] Device acknowledgement, per-device sync cursor, safe tombstone compaction, and actual client-side object deletion application remain unimplemented. Tombstones are retained indefinitely until a safe acknowledgement watermark exists.
