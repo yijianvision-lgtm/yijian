@@ -27,6 +27,8 @@ jobs:
           node --input-type=module --check < nebula-r2-cleanup.js
           node --input-type=module --check < nebula-sync-queue.js
           node --input-type=module --check < nebula-sync-records-transport.js
+          node --input-type=module --check < nebula-worker-consent-store.js
+          node --input-type=module --check < nebula-sync-runtime.js
       - name: Verify Wrangler environment isolation
         run: node tests/wrangler-config-safety.test.mjs
       - name: Install IndexedDB test shim
@@ -39,6 +41,8 @@ jobs:
         run: node tests/sync-queue.test.mjs
       - name: Test authenticated Worker records transport
         run: node tests/sync-records-transport.test.mjs
+      - name: Test explicit sync runtime composition
+        run: node tests/sync-runtime.test.mjs
       - name: Test durable IndexedDB outbox storage
         run: node tests/local-outbox-store.test.mjs
       - name: Test provider-neutral auth and explicit sync consent
