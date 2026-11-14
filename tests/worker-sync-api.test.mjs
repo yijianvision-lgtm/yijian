@@ -290,6 +290,20 @@ try {
   assert.equal((await ownerARecordAfterForeignDelete.json()).records[0].recordId, "root-1",
     "A's record must remain readable after B's cross-account delete attempt.");
 
+  // Search/export/backup/restore are deliberately not exposed yet. Assert
+  // authenticated callers cannot reach speculative endpoints before those
+  // features receive explicit owner-scoped implementations and tests.
+  for (const unsupportedPath of [
+    "/sync/search?q=system",
+    "/sync/export",
+    "/sync/backup",
+    "/sync/backup/restore"
+  ]) {
+    const unsupported = await call(unsupportedPath, { token: tokenB });
+    assert.equal(unsupported.status, 404,
+      unsupportedPath + " must remain unavailable until its owner-scoped implementation is reviewed.");
+  }
+
   const paused = await call("/sync/consent", { method: "POST", body: JSON.stringify({ status: "paused" }) });
   assert.equal(paused.status, 200);
   const blockedAfterPause = await call("/sync/records?type=graph");
