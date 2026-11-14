@@ -365,3 +365,14 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 
 
 - [x] CI correction checkpoint: an initial outbox persistence test used a data URL loader incompatible with Node's module loader; it now imports the actual local module by file URL. The schema contract assertions were also advanced from IndexedDB v6 to v7. Corrected HEAD `c40da89604e7d5fcba751995112d985112e3a8b4` passed NEBULA backend checks #744, local backend validation #246, and Jekyll CI #833.
+
+
+## 2026-11-15: M3 records transport and server-side conflict protection
+
+- [x] Added `nebula-sync-records-transport.js`, an injected HTTPS-only adapter for owner-scoped `/sync/records` POST and DELETE. It requires an access token and maps category, record ID, payload, and observed base version; it does not enumerate local data or upload objects/files.
+- [x] Strengthened D1 record writes to optimistic concurrency: a write without `baseVersion` is create-only; an update requires the exact previously observed `updated_at`. Stale writes return a 409 response with the current remote version/payload, subject to active category consent.
+- [x] Worker POST `/sync/records?type=...` now forwards `baseVersion` and returns HTTP 409 on stale/missing-version conflicts. This aligns the server with the client queue's explicit conflict state instead of silently applying last-write-wins.
+- [x] Added tests for transport URL/method/token/body mapping, D1 create-only and compare-and-swap SQL, SQLite stale-writer conflicts, and Worker-level 409 responses.
+- [x] Sync queue now recovers persisted `syncing` operations to pending after process interruption; create-only/CAS semantics protect retries against blind overwrite.
+- [ ] CI for this new transport/CAS change is pending. No actual cloud call is made by tests; Worker integration uses synthetic JWT and Memory D1/R2, while SQLite validates D1 SQL semantics.
+- [ ] Transport adapter is not yet instantiated by the UI; no live Clerk session, real Worker URL/bindings, or user-facing consent/status UI is configured. No local graph, private file, or lecture content has been uploaded.
