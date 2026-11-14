@@ -47,8 +47,10 @@ export function createNebulaRecordsTransport({ baseUrl, fetchImpl = globalThis.f
     const records = result.records.map(record => {
       if (!record || record.recordType !== category || typeof record.recordId !== "string" || !record.recordId ||
           typeof record.updatedAt !== "string" || !Number.isFinite(Date.parse(record.updatedAt)) ||
-          !record.payload || typeof record.payload !== "object" || Array.isArray(record.payload)) throw new Error("Remote records response contains an invalid record.");
-      return Object.freeze({ recordType: record.recordType, recordId: record.recordId, payload: record.payload, createdAt: record.createdAt, updatedAt: record.updatedAt });
+          typeof record.deleted !== "boolean" ||
+          (!record.deleted && (!record.payload || typeof record.payload !== "object" || Array.isArray(record.payload))) ||
+          (record.deleted && record.payload !== null)) throw new Error("Remote records response contains an invalid record.");
+      return Object.freeze({ recordType: record.recordType, recordId: record.recordId, payload: record.payload, deleted: record.deleted, createdAt: record.createdAt, updatedAt: record.updatedAt });
     });
     return Object.freeze({ records, nextCursor: records.length === limit ? records[records.length - 1].recordId : null });
   }
