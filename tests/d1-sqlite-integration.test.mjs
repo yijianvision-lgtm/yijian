@@ -33,9 +33,11 @@ db.prepare(
 const objectTombstoneMigration = await readFile(new URL("../migrations/0007_r2_object_tombstones.sql", import.meta.url), "utf8");
 db.exec(objectTombstoneMigration);
 const preservedObject = db.prepare("SELECT status, deleted_at, content_type, size_bytes FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(migrationOwner, migrationObjectId);
-assert.deepEqual(preservedObject, {
-  status: "active", deleted_at: null, content_type: "application/pdf", size_bytes: 2048
-}, "Migration 0007 must preserve pre-existing active object metadata without marking it deleted.");
+assert.equal(preservedObject.status, "active");
+assert.equal(preservedObject.deleted_at, null);
+assert.equal(preservedObject.content_type, "application/pdf");
+assert.equal(preservedObject.size_bytes, 2048,
+  "Migration 0007 must preserve pre-existing active object metadata without marking it deleted.");
 
 const d1 = {
   prepare(sql) {
