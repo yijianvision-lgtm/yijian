@@ -102,7 +102,8 @@
 - [ ] 真实 Clerk 测试实例及 session token claims 验证（尚未获授权创建第三方实例）。
 - [x] 代码层已通过 D1/R2 owner-scoped repository 将服务端认证上下文 ownerId 绑定到私有资源操作；真实 Clerk 与 Cloudflare D1/R2 仍待验证。
 - [x] 两个独立合成用户 A/B 的记录同 ID 写入/删除隔离、对象 ID 猜测后的覆盖/删除拒绝及 A 数据完整性回归测试。
-- [ ] 两个独立合成用户 A/B 的搜索、导出、下载扩展场景、备份/恢复负向测试。
+- [x] Worker 路由测试确认 `/sync/search`、`/sync/export`、`/sync/backup`、`/sync/backup/restore` 对已认证用户仍返回 404；这些能力尚未实现，因此当前不存在可被跨账户调用的私有搜索/导出/备份恢复接口。
+- [ ] 在实现上述功能前，补齐各自 owner-scoped repository、显式授权范围、跨账户负向测试和备份恢复完整性验证。
 - [ ] 真实浏览器 E2E、撤销窗口和线上运行时安全验证。
 
 当前身份中间件尚未启用 Clerk 模式；未部署 Worker、未创建 Cloudflare 资源、未迁移数据。不能将身份上下文原型等同于完成多用户数据隔离。
@@ -332,3 +333,11 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Frontend audit of `index.html` and `nebula-local.js`: IndexedDB/local persistence exists, but there is no implemented Clerk login/session UI, cloud-sync consent UI, sync queue, conflict resolver, or user-facing sync status. Existing DeepSeek history sync is a separate feature and is not cloud knowledge sync.
 - [ ] M3 remains unimplemented: design and implement an isolated auth adapter + explicit category-scoped cloud consent + outbox/retry/conflict/deletion state machine without changing accepted UI visuals or uploading private data before explicit consent.
 - [ ] Cross-account search/export/backup-restore negative tests and real Cloudflare D1/R2 two-account E2E remain pending. CI uses synthetic JWT, in-memory bindings, SQLite, and local Wrangler; it does not prove live Clerk or Cloudflare behavior.
+
+
+## 2026-11-15: keep unimplemented search/export/backup routes closed
+
+- [x] Added authenticated Worker route regression checks proving `/sync/search`, `/sync/export`, `/sync/backup`, and `/sync/backup/restore` remain unavailable (404) until explicit owner-scoped implementations exist.
+- [x] Confirmed current private sync surface is limited to consent, owner-scoped records, and owner-scoped objects; no private search/export/backup/restore handler is currently registered.
+- [ ] Before implementing these capabilities, define category-scoped consent, owner-bound queries, export authorization and audit semantics, backup integrity/versioning, and restore conflict/deletion behavior. Add A/B negative tests before enabling any route.
+- [ ] Real Clerk and Cloudflare D1/R2 two-account E2E remain pending. No private data uploaded and no production Worker deployed.
