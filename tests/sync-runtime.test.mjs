@@ -36,6 +36,13 @@ const fetchImpl = async (url, init = {}) => {
   if (String(url).includes("/sync/records") && init.method === "POST") {
     return new Response(JSON.stringify({ ok: true, conflict: false }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
+  if (String(url).includes("/sync/records") && init.method === "GET") {
+    return new Response(JSON.stringify({ records: [{
+      recordType: "graph", recordId: "cloud-1",
+      payload: { nodes: [{ id: "cloud-1", name: "Cloud graph" }], links: [] },
+      createdAt: "2026-11-14T00:00:00.000Z", updatedAt: "2026-11-15T00:00:00.000Z"
+    }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
   throw new Error("Unexpected test request: " + url);
 };
 
@@ -60,6 +67,15 @@ const drained = await runtime.drain();
 assert.equal(drained.sent, 1);
 assert.equal((await runtime.listPending()).length, 0);
 assert.equal(requests.filter(x => String(x.url).includes("/sync/records")).length, 1);
+const preview = await runtime.previewCloudRecords({ category: "graph", limit: 10 });
+assert.equal(preview.records.length, 1);
+assert.equal(appliedGraphs.length, 0, "Preview must never mutate local graph data.");
+await assert.rejects(runtime.applyCloudRecord({ preview, recordId: "cloud-1" }), /confirmation/);
+assert.equal(appliedGraphs.length, 0, "Unconfirmed apply must not mutate local graph data.");
+const applied = await runtime.applyCloudRecord({ preview, recordId: "cloud-1", confirmed: true });
+assert.equal(applied.applied, true);
+assert.equal(appliedGraphs.length, 1);
+assert.equal(appliedGraphs[0].nodes[0].name, "Cloud graph");
 await runtime.disableCloudSync();
 assert.equal(consent.status, "revoked");
 assert.equal((await runtime.getStatus()).syncEnabled, false);
