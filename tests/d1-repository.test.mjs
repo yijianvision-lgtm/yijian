@@ -54,13 +54,14 @@ for (const call of db.calls.slice(0, 4)) {
     "Every D1 read/write operation must enforce live consent and category membership in the same SQL statement.");
 }
 assert.deepEqual(db.calls[0].values.slice(-2), [ownerA, "graph"]);
-assert.deepEqual(db.calls[3].values.slice(-2), [ownerA, "graph"]);
+assert.deepEqual(db.calls[3].values.slice(6, 8), [ownerA, "graph"]);
 assert.deepEqual(db.calls[4].values, [ownerA, "graph", "node-1"]);
 assert.doesNotMatch(db.calls[4].sql, /nebula_sync_consents/,
   "Owner-initiated record deletion must remain available after consent revocation.");
 await assert.rejects(repoA.putRecord("graph", "oversized", { data: "x".repeat(256 * 1024) }), /exceeds 256 KiB/);
 assert.match(db.calls[3].sql, /INSERT INTO nebula_records \(owner_id,/);
-assert.match(db.calls[3].sql, /ON CONFLICT\(owner_id, record_type, record_id\)/);
+assert.match(db.calls[3].sql, /NOT EXISTS \(SELECT 1 FROM nebula_records/);
+assert.match(db.calls[3].sql, /ON CONFLICT\(owner_id, record_type, record_id\) DO NOTHING/);
 assert.match(db.calls[4].sql, /DELETE FROM nebula_records WHERE owner_id = \?/);
 assert.equal(db.calls[3].values[0], ownerA, "A client-supplied owner_id inside payload must not change the row owner.");
 
@@ -72,7 +73,7 @@ const casRepo = createNebulaD1Repository({
   now: () => "2026-11-15T00:00:00.000Z"
 });
 await casRepo.putRecord("graph", "cas-node", { title: "create" });
-assert.match(casDb.calls[0].sql, /NOT EXISTS \\(SELECT 1 FROM nebula_records/,
+assert.match(casDb.calls[0].sql, /NOT EXISTS \(SELECT 1 FROM nebula_records/,
   "First write must be create-only.");
 const casUpdateDb = new FakeD1();
 const casUpdateRepo = createNebulaD1Repository({
