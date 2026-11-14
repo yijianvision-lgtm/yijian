@@ -11,6 +11,7 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
   const send = createNebulaRecordsTransport({ baseUrl: workerBaseUrl, fetchImpl });
   const localApplier = applyRemote || createNebulaLocalRecordApplier({ local });
   const queue = createNebulaSyncQueue({ store: local.getSyncOutboxStore(), auth, send, applyRemote: localApplier });
+  const previewSnapshots = new Map();
   async function requireCategoryConsent(category) {
     if (!(await auth.canSyncCategory(category))) throw new Error("Explicit cloud-sync consent is not enabled for this category.");
   }
@@ -20,12 +21,19 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
     const token = await auth.getAccessToken();
     if (!token) throw new Error("A verified access token is required.");
     const page = await send.listRecords({ category, after, limit, token });
-    return Object.freeze({ category, records: page.records, nextCursor: page.nextCursor, previewedAt: new Date().toISOString() });
+    const previewId = crypto.randomUUID();
+    const localSnapshot = typeof local.loadGraph === "function" ? JSON.stringify(await local.loadGraph()) : null;
+    previewSnapshots.set(previewId, localSnapshot);
+    while (previewSnapshots.size > 20) previewSnapshots.delete(previewSnapshots.keys().next().value);
+    return Object.freeze({ previewId, category, records: page.records, nextCursor: page.nextCursor, previewedAt: new Date().toISOString() });
   }
   async function applyCloudRecord({ preview, recordId, confirmed = false } = {}) {
     if (confirmed !== true) throw new Error("Explicit confirmation is required before applying a cloud record.");
     if (!preview || typeof preview.category !== "string" || !Array.isArray(preview.records)) throw new TypeError("A valid cloud-record preview is required.");
     await requireCategoryConsent(preview.category);
+    if (typeof local.loadGraph !== "function" || !previewSnapshots.has(preview.previewId)) {
+      throw new Error("A current local snapshot is required. Refresh the cloud preview before applying.");
+    }
     const selected = preview.records.find(record => record.recordId === recordId);
     if (!selected) throw new Error("The selected record is not part of this preview.");
     if (!(await auth.getSession())) throw new Error("Sign-in is required to apply a cloud record.");
@@ -39,7 +47,13 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
       cursor = page.nextCursor;
     }
     if (!current || current.updatedAt !== selected.updatedAt) throw new Error("The cloud record changed or was deleted after preview. Refresh the preview before applying.");
+    const expectedLocalSnapshot = previewSnapshots.get(preview.previewId);
+    const currentLocalSnapshot = JSON.stringify(await local.loadGraph());
+    if (currentLocalSnapshot !== expectedLocalSnapshot) {
+      throw new Error("The local graph changed after preview. Refresh the preview before applying.");
+    }
     const result = await localApplier({ category: current.recordType, recordId: current.recordId, payload: current.payload, version: current.updatedAt, deleted: false });
+    previewSnapshots.delete(preview.previewId);
     return Object.freeze({ ...result, recordId: current.recordId, version: current.updatedAt });
   }
   return Object.freeze({
