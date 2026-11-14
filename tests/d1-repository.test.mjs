@@ -64,6 +64,28 @@ assert.match(db.calls[3].sql, /ON CONFLICT\(owner_id, record_type, record_id\)/)
 assert.match(db.calls[4].sql, /DELETE FROM nebula_records WHERE owner_id = \?/);
 assert.equal(db.calls[3].values[0], ownerA, "A client-supplied owner_id inside payload must not change the row owner.");
 
+assert.match(db.calls[3].sql, /nebula_sync_consents/);
+
+const casDb = new FakeD1();
+const casRepo = createNebulaD1Repository({
+  db: casDb, authContext: { kind: "user", ownerId: ownerA }, syncConsent,
+  now: () => "2026-11-15T00:00:00.000Z"
+});
+await casRepo.putRecord("graph", "cas-node", { title: "create" });
+assert.match(casDb.calls[0].sql, /NOT EXISTS \\(SELECT 1 FROM nebula_records/,
+  "First write must be create-only.");
+const casUpdateDb = new FakeD1();
+const casUpdateRepo = createNebulaD1Repository({
+  db: casUpdateDb, authContext: { kind: "user", ownerId: ownerA }, syncConsent,
+  now: () => "2026-11-15T00:01:00.000Z"
+});
+await casUpdateRepo.putRecord("graph", "cas-node", { title: "update" }, {
+  expectedUpdatedAt: "2026-11-14T23:59:00.000Z"
+});
+assert.match(casUpdateDb.calls[0].sql, /^UPDATE nebula_records SET/);
+assert.equal(casUpdateDb.calls[0].values[5], "2026-11-14T23:59:00.000Z",
+  "Updates must compare the exact version read by the client.");
+
 const dbB = new FakeD1();
 const repoB = createNebulaD1Repository({ db: dbB, authContext: { kind: "user", ownerId: ownerB }, syncConsent });
 await repoB.getRecord("graph", "node-1");
