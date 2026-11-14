@@ -376,3 +376,11 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Sync queue now recovers persisted `syncing` operations to pending after process interruption; create-only/CAS semantics protect retries against blind overwrite.
 - [ ] CI for this new transport/CAS change is pending. No actual cloud call is made by tests; Worker integration uses synthetic JWT and Memory D1/R2, while SQLite validates D1 SQL semantics.
 - [ ] Transport adapter is not yet instantiated by the UI; no live Clerk session, real Worker URL/bindings, or user-facing consent/status UI is configured. No local graph, private file, or lecture content has been uploaded.
+
+
+- [x] Follow-up hardening: successful compare-and-swap updates advance `updated_at` monotonically even when the wall clock reports the same millisecond, preventing two sequential writes from reusing one version token.
+- [x] Conflict resolution now requires an injected local applier before choosing `keep-cloud`; the remote payload/deletion is applied locally before the outbox item is removed. If no applier is configured, resolution fails closed rather than silently dropping the local operation.
+- [x] Queue recovery, local cloud-version application contract, monotonic CAS versioning, transport adapter, Worker 409 response, SQLite stale-writer test, and local outbox tests are green together.
+- [x] Corrected test-harness issues encountered during integration: a fake D1 outer records query was being shadowed by its nested consent subquery; a synthetic 204 response was constructed with an invalid body; and a SQLite assertion still expected the pre-CAS value. The fixtures/assertions were corrected; no production error-detail logging remains.
+- [x] Verified HEAD `0e7fd5159db2d34d781cc18ad30204fa749fb0d0`: NEBULA backend checks #767, local backend validation #269, and Jekyll CI #856 all passed.
+- [ ] The transport and queue are still not instantiated by the application UI. A concrete local `applyRemote` implementation, real Clerk provider/session, configured Worker origin, and explicit category-consent/status UI remain pending. Do not drain the queue until these are wired and reviewed.
