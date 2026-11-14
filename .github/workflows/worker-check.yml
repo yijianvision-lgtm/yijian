@@ -9,6 +9,7 @@ on:
       - "nebula-sync-records-transport.js"
       - "nebula-worker-consent-store.js"
       - "nebula-sync-runtime.js"
+      - "nebula-local-record-applier.js"
       - "deepseek-worker.js"
       - ".github/workflows/worker-check.yml"
   pull_request:
@@ -35,6 +36,7 @@ jobs:
           node --input-type=module --check < nebula-sync-records-transport.js
           node --input-type=module --check < nebula-worker-consent-store.js
           node --input-type=module --check < nebula-sync-runtime.js
+          node --input-type=module --check < nebula-local-record-applier.js
       - name: Extract and check inline application script
         run: |
           python - <<'PY'
