@@ -362,3 +362,6 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Follow-up: bumped the local IndexedDB schema from v6 to v7 additively and added a `syncOutbox` object store. `NEBULA_LOCAL.getSyncOutboxStore()` exposes list/put/remove to the queue without initiating network activity.
 - [x] Added a fake-indexeddb persistence test that writes an outbox item, reloads the module, verifies the item remains, then verifies deletion.
 - [ ] Browser restart/reload and quota/transaction-failure behavior still require browser-level validation. Existing local knowledge stores are retained; this migration only adds the outbox store.
+
+
+- [x] CI correction checkpoint: an initial outbox persistence test used a data URL loader incompatible with Node's module loader; it now imports the actual local module by file URL. The schema contract assertions were also advanced from IndexedDB v6 to v7. Corrected HEAD `c40da89604e7d5fcba751995112d985112e3a8b4` passed NEBULA backend checks #744, local backend validation #246, and Jekyll CI #833.
