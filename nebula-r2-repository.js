@@ -230,10 +230,12 @@ export function createNebulaR2Repository({
 
         try {
           await bucket.delete(expectedKey);
-          // Finish any interrupted user-requested deletion only after R2 confirms.
+          // Finish an interrupted owner-requested deletion only after R2
+          // confirms; preserve the minimal versioned tombstone for other devices.
+          const completedAt = new Date(currentMs).toISOString();
           await db.prepare(
-            "DELETE FROM nebula_objects WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting'"
-          ).bind(ownerId, item.category, item.object_id).run();
+            "UPDATE nebula_objects SET status = 'deleted', deleted_at = ?, updated_at = ? WHERE owner_id = ? AND category = ? AND object_id = ? AND status = 'deleting'"
+          ).bind(completedAt, completedAt, ownerId, item.category, item.object_id).run();
           await db.prepare(
             "DELETE FROM nebula_object_cleanup WHERE owner_id = ? AND category = ? AND object_id = ? AND created_at = ? AND status = 'processing' AND lease_expires_at = ?"
           ).bind(ownerId, item.category, item.object_id, item.created_at, leaseUntil).run();
