@@ -10,7 +10,10 @@ export function createNebulaWorkerConsentStore({ baseUrl, getAccessToken, fetchI
 
   async function request(body) {
     const token = await getAccessToken();
-    if (typeof token !== "string" || !token.trim()) throw new Error("A signed-in access token is required for consent changes.");
+    if (typeof token !== "string" || !token.trim()) {
+      if (!body) return null;
+      throw new Error("A signed-in access token is required for consent changes.");
+    }
     const response = await fetchImpl(endpoint, {
       method: body ? "POST" : "GET",
       headers: { Authorization: "Bearer " + token, ...(body ? { "Content-Type": "application/json" } : {}) },
