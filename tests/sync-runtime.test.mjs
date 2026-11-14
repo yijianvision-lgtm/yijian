@@ -3,6 +3,7 @@ import { createNebulaSyncRuntime } from "../nebula-sync-runtime.js";
 
 const rows = new Map();
 const local = {
+  async saveGraph() {},
   getSyncOutboxStore() {
     return {
       async list() { return [...rows.values()].map(value => structuredClone(value)); },
