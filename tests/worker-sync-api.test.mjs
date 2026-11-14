@@ -224,6 +224,7 @@ try {
   assert.equal(putRecord.status, 200);
   const createdRecord = await putRecord.json();
   assert.equal(createdRecord.conflict, false, "A new record is created only when no remote version exists.");
+  await new Promise(resolve => setTimeout(resolve, 5));
   const updateRecord = await call("/sync/records?type=graph", {
     method: "POST",
     body: JSON.stringify({ recordType: "graph", recordId: "root-1",
@@ -232,6 +233,7 @@ try {
   assert.equal(updateRecord.status, 200, "A compare-and-swap update with the observed version must succeed.");
   const updatedRecord = await updateRecord.json();
   assert.notEqual(updatedRecord.updatedAt, createdRecord.updatedAt);
+  await new Promise(resolve => setTimeout(resolve, 5));
   const staleUpdate = await call("/sync/records?type=graph", {
     method: "POST",
     body: JSON.stringify({ recordType: "graph", recordId: "root-1",
