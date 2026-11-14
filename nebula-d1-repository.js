@@ -89,18 +89,43 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       });
     },
 
-    async putRecord(recordType, recordId, payload) {
+    async putRecord(recordType, recordId, payload, { expectedUpdatedAt = null } = {}) {
       const type = assertRecordType(recordType);
       const id = assertRecordId(recordId);
       assertConsentedCategory(type);
       if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new TypeError("Record payload must be an object.");
+      if (expectedUpdatedAt !== null) timestamp(expectedUpdatedAt);
       const serialized = JSON.stringify(payload);
       if (new TextEncoder().encode(serialized).byteLength > MAX_PAYLOAD_BYTES) throw new RangeError("Record payload exceeds 256 KiB.");
       const updatedAt = timestamp(now());
-      const result = await db.prepare(
-        "INSERT INTO nebula_records (owner_id, record_type, record_id, payload_json, created_at, updated_at) SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) ON CONFLICT(owner_id, record_type, record_id) DO UPDATE SET payload_json = excluded.payload_json, updated_at = excluded.updated_at"
-      ).bind(ownerId, type, id, serialized, updatedAt, updatedAt, ownerId, type).run();
-      return Object.freeze({ ok: true, changes: Number(result.meta?.changes || 0), updatedAt });
+      let result;
+      if (expectedUpdatedAt === null) {
+        // A null base version is create-only. It must never silently replace an
+        // existing row whose version the client has not observed.
+        result = await db.prepare(
+          "INSERT INTO nebula_records (owner_id, record_type, record_id, payload_json, created_at, updated_at) SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) AND NOT EXISTS (SELECT 1 FROM nebula_records r WHERE r.owner_id = ? AND r.record_type = ? AND r.record_id = ?) ON CONFLICT(owner_id, record_type, record_id) DO NOTHING"
+        ).bind(ownerId, type, id, serialized, updatedAt, updatedAt, ownerId, type, ownerId, type, id).run();
+      } else {
+        // Updates are compare-and-swap: only the exact version previously read
+        // by this client may be replaced. A stale version yields a conflict.
+        result = await db.prepare(
+          "UPDATE nebula_records SET payload_json = ?, updated_at = ? WHERE owner_id = ? AND record_type = ? AND record_id = ? AND updated_at = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?))"
+        ).bind(serialized, updatedAt, ownerId, type, id, expectedUpdatedAt, ownerId, type).run();
+      }
+      const changes = Number(result.meta?.changes || 0);
+      if (changes > 0) return Object.freeze({ ok: true, conflict: false, changes, updatedAt });
+      // Distinguish an actual stale/missing version from a concurrent consent
+      // revocation. Never report a conflict payload unless live consent remains.
+      const liveConsent = await db.prepare(
+        "SELECT 1 AS active FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?) LIMIT 1"
+      ).bind(ownerId, type).first();
+      if (!liveConsent) throw new Error("Cloud-sync consent does not cover this record category.");
+      const remote = await this.getRecord(type, id);
+      return Object.freeze({
+        ok: true, conflict: true, changes: 0,
+        remoteVersion: remote?.updatedAt ?? null,
+        remotePayload: remote?.payload ?? null
+      });
     },
 
     async deleteRecord(recordType, recordId) {
