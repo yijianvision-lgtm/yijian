@@ -62,7 +62,8 @@ await assert.rejects(repoA.putRecord("graph", "oversized", { data: "x".repeat(25
 assert.match(db.calls[3].sql, /INSERT INTO nebula_records \(owner_id,/);
 assert.match(db.calls[3].sql, /NOT EXISTS \(SELECT 1 FROM nebula_records/);
 assert.match(db.calls[3].sql, /ON CONFLICT\(owner_id, record_type, record_id\) DO NOTHING/);
-assert.match(db.calls[4].sql, /UPDATE nebula_records SET deleted_at = \?/);
+assert.match(db.calls[4].sql, /UPDATE nebula_records SET payload_json = '\{\}'/);
+assert.match(db.calls[4].sql, /deleted_at = CASE WHEN updated_at >= \?/);
 assert.equal(db.calls[3].values[0], ownerA, "A client-supplied owner_id inside payload must not change the row owner.");
 
 assert.match(db.calls[3].sql, /nebula_sync_consents/);
