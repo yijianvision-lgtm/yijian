@@ -22,7 +22,7 @@ function validateOperation(input) {
     baseVersion: input.baseVersion ?? null };
 }
 
-export function createNebulaSyncQueue({ store, auth, send, clock = Date.now, maxAttempts = 8 } = {}) {
+export function createNebulaSyncQueue({ store, auth, send, applyRemote, clock = Date.now, maxAttempts = 8 } = {}) {
   if (!store || typeof store.list !== "function" || typeof store.put !== "function" || typeof store.remove !== "function")
     throw new TypeError("A durable outbox store is required.");
   if (!auth || typeof auth.getSession !== "function" || typeof auth.getAccessToken !== "function" ||
@@ -45,6 +45,16 @@ export function createNebulaSyncQueue({ store, auth, send, clock = Date.now, max
     const item = (await store.list()).find(row => row.id === id);
     if (!item || item.status !== "conflict") throw new Error("No unresolved conflict exists for this operation.");
     if (resolution === "keep-cloud") {
+      if (typeof applyRemote !== "function") {
+        throw new Error("A local remote-version applier is required before keeping the cloud version.");
+      }
+      await applyRemote({
+        category: item.category,
+        recordId: item.recordId,
+        payload: clone(item.conflict?.remotePayload ?? null),
+        version: item.conflict?.remoteVersion ?? null,
+        deleted: item.conflict?.remotePayload == null
+      });
       await store.remove(id);
       return { resolved: true, action: "kept-cloud" };
     }
