@@ -9,10 +9,9 @@ const send = createNebulaRecordsTransport({
     if (requests.length === 3) return new Response(JSON.stringify({
       remoteVersion: "v2", remotePayload: { title: "Cloud version" }
     }), { status: 409, headers: { "Content-Type": "application/json" } });
-    return new Response(JSON.stringify({ ok: true }), {
-      status: requests.length === 1 ? 200 : 204,
-      headers: { "Content-Type": "application/json" }
-    });
+    return requests.length === 2
+      ? new Response(null, { status: 204 })
+      : new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 });
 
