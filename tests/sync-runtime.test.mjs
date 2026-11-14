@@ -40,10 +40,12 @@ const fetchImpl = async (url, init = {}) => {
     return new Response(JSON.stringify({ ok: true, conflict: false }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (String(url).includes("/sync/records") && init.method === "GET") {
+    const isDeleted = String(url).includes("tombstone-preview");
     return new Response(JSON.stringify({ records: [{
-      recordType: "graph", recordId: "cloud-1",
-      payload: { nodes: [{ id: "cloud-1", name: "Cloud graph" }], links: [] },
-      createdAt: "2026-11-14T00:00:00.000Z", updatedAt: "2026-11-15T00:00:00.000Z"
+      recordType: "graph", recordId: isDeleted ? "tombstone-preview" : "cloud-1",
+      payload: isDeleted ? null : { nodes: [{ id: "cloud-1", name: "Cloud graph" }], links: [] },
+      deleted: isDeleted,
+      createdAt: "2026-11-14T00:00:00.000Z", updatedAt: isDeleted ? "2026-11-15T00:00:01.000Z" : "2026-11-15T00:00:00.000Z"
     }] }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   throw new Error("Unexpected test request: " + url);
@@ -83,6 +85,11 @@ const applied = await runtime.applyCloudRecord({ preview: freshPreview, recordId
 assert.equal(applied.applied, true);
 assert.equal(appliedGraphs.length, 1);
 assert.equal(appliedGraphs[0].nodes[0].name, "Cloud graph");
+const deletedPreview = await runtime.previewCloudRecords({ category: "graph", limit: 10 });
+const tombstone = { ...deletedPreview, records: [{ recordType: "graph", recordId: "tombstone-preview", payload: null, deleted: true, createdAt: "2026-11-14T00:00:00.000Z", updatedAt: "2026-11-15T00:00:01.000Z" }] };
+const deletedApply = await runtime.applyCloudRecord({ preview: tombstone, recordId: "tombstone-preview", confirmed: true });
+assert.equal(deletedApply.deleted, true);
+assert.deepEqual(localGraph, { nodes: [], links: [] }, "A confirmed remote tombstone must clear the local graph.");
 await runtime.disableCloudSync();
 assert.equal(consent.status, "revoked");
 assert.equal((await runtime.getStatus()).syncEnabled, false);
