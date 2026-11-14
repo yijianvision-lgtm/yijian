@@ -282,10 +282,12 @@ await reconcileNebulaR2UploadCleanup({
   db: d1, bucket: deleteBucket, now: () => Date.parse("2026-11-12T12:00:00.000Z")
 });
 assert.equal(deleteObjects.has(durableDeleteKey), false);
-const objectTombstone = db.prepare("SELECT status, deleted_at, object_key FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId);
+const objectTombstone = db.prepare("SELECT status, deleted_at, object_key, content_type, size_bytes FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId);
 assert.equal(objectTombstone.status, "deleted");
 assert.ok(objectTombstone.deleted_at);
-assert.equal(objectTombstone.object_key, durableDeleteKey, "The minimal object key metadata remains available for owner-scoped audit and tombstone identity.");
+assert.equal(objectTombstone.object_key, durableDeleteKey, "The stable object key remains available for owner-scoped tombstone identity.");
+assert.equal(objectTombstone.content_type, "application/octet-stream");
+assert.equal(objectTombstone.size_bytes, 0, "Tombstones must scrub former content type and byte-size metadata.");
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).count, 1);
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_object_cleanup WHERE owner_id = ? AND object_id = ?").get(ownerA, durableDeleteId).count, 0);
 // The object listing path exposes the marker without content metadata, allowing
