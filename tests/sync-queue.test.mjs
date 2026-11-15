@@ -7,6 +7,12 @@ const rows = new Map();
 const store = {
   async list() { return [...rows.values()].map(x => structuredClone(x)); },
   async put(item) { rows.set(item.id, structuredClone(item)); },
+  async putMany(items) {
+    const ids = items.map(item => item.id);
+    if (ids.some(id => rows.has(id)) || new Set(ids).size !== ids.length) throw new Error("atomic batch duplicate");
+    const staged = items.map(item => [item.id, structuredClone(item)]);
+    for (const [id, item] of staged) rows.set(id, item);
+  },
   async remove(id) { rows.delete(id); }
 };
 let consent = true, session = true, token = "test-token", calls = [];
@@ -86,6 +92,42 @@ const recoveryQueue = createNebulaSyncQueue({ store, auth, clock: () => now,
 await recoveryQueue.drain();
 assert.equal((await recoveryQueue.list()).some(item => item.id === "interrupted-1"), false,
   "An operation interrupted while syncing must be retried after restart.");
+
+// A grouped graph deletion is persisted atomically and keeps edge-before-node order.
+const batchQueue = createNebulaSyncQueue({ store, auth, clock: () => now,
+  send: async () => ({ status: 200 }) });
+const deleteGroup = [
+  { category: "graph", recordId: "graph-link:QQ:Qg", kind: "delete" },
+  { category: "graph", recordId: "graph-link:QQ:Qw", kind: "delete" },
+  { category: "graph", recordId: "graph-node:QQ", kind: "delete" }
+];
+const batch = await batchQueue.enqueueMany(deleteGroup, { groupId: "node-delete-A" });
+assert.deepEqual(batch.map(item => item.groupIndex), [0, 1, 2]);
+assert.ok(batch.every(item => item.operationGroupId === "node-delete-A" && item.groupSize === 3));
+assert.equal(calls.length, 1, "Batch enqueue must not upload.");
+const replay = await batchQueue.enqueueMany(deleteGroup, { groupId: "node-delete-A" });
+assert.deepEqual(replay.map(item => item.id), batch.map(item => item.id),
+  "Replaying the same group ID and contents must return the original operation IDs.");
+await assert.rejects(batchQueue.enqueueMany([
+  ...deleteGroup.slice(0, 2),
+  { category: "graph", recordId: "graph-node:DIFFERENT", kind: "delete" }
+], { groupId: "node-delete-A" }), /reused with different contents/);
+
+const failedRows = new Map();
+const failingAtomicStore = {
+  async list() { return [...failedRows.values()]; },
+  async put(item) { failedRows.set(item.id, item); },
+  async putMany(items) {
+    // Simulate a transaction abort: no staged item becomes visible.
+    throw new Error("simulated-transaction-abort");
+  },
+  async remove(id) { failedRows.delete(id); }
+};
+const failingBatchQueue = createNebulaSyncQueue({ store: failingAtomicStore, auth,
+  send: async () => ({ status: 200 }) });
+await assert.rejects(failingBatchQueue.enqueueMany(deleteGroup, { groupId: "abort-group" }),
+  /simulated-transaction-abort/);
+assert.equal(failedRows.size, 0, "A failed atomic batch must leave no partial outbox rows.");
 
 assert.throws(() => createNebulaSyncQueue({ store, auth, send: null }), /transport/);
 console.log("NEBULA local-first sync outbox tests passed.");
