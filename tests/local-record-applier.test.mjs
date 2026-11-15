@@ -45,6 +45,6 @@ assert.equal(graph.nodes[0].title, "Updated");
 await assert.rejects(applyRemote({ category: "graph", recordId: createNebulaGraphNodeRecordId("n1"), payload: { id: "other" }, deleted: false }), /stable record ID/);
 await assert.rejects(applyRemote({ category: "graph", recordId: "unknown", payload: { nodes: [] } }), /local graph schema/);
 await assert.rejects(applyRemote({ category: "private-files", payload: {} }), /No reviewed local mapping/);
-await assert.rejects(buildNebulaGraphNodeDeleteOperations({ nodes: [{ id: "n1" }], links: [["n1"]] }, "n1"), /endpoints/);
+assert.throws(() => buildNebulaGraphNodeDeleteOperations({ nodes: [{ id: "n1" }], links: [["n1"]] }, "n1"), /endpoints/);
 assert.equal(writes.length, 4);
 console.log("NEBULA granular graph sync tombstone tests passed.");
