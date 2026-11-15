@@ -457,5 +457,7 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Added queue-level `enqueueMany(operations, { groupId })` with a required stable group ID, deterministic per-operation IDs, group index/size metadata, and content-checked replay. Reusing a group ID with different operations or encountering a partial pre-existing group fails closed.
 - [x] Added IndexedDB `syncOutbox.putMany()` using one read-write transaction and `add()` requests. A constraint/request failure aborts the transaction rather than leaving a partially queued graph deletion.
 - [x] Added queue contract tests for edge-before-node ordering, stable IDs on identical replay, mismatched replay rejection, no implicit upload, and simulated transaction-abort atomicity.
-- [ ] Browser-backed IndexedDB abort/quota/reload validation and multi-tab concurrent enqueue testing remain pending. The fake store contract test is not a substitute for browser transaction testing.
+- [x] Drain now holds the remaining operations in a group when an earlier operation is retrying, blocked, or conflicted; a node tombstone cannot overtake a failed incident-link tombstone. Successful groups drain in their recorded order.
+- [x] Added fake-indexeddb coverage that forces a duplicate-key failure after an earlier batch request and verifies the whole read-write transaction rolls back without leaving a partial row.
+- [ ] Browser-backed quota/reload validation and multi-tab concurrent enqueue testing remain pending. Fake-indexeddb verifies transaction semantics but is not a substitute for browser/device testing.
 - [ ] The graph delete operation builder still needs to be wired to this batch API by the eventual UI/runtime caller. No UI deletion action is connected and no queue drain was triggered.
