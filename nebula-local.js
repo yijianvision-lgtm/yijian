@@ -2252,6 +2252,36 @@ Object.assign(NEBULA_LOCAL, {
         if (!item || typeof item.id !== "string" || !item.id) throw new TypeError("Outbox item ID is required.");
         await request("syncOutbox", "readwrite", store => store.put(item));
       },
+      async putMany(items) {
+        if (!Array.isArray(items) || items.length === 0) throw new TypeError("A non-empty outbox batch is required.");
+        const ids = items.map(item => item?.id);
+        if (ids.some(id => typeof id !== "string" || !id) || new Set(ids).size !== ids.length)
+          throw new TypeError("Outbox batch IDs must be unique non-empty strings.");
+        const db = await openDB();
+        await new Promise((resolve, reject) => {
+          let settled = false;
+          let tx;
+          const fail = error => {
+            if (settled) return;
+            settled = true;
+            try { db.close(); } catch {}
+            reject(error || new Error("Outbox batch transaction failed."));
+          };
+          try {
+            tx = db.transaction("syncOutbox", "readwrite");
+            const store = tx.objectStore("syncOutbox");
+            for (const item of items) store.add(item);
+            tx.oncomplete = () => {
+              if (settled) return;
+              settled = true;
+              db.close();
+              resolve();
+            };
+            tx.onerror = () => fail(tx.error);
+            tx.onabort = () => fail(tx.error || new Error("Outbox batch transaction aborted."));
+          } catch (error) { fail(error); }
+        });
+      },
       async remove(id) {
         await request("syncOutbox", "readwrite", store => store.delete(String(id)));
       }
