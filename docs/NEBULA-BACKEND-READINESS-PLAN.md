@@ -450,3 +450,12 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Active node/link records merge by stable ID/endpoints instead of replacing the entire graph snapshot. Payload identity must match the record ID or application fails closed.
 - [x] Added tests for stable ID round-trips, node deletion with incident-link tombstones, single-link deletion, node upsert, malformed link fail-closed behavior, and unsupported categories.
 - [ ] This remains a library capability: no user-facing deletion UI, automatic outbox batch operation, device acknowledgement watermark, or tombstone compaction is implemented. No cloud queue was drained and no user data uploaded.
+
+
+## 2026-11-16 follow-up: atomic grouped graph deletion outbox
+
+- [x] Added queue-level `enqueueMany(operations, { groupId })` with a required stable group ID, deterministic per-operation IDs, group index/size metadata, and content-checked replay. Reusing a group ID with different operations or encountering a partial pre-existing group fails closed.
+- [x] Added IndexedDB `syncOutbox.putMany()` using one read-write transaction and `add()` requests. A constraint/request failure aborts the transaction rather than leaving a partially queued graph deletion.
+- [x] Added queue contract tests for edge-before-node ordering, stable IDs on identical replay, mismatched replay rejection, no implicit upload, and simulated transaction-abort atomicity.
+- [ ] Browser-backed IndexedDB abort/quota/reload validation and multi-tab concurrent enqueue testing remain pending. The fake store contract test is not a substitute for browser transaction testing.
+- [ ] The graph delete operation builder still needs to be wired to this batch API by the eventual UI/runtime caller. No UI deletion action is connected and no queue drain was triggered.
