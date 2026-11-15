@@ -11,6 +11,12 @@ const local = {
     return {
       async list() { return [...rows.values()].map(value => structuredClone(value)); },
       async put(item) { rows.set(item.id, structuredClone(item)); },
+      async putMany(items) {
+        const ids = items.map(item => item.id);
+        if (ids.some(id => rows.has(id)) || new Set(ids).size !== ids.length) throw new Error("duplicate batch key");
+        const staged = items.map(item => [item.id, structuredClone(item)]);
+        for (const [id, item] of staged) rows.set(id, item);
+      },
       async remove(id) { rows.delete(id); }
     };
   }
@@ -88,6 +94,14 @@ const deletedPreview = await runtime.previewCloudRecords({ category: "graph", li
 const deletedApply = await runtime.applyCloudRecord({ preview: deletedPreview, recordId: "tombstone-preview", confirmed: true });
 assert.equal(deletedApply.deleted, true);
 assert.deepEqual(localGraph, { nodes: [], links: [] }, "A confirmed remote tombstone must clear the local graph.");
+
+localGraph = { nodes: [{ id: "delete-root" }, { id: "delete-child" }], links: [["delete-root", "delete-child"], ["delete-child", "delete-root"]] };
+const pendingBeforeNodeDelete = requests.filter(x => String(x.url).includes("/sync/records")).length;
+const graphDeleteBatch = await runtime.enqueueGraphNodeDelete({ nodeId: "delete-root", groupId: "runtime-delete-root" });
+assert.equal(graphDeleteBatch.length, 3, "Runtime node deletion must batch both incident links and the node.");
+assert.deepEqual(graphDeleteBatch.map(item => item.groupIndex), [0, 1, 2]);
+assert.equal(requests.filter(x => String(x.url).includes("/sync/records")).length, pendingBeforeNodeDelete,
+  "Graph delete batching must remain local and must not trigger upload.");
 await runtime.disableCloudSync();
 assert.equal(consent.status, "revoked");
 assert.equal((await runtime.getStatus()).syncEnabled, false);
