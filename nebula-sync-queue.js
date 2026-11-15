@@ -115,7 +115,14 @@ export function createNebulaSyncQueue({ store, auth, send, applyRemote, clock = 
     const token = await auth.getAccessToken();
     if (!token) return { sent: 0, blocked: "token-unavailable" };
     let sent = 0;
-    const items = (await store.list()).sort((a,b) => a.createdAt.localeCompare(b.createdAt));
+    const items = (await store.list()).sort((a,b) =>
+      a.createdAt.localeCompare(b.createdAt) ||
+      String(a.operationGroupId || "").localeCompare(String(b.operationGroupId || "")) ||
+      ((a.operationGroupId && a.operationGroupId === b.operationGroupId)
+        ? (a.groupIndex ?? 0) - (b.groupIndex ?? 0)
+        : String(a.id).localeCompare(String(b.id))));
+    const blockedGroups = new Set();
+    const groupKey = item => item.operationGroupId || null;
     // A page/process may close while an operation is in flight. A persisted
     // "syncing" marker is not a permanent lock: restore it to pending and rely
     // on server-side create-only/CAS semantics for safe retry.
@@ -126,13 +133,22 @@ export function createNebulaSyncQueue({ store, auth, send, applyRemote, clock = 
         item.updatedAt = nowIso(clock);
         await store.put(item);
       }
-      if (item.status === "conflict" || item.status === "blocked") continue;
-      if (item.nextAttemptAt > clock()) continue;
+      const group = groupKey(item);
+      if (group && blockedGroups.has(group)) continue;
+      if (item.status === "conflict" || item.status === "blocked") {
+        if (group) blockedGroups.add(group);
+        continue;
+      }
+      if (item.nextAttemptAt > clock()) {
+        if (group) blockedGroups.add(group);
+        continue;
+      }
       if (item.kind !== "delete" && !(await auth.canSyncCategory(item.category))) {
         item.status = "pending";
         item.lastError = "category-consent-required";
         item.updatedAt = nowIso(clock);
         await store.put(item);
+        if (group) blockedGroups.add(group);
         continue;
       }
       item.status = "syncing";
@@ -153,6 +169,7 @@ export function createNebulaSyncQueue({ store, auth, send, applyRemote, clock = 
           item.lastError = "version-conflict";
           item.updatedAt = nowIso(clock);
           await store.put(item);
+          if (group) blockedGroups.add(group);
           continue;
         }
         if (status === 401 || status === 403) {
@@ -160,6 +177,7 @@ export function createNebulaSyncQueue({ store, auth, send, applyRemote, clock = 
           item.lastError = status === 401 ? "authentication-required" : "authorization-denied";
           item.updatedAt = nowIso(clock);
           await store.put(item);
+          if (group) blockedGroups.add(group);
           break;
         }
         throw new Error("sync-http-" + status);
@@ -170,6 +188,7 @@ export function createNebulaSyncQueue({ store, auth, send, applyRemote, clock = 
         item.nextAttemptAt = clock() + Math.min(60 * 60 * 1000, 1000 * (2 ** Math.min(item.attempts, 12)));
         item.updatedAt = nowIso(clock);
         await store.put(item);
+        if (group) blockedGroups.add(group);
       }
     }
     return { sent, blocked: null, remaining: (await store.list()).length };
