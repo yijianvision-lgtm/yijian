@@ -129,5 +129,42 @@ await assert.rejects(failingBatchQueue.enqueueMany(deleteGroup, { groupId: "abor
   /simulated-transaction-abort/);
 assert.equal(failedRows.size, 0, "A failed atomic batch must leave no partial outbox rows.");
 
+// A failed/conflicted edge tombstone must hold the remaining operations in
+// its group; the node tombstone cannot overtake a failed relationship delete.
+const orderedRows = new Map();
+const orderedStore = {
+  async list() { return [...orderedRows.values()].map(item => structuredClone(item)); },
+  async put(item) { orderedRows.set(item.id, structuredClone(item)); },
+  async putMany(items) {
+    for (const item of items) orderedRows.set(item.id, structuredClone(item));
+  },
+  async remove(id) { orderedRows.delete(id); }
+};
+let failFirst = true;
+const sentOrder = [];
+const orderedQueue = createNebulaSyncQueue({ store: orderedStore, auth, clock: () => now,
+  send: async ({ operation }) => {
+    sentOrder.push(operation.recordId);
+    if (failFirst && operation.recordId === "edge-1") return { status: 503 };
+    return { status: 204 };
+  }
+});
+await orderedQueue.enqueueMany([
+  { category: "graph", recordId: "edge-1", kind: "delete" },
+  { category: "graph", recordId: "edge-2", kind: "delete" },
+  { category: "graph", recordId: "node-1", kind: "delete" }
+], { groupId: "ordered-delete" });
+await orderedQueue.drain();
+assert.deepEqual(sentOrder, ["edge-1"],
+  "A failed first edge must prevent later edges and the node tombstone from being sent.");
+assert.equal((await orderedQueue.list()).length, 3);
+now += 100000;
+failFirst = false;
+sentOrder.length = 0;
+await orderedQueue.drain();
+assert.deepEqual(sentOrder, ["edge-1", "edge-2", "node-1"],
+  "After retry succeeds, the batch must drain in edge-before-node order.");
+assert.equal((await orderedQueue.list()).length, 0);
+
 assert.throws(() => createNebulaSyncQueue({ store, auth, send: null }), /transport/);
 console.log("NEBULA local-first sync outbox tests passed.");
