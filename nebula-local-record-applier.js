@@ -47,7 +47,7 @@ export function createNebulaLocalRecordApplier({ local } = {}) {
         await local.saveGraph(graph.nodes, links);
         return { applied: true, deleted: true, element: "link", removedLinks: graph.links.length - links.length };
       }
-      if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new TypeError("The remote link payload is invalid.");
+      if (!payload || typeof payload !== "object") throw new TypeError("The remote link payload is invalid.");
       const [source, target] = getNebulaGraphLinkEndpoints(payload);
       if (source !== element.sourceId || target !== element.targetId) throw new TypeError("The remote link payload does not match its stable record ID.");
       const links = [...graph.links];
