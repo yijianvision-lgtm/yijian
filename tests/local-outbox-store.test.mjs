@@ -21,7 +21,7 @@ assert.deepEqual((await firstStore.list()).filter(row => row.operationGroupId ==
 await assert.rejects(firstStore.putMany([
   { id: "must-rollback", category: "graph", recordId: "edge-2", kind: "delete" },
   { ...grouped[0] }
-]), /constraint|key|abort/i, "A duplicate key must abort the entire IndexedDB transaction.");
+]), /Outbox batch transaction failed/i, "A duplicate key must abort the entire IndexedDB transaction.");
 assert.equal((await firstStore.list()).some(row => row.id === "must-rollback"), false,
   "A failed IndexedDB batch must not leave its earlier requests committed.");
 assert.equal((await firstStore.list()).some(row => row.id === "atomic-group:0"), true,
