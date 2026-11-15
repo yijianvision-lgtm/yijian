@@ -3,6 +3,7 @@ import { createNebulaSyncQueue } from "./nebula-sync-queue.js";
 import { createNebulaRecordsTransport } from "./nebula-sync-records-transport.js";
 import { createNebulaWorkerConsentStore } from "./nebula-worker-consent-store.js";
 import { createNebulaLocalRecordApplier } from "./nebula-local-record-applier.js";
+import { buildNebulaGraphNodeDeleteOperations, buildNebulaGraphLinkDeleteOperation } from "./nebula-graph-sync.js";
 export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchImpl = globalThis.fetch, applyRemote } = {}) {
   if (!local || typeof local.getSyncOutboxStore !== "function") throw new TypeError("NEBULA_LOCAL with a durable sync outbox is required.");
   if (!provider || typeof provider.getSession !== "function" || typeof provider.getAccessToken !== "function" || typeof provider.signIn !== "function" || typeof provider.signOut !== "function") throw new TypeError("A complete identity provider adapter is required.");
@@ -62,6 +63,14 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
     getConsent: () => auth.getSyncConsent(), enableCloudSync: options => auth.enableCloudSync(options), disableCloudSync: () => auth.disableCloudSync(),
     enqueueRecord: ({ category, recordId, payload, baseVersion = null } = {}) => queue.enqueue({ category, recordId, payload, baseVersion, kind: "upsert" }),
     enqueueCloudDelete: ({ category, recordId } = {}) => queue.enqueue({ category, recordId, kind: "delete" }),
+    async enqueueGraphNodeDelete({ nodeId, groupId } = {}) {
+      if (typeof local.loadGraph !== "function") throw new Error("A local graph reader is required for safe node deletion.");
+      const graph = await local.loadGraph();
+      return queue.enqueueMany(buildNebulaGraphNodeDeleteOperations(graph, nodeId), { groupId });
+    },
+    enqueueGraphLinkDelete({ sourceId, targetId, groupId } = {}) {
+      return queue.enqueueMany([buildNebulaGraphLinkDeleteOperation(sourceId, targetId)], { groupId });
+    },
     listPending: () => queue.list(), resolveConflict: (id, resolution) => queue.resolveConflict(id, resolution),
     previewCloudRecords, applyCloudRecord,
     drain: () => queue.drain(),
