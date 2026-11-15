@@ -427,7 +427,9 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] The client transport validates tombstone response shape. Confirmed runtime apply forwards remote deletion to the reviewed graph applier, which clears the local graph; preview remains read-only.
 - [x] Worker integration coverage now checks owner-isolated tombstones, deletion discovery, no-payload tombstone reads, rejection of unobserved resurrection, explicit CAS restoration, and preservation of another user's record.
 - [ ] Migration 0006 is committed but not applied to any remote D1 database. Production and live cloud remain untouched.
-- [ ] Current tombstone support covers record rows and the graph mapping only. R2 object deletion tombstones, per-node graph deletion semantics, and tombstone retention/compaction policies are not implemented.
+- [x] Follow-up granular graph checkpoint: stable `graph-node:` and `graph-link:` record IDs encode local element IDs using base64url; confirmed application of a node tombstone removes only that node and its incident links, while a link tombstone removes only the selected directed edge. Node deletion operations enumerate incident-link tombstones before the node tombstone. Active node/link records merge by stable identity rather than replacing the entire graph.
+- [ ] Granular graph operations are library primitives only: no UI deletion flow or automatic outbox batching is connected. Callers must enqueue all returned delete operations and drain only after explicit category consent.
+- [ ] Link IDs preserve directed endpoint order; link shapes without recognized endpoints fail closed. Existing whole-graph snapshot records remain supported as a separate legacy path.
 
 
 ## 2026-11-15: R2 object deletion tombstones
@@ -439,3 +441,12 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] SQLite integration covers migration application, failed R2 delete recovery, persistent tombstone metadata, and tombstone discovery through the owner-scoped list path.
 - [ ] Migration 0007 is committed only; it has not been applied to remote D1. No R2 bucket, Worker, or production data was touched.
 - [ ] Device acknowledgement, per-device sync cursor, safe tombstone compaction, and actual client-side object deletion application remain unimplemented. Tombstones are retained indefinitely until a safe acknowledgement watermark exists.
+
+
+## 2026-11-16: Granular graph element tombstones
+
+- [x] Added `nebula-graph-sync.js` with stable base64url record IDs for individual nodes and directed links, plus operation builders for deleting a node and all incident links or one selected link.
+- [x] Extended the local graph applier: a confirmed node tombstone removes only the matching node and its incident links; a link tombstone removes only the matching directed edge. Other nodes, unrelated edges, and the rest of the graph are preserved.
+- [x] Active node/link records merge by stable ID/endpoints instead of replacing the entire graph snapshot. Payload identity must match the record ID or application fails closed.
+- [x] Added tests for stable ID round-trips, node deletion with incident-link tombstones, single-link deletion, node upsert, malformed link fail-closed behavior, and unsupported categories.
+- [ ] This remains a library capability: no user-facing deletion UI, automatic outbox batch operation, device acknowledgement watermark, or tombstone compaction is implemented. No cloud queue was drained and no user data uploaded.
