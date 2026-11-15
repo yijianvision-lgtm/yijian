@@ -26,6 +26,8 @@ assert.equal((await firstStore.list()).some(row => row.id === "must-rollback"), 
   "A failed IndexedDB batch must not leave its earlier requests committed.");
 assert.equal((await firstStore.list()).some(row => row.id === "atomic-group:0"), true,
   "An existing outbox row must survive a failed batch transaction.");
+await firstStore.remove("atomic-group:0");
+await firstStore.remove("atomic-group:1");
 await import("../nebula-local.js?env=source&reload=1");
 const reopenedStore = globalThis.NEBULA_LOCAL.getSyncOutboxStore();
 assert.deepEqual(await reopenedStore.list(), [item], "Outbox must survive module restart/reopen.");
