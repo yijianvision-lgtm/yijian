@@ -41,6 +41,45 @@ export function createNebulaSyncQueue({ store, auth, send, applyRemote, clock = 
     return clone(item);
   }
 
+  // A grouped delete is committed as one durable unit. The caller supplies a
+  // stable groupId so retrying the same intent reuses exactly the same IDs.
+  async function enqueueMany(inputs, { groupId } = {}) {
+    if (!Array.isArray(inputs) || inputs.length === 0 || inputs.length > 500)
+      throw new TypeError("A batch must contain between 1 and 500 operations.");
+    if (typeof groupId !== "string" || !/^[A-Za-z0-9._-]{1,96}$/.test(groupId))
+      throw new TypeError("A stable, URL-safe operation group ID is required.");
+    if (typeof store.putMany !== "function")
+      throw new TypeError("The outbox store must support atomic batch writes.");
+    const normalized = inputs.map(validateOperation);
+    const ids = normalized.map((_, index) => "sync-group:" + groupId + ":" + index);
+    if (new Set(ids).size !== ids.length) throw new Error("Duplicate operation IDs in batch.");
+    const existingById = new Map((await store.list()).map(item => [item.id, item]));
+    const present = ids.filter(id => existingById.has(id));
+    if (present.length && present.length !== ids.length)
+      throw new Error("A partial operation group exists; refusing to complete a non-atomic batch.");
+    if (present.length === ids.length) {
+      const replay = ids.map((id, index) => existingById.get(id));
+      for (let index = 0; index < replay.length; index++) {
+        const item = replay[index], operation = normalized[index];
+        if (item.operationGroupId !== groupId || item.groupIndex !== index ||
+            item.category !== operation.category || item.recordId !== operation.recordId ||
+            item.kind !== operation.kind || item.baseVersion !== operation.baseVersion ||
+            JSON.stringify(item.payload) !== JSON.stringify(operation.payload))
+          throw new Error("Operation group ID was reused with different contents.");
+      }
+      return clone(replay);
+    }
+    const createdAt = nowIso(clock);
+    const items = normalized.map((operation, index) => ({
+      id: ids[index], ...operation, operationGroupId: groupId,
+      groupIndex: index, groupSize: normalized.length,
+      status: "pending", attempts: 0, createdAt, updatedAt: createdAt,
+      nextAttemptAt: 0, lastError: null, conflict: null
+    }));
+    await store.putMany(items);
+    return clone(items);
+  }
+
   async function resolveConflict(id, resolution) {
     const item = (await store.list()).find(row => row.id === id);
     if (!item || item.status !== "conflict") throw new Error("No unresolved conflict exists for this operation.");
