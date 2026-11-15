@@ -177,6 +177,7 @@ export function createNebulaSyncQueue({ store, auth, send, applyRemote, clock = 
 
   return Object.freeze({
     enqueue,
+    enqueueMany,
     list: async () => clone(await store.list()),
     resolveConflict,
     drain() {
