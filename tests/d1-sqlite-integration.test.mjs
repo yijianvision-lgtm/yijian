@@ -32,6 +32,29 @@ db.prepare(
 ).run(migrationOwner, migrationObjectId, migrationObjectKey, "2026-11-10T00:00:00.000Z", "2026-11-10T00:00:00.000Z");
 const objectTombstoneMigration = await readFile(new URL("../migrations/0007_r2_object_tombstones.sql", import.meta.url), "utf8");
 db.exec(objectTombstoneMigration);
+const deviceAckMigration = await readFile(new URL("../migrations/0008_device_sync_acknowledgements.sql", import.meta.url), "utf8");
+db.exec(deviceAckMigration);
+const deviceId = "123e4567-e89b-12d3-a456-426614174100";
+db.prepare("INSERT INTO nebula_sync_devices (owner_id, device_id, status, registered_at, last_seen_at) VALUES (?, ?, 'active', ?, ?)")
+  .run(migrationOwner, deviceId, "2026-11-17T00:00:00.000Z", "2026-11-17T00:00:00.000Z");
+db.prepare("INSERT INTO nebula_sync_counters (owner_id, record_type, current_seq) VALUES (?, 'graph', 3)")
+  .run(migrationOwner);
+db.prepare("INSERT INTO nebula_sync_changes (owner_id, record_type, sequence, record_id, record_version, operation, created_at) VALUES (?, 'graph', 3, 'node-1', '2026-11-17T00:00:00.000Z', 'delete', '2026-11-17T00:00:00.000Z')")
+  .run(migrationOwner);
+db.prepare("INSERT INTO nebula_sync_device_acks (owner_id, device_id, record_type, acknowledged_seq, updated_at) VALUES (?, ?, 'graph', 2, ?)")
+  .run(migrationOwner, deviceId, "2026-11-17T00:00:00.000Z");
+assert.equal(db.prepare("SELECT acknowledged_seq FROM nebula_sync_device_acks WHERE owner_id = ? AND device_id = ? AND record_type = 'graph'")
+  .get(migrationOwner, deviceId).acknowledged_seq, 2);
+assert.throws(() => db.prepare("INSERT INTO nebula_sync_devices (owner_id, device_id, status, registered_at, last_seen_at) VALUES (?, 'not-a-uuid', 'active', ?, ?)")
+  .run(migrationOwner, "2026-11-17T00:00:00.000Z", "2026-11-17T00:00:00.000Z"),
+  /CHECK constraint failed/, "Device identity must be a UUID-shaped opaque identifier.");
+assert.throws(() => db.prepare("INSERT INTO nebula_sync_device_acks (owner_id, device_id, record_type, acknowledged_seq, updated_at) VALUES (?, ?, 'graph', -1, ?)")
+  .run(migrationOwner, deviceId, "2026-11-17T00:00:00.000Z"),
+  /CHECK constraint failed/, "Acknowledgement watermarks cannot be negative.");
+assert.throws(() => db.prepare("DELETE FROM nebula_sync_devices WHERE owner_id = ? AND device_id = ?")
+  .run(migrationOwner, deviceId),
+  /FOREIGN KEY constraint failed|FOREIGN KEY constraint/i,
+  "Device audit identity must not be physically removed while acknowledgements refer to it.");
 const preservedObject = db.prepare("SELECT status, deleted_at, content_type, size_bytes FROM nebula_objects WHERE owner_id = ? AND object_id = ?").get(migrationOwner, migrationObjectId);
 assert.equal(preservedObject.status, "active");
 assert.equal(preservedObject.deleted_at, null);
