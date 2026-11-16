@@ -462,3 +462,14 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [ ] Browser-backed quota/reload validation and multi-tab concurrent enqueue testing remain pending. Fake-indexeddb verifies transaction semantics but is not a substitute for browser/device testing.
 - [x] Added runtime library methods `enqueueGraphNodeDelete({ nodeId, groupId })` and `enqueueGraphLinkDelete({ sourceId, targetId, groupId })`; node deletion reads the current local graph, builds all incident-link tombstones followed by the node tombstone, and submits the complete set through atomic `enqueueMany`. Runtime tests verify this remains local-only and does not trigger a network request.
 - [ ] No UI deletion action is connected. The caller must supply a stable group ID for one deletion intent; queue drain remains a separate explicit action.
+
+
+## 2026-11-17 checkpoint: device acknowledgement schema foundation (not yet active)
+
+- [x] Audited the existing sync path: current `listRecords(after)` is ordered by `record_id`, not by mutation version; it is a snapshot-style keyset listing, not a safe incremental change feed. A device watermark must not be layered onto this cursor.
+- [x] Added isolated migration `0008_device_sync_acknowledgements.sql` defining owner-scoped device identities, per-owner/category sequence counters, append-only change-feed rows, and per-device/category acknowledgement watermarks.
+- [x] Device rows distinguish active/revoked states and retain revocation audit data. Acknowledgements are constrained to non-negative values and reference retained device rows; device deletion is restricted while acknowledgements exist.
+- [x] Added SQLite integration coverage for migration application, device identity constraints, sequence/change rows, acknowledgement persistence, and referential protection.
+- [ ] Not yet implemented: device registration/revocation API, authenticated change-feed read, monotonic acknowledgement endpoint, transactional record-mutation + change-log append, or watermark-based tombstone compaction.
+- [ ] Before compaction, define explicit policy for revoked devices and long-offline devices. Revocation must not be treated as proof that the device's local copy was erased; a revoked device must lose server access and must not silently re-register under the same identity.
+- [ ] Existing record and R2 tombstones remain uncompressed. Migration 0008 has not been applied to remote D1 and no Worker has been deployed.
