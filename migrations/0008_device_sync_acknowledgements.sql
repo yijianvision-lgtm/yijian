@@ -7,7 +7,10 @@ CREATE TABLE IF NOT EXISTS nebula_sync_devices (
   owner_id TEXT NOT NULL
     CHECK (length(owner_id) = 68 AND substr(owner_id, 1, 4) = 'own_' AND substr(owner_id, 5) NOT GLOB '*[^0-9a-f]*'),
   device_id TEXT NOT NULL
-    CHECK (length(device_id) = 36 AND device_id GLOB '????????-????-????-????-????????????'),
+    CHECK (length(device_id) = 36 AND device_id GLOB '????????-????-????-????-????????????' AND
+      device_id NOT GLOB '*[^0-9a-f-]*' AND substr(device_id, 9, 1) = '-' AND
+      substr(device_id, 14, 1) = '-' AND substr(device_id, 19, 1) = '-' AND
+      substr(device_id, 24, 1) = '-'),
   status TEXT NOT NULL CHECK (status IN ('active', 'revoked')),
   registered_at TEXT NOT NULL,
   last_seen_at TEXT NOT NULL,
