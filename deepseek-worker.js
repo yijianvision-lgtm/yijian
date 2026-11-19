@@ -239,6 +239,7 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
     try { body = await request.json(); }
     catch { return jsonResponse({ error: "A valid acknowledgement is required." }, 400, cors); }
     try {
+      await consentRepository.requireCategory(body.recordType);
       const acknowledgement = await deviceRepository.acknowledge(body.deviceId, body.recordType, body.sequence);
       return jsonResponse({ ok: true, acknowledgement }, 200, cors);
     } catch (error) {
