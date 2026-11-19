@@ -37,9 +37,9 @@ assert.equal((await repoA.putRecord("graph", "node-1", { name: "A-owned", owner_
 assert.equal((await repoA.deleteRecord("graph", "node-1")).deleted, true);
 
 await assert.rejects(repoA.getRecord("sources", "source-1"), /does not cover this record category/);
-assert.equal(db.calls.length, 9, "A category without explicit consent must not reach D1.");
+assert.equal(db.calls.length, 12, "A category without explicit consent must not reach D1.");
 
-assert.equal(db.calls.length, 9);
+assert.equal(db.calls.length, 12);
 for (const [index, call] of db.calls.entries()) {
   assert.ok(call.values.includes(ownerA),
     "Every query and every statement in an atomic batch must bind the server-derived owner ID.");
@@ -57,12 +57,12 @@ for (const call of db.calls.slice(0, 4)) {
 }
 assert.deepEqual(db.calls[0].values.slice(-2), [ownerA, "graph"]);
 assert.deepEqual(db.calls[3].values.slice(6, 8), [ownerA, "graph"]);
-assert.deepEqual(db.calls[6].values.slice(4), [ownerA, "graph", "node-1"]);
+assert.deepEqual(db.calls[7].values.slice(4), [ownerA, "graph", "node-1"]);
 assert.match(db.calls[4].sql, /nebula_sync_counters/);
 assert.match(db.calls[5].sql, /nebula_sync_changes/);
-assert.match(db.calls[7].sql, /nebula_sync_counters/);
-assert.match(db.calls[8].sql, /nebula_sync_changes/);
-assert.doesNotMatch(db.calls[6].sql, /nebula_sync_consents/,
+assert.match(db.calls[8].sql, /nebula_sync_counters/);
+assert.match(db.calls[9].sql, /nebula_sync_changes/);
+assert.doesNotMatch(db.calls[7].sql, /nebula_sync_consents/,
   "Owner-initiated record deletion must remain available after consent revocation.");
 await assert.rejects(repoA.putRecord("graph", "oversized", { data: "x".repeat(256 * 1024) }), /exceeds 256 KiB/);
 assert.match(db.calls[3].sql, /INSERT INTO nebula_records \(owner_id,/);
