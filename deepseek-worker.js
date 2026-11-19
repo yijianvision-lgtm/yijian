@@ -218,12 +218,13 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
     }
   }
 
-  const devicePath = path.match(/^\/sync\/devices\/([0-9a-f-]{36})$/i);
+  const deviceIdPath = path.startsWith("/sync/devices/") ? path.slice("/sync/devices/".length) : "";
+  const devicePath = /^[0-9a-f-]{36}$/i.test(deviceIdPath) ? deviceIdPath : null;
   if (devicePath && request.method === "DELETE") {
     if (!consent || consent.status !== "enabled") {
       return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
     }
-    const result = await deviceRepository.revoke(devicePath[1]);
+    const result = await deviceRepository.revoke(devicePath);
     return jsonResponse({ ok: true, ...result }, 200, cors);
   }
 
