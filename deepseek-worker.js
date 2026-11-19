@@ -194,9 +194,10 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
   }
 
   const consent = await consentRepository.getConsent();
-  const deviceRepository = createNebulaSyncDeviceRepository({ db: env.NEBULA_DB, authContext });
+  const getDeviceRepository = () => createNebulaSyncDeviceRepository({ db: env.NEBULA_DB, authContext });
 
   if (path === "/sync/devices") {
+    const deviceRepository = getDeviceRepository();
     if (!consent || consent.status !== "enabled") {
       return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
     }
@@ -221,6 +222,7 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
   const deviceIdPath = path.startsWith("/sync/devices/") ? path.slice("/sync/devices/".length) : "";
   const devicePath = /^[0-9a-f-]{36}$/i.test(deviceIdPath) ? deviceIdPath : null;
   if (devicePath && request.method === "DELETE") {
+    const deviceRepository = getDeviceRepository();
     if (!consent || consent.status !== "enabled") {
       return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
     }
@@ -229,6 +231,7 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
   }
 
   if (path === "/sync/acknowledgements" && request.method === "POST") {
+    const deviceRepository = getDeviceRepository();
     if (!consent || consent.status !== "enabled") {
       return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
     }
@@ -266,6 +269,7 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
     const repository = createNebulaD1Repository({ db: env.NEBULA_DB, authContext, syncConsent: consent });
     const rawLimit = Number(url.searchParams.get("limit") || 50);
     const changes = await repository.listChanges(type, { after: Number(rawAfter), limit: rawLimit });
+    const deviceRepository = getDeviceRepository();
     try {
       await deviceRepository.recordIssuedChanges(deviceId, type, changes.map(change => change.sequence));
     } catch (error) {
