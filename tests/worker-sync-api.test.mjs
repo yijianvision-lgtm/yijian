@@ -180,6 +180,12 @@ const deviceApiDb = {
     if (sql.startsWith("SELECT device_id, status, registered_at")) return {
       bind(owner, id) { return { async first() { return deviceRows.get(owner + "|" + id) || null; } }; }
     };
+    if (sql.startsWith("SELECT 1 AS active FROM nebula_sync_devices")) return {
+      bind(owner, id) { return { async first() {
+        const row = deviceRows.get(owner + "|" + id);
+        return row?.status === "active" ? { active: 1 } : null;
+      } }; }
+    };
     if (sql.startsWith("SELECT device_id, registered_at, last_seen_at FROM nebula_sync_devices")) return {
       bind(owner) { return { async all() {
         return { results: [...deviceRows.entries()].filter(([key, row]) => key.startsWith(owner + "|") && row.status === "active").map(([, row]) => row) };
@@ -326,6 +332,9 @@ try {
   assert.equal((await listDevices.json()).devices.length, 1);
   const deviceChangePage = await call("/sync/changes?type=graph&after=0&deviceId=" + deviceId, { envOverride: deviceEnv });
   assert.equal(deviceChangePage.status, 200, "A registered device can request a delivered change page.");
+  const invalidEmptyPageDevice = await call("/sync/changes?type=graph&after=0&deviceId=not-a-uuid", { envOverride: deviceEnv });
+  assert.equal(invalidEmptyPageDevice.status, 400,
+    "An empty change page must still validate that the supplied device identity is a UUID.");
   const initialAck = await call("/sync/acknowledgements", {
     method: "POST", body: JSON.stringify({ deviceId, recordType: "graph", sequence: 0 }), envOverride: deviceEnv
   });
