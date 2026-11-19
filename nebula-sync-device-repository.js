@@ -66,7 +66,13 @@ export function createNebulaSyncDeviceRepository({ db, authContext, now = () => 
             (index > 0 && seq !== sequences[index - 1] + 1))) {
         throw new TypeError("Issued change sequences must be a contiguous page of at most 50.");
       }
-      if (!sequences.length) return 0;
+      if (!sequences.length) {
+        const active = await db.prepare(
+          "SELECT 1 AS active FROM nebula_sync_devices WHERE owner_id = ? AND device_id = ? AND status = 'active' LIMIT 1"
+        ).bind(ownerId, id).first();
+        if (!active) throw new Error("Device is revoked or change delivery could not be recorded.");
+        return 0;
+      }
       const at = assertNow(now);
       const statements = sequences.map(sequence => db.prepare(
         "INSERT INTO nebula_sync_device_deliveries (owner_id, device_id, record_type, sequence, issued_at) SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM nebula_sync_devices d WHERE d.owner_id = ? AND d.device_id = ? AND d.status = 'active') ON CONFLICT(owner_id, device_id, record_type, sequence) DO NOTHING"
