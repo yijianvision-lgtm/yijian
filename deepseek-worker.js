@@ -266,7 +266,13 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
     const repository = createNebulaD1Repository({ db: env.NEBULA_DB, authContext, syncConsent: consent });
     const rawLimit = Number(url.searchParams.get("limit") || 50);
     const changes = await repository.listChanges(type, { after: Number(rawAfter), limit: rawLimit });
-    await deviceRepository.recordIssuedChanges(deviceId, type, changes.map(change => change.sequence));
+    try {
+      await deviceRepository.recordIssuedChanges(deviceId, type, changes.map(change => change.sequence));
+    } catch (error) {
+      if (/Invalid device ID/.test(error?.message || "")) return jsonResponse({ error: "Invalid device ID." }, 400, cors);
+      if (/Device is revoked/.test(error?.message || "")) return jsonResponse({ error: "Device is revoked or not registered." }, 409, cors);
+      throw error;
+    }
     return jsonResponse({
       ok: true,
       changes,
