@@ -72,8 +72,9 @@ export function createNebulaSyncDeviceRepository({ db, authContext, now = () => 
         "INSERT INTO nebula_sync_device_deliveries (owner_id, device_id, record_type, sequence, issued_at) SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM nebula_sync_devices d WHERE d.owner_id = ? AND d.device_id = ? AND d.status = 'active') ON CONFLICT(owner_id, device_id, record_type, sequence) DO NOTHING"
       ).bind(ownerId, id, type, sequence, at, ownerId, id));
       await db.batch(statements);
+      const placeholders = sequences.map(() => "?").join(",");
       const issued = await db.prepare(
-        "SELECT COUNT(*) AS count FROM nebula_sync_device_deliveries x JOIN nebula_sync_devices d ON d.owner_id = x.owner_id AND d.device_id = x.device_id WHERE x.owner_id = ? AND x.device_id = ? AND x.record_type = ? AND x.sequence IN (${sequences.map(() => "?").join(",")}) AND d.status = 'active'"
+        "SELECT COUNT(*) AS count FROM nebula_sync_device_deliveries x JOIN nebula_sync_devices d ON d.owner_id = x.owner_id AND d.device_id = x.device_id WHERE x.owner_id = ? AND x.device_id = ? AND x.record_type = ? AND x.sequence IN (" + placeholders + ") AND d.status = 'active'"
       ).bind(ownerId, id, type, ...sequences).first();
       if (Number(issued?.count || 0) !== sequences.length) {
         throw new Error("Device is revoked or change delivery could not be recorded.");
