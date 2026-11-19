@@ -461,7 +461,8 @@ export default {
       } catch { return new Response(JSON.stringify({ error:"Share import failed. Please retry." }), { status:500, headers:cors }); }
     }
     const syncObjectPath = url.pathname === "/sync/objects" || /^\/sync\/objects\/[0-9a-f-]{36}$/.test(url.pathname);
-    const syncPath = ["/sync/consent", "/sync/records", "/sync/changes"].includes(url.pathname) || syncObjectPath;
+    const syncDevicePath = url.pathname === "/sync/devices" || /^\/sync\/devices\/[0-9a-f-]{36}$/i.test(url.pathname);
+    const syncPath = ["/sync/consent", "/sync/records", "/sync/changes", "/sync/acknowledgements"].includes(url.pathname) || syncDevicePath || syncObjectPath;
     const supportedPath = ["/analyze", "/coach", "/mnemonic", "/research", "/chat"].includes(url.pathname) || syncPath;
     if (!supportedPath) return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: cors });
     if (syncPath && !["GET", "POST", "DELETE"].includes(request.method))
