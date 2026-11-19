@@ -393,14 +393,14 @@ export default {
       } catch { return new Response(JSON.stringify({ error:"Share import failed. Please retry." }), { status:500, headers:cors }); }
     }
     const syncObjectPath = url.pathname === "/sync/objects" || /^\/sync\/objects\/[0-9a-f-]{36}$/.test(url.pathname);
-    const syncPath = ["/sync/consent", "/sync/records"].includes(url.pathname) || syncObjectPath;
+    const syncPath = ["/sync/consent", "/sync/records", "/sync/changes"].includes(url.pathname) || syncObjectPath;
     const supportedPath = ["/analyze", "/coach", "/mnemonic", "/research", "/chat"].includes(url.pathname) || syncPath;
     if (!supportedPath) return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: cors });
     if (syncPath && !["GET", "POST", "DELETE"].includes(request.method))
       return new Response(JSON.stringify({ error: "Unsupported sync method" }), { status: 405, headers: cors });
     if (url.pathname === "/sync/consent" && request.method === "DELETE")
       return new Response(JSON.stringify({ error: "Use POST to pause or revoke consent." }), { status: 405, headers: cors });
-    if (url.pathname === "/sync/records" && request.method === "GET" && !url.searchParams.get("type"))
+    if ((url.pathname === "/sync/records" || url.pathname === "/sync/changes") && request.method === "GET" && !url.searchParams.get("type"))
       return new Response(JSON.stringify({ error: "Missing record type." }), { status: 400, headers: cors });
     if (url.pathname === "/research" && request.method !== "GET")
       return new Response(JSON.stringify({ error: "GET /research only" }), { status: 405, headers: cors });
