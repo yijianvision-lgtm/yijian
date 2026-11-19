@@ -218,7 +218,7 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
     }
   }
 
-  const devicePath = path.match(/^\\/sync\\/devices\\/([0-9a-f-]{36})$/i);
+  const devicePath = path.match(/^\/sync\/devices\/([0-9a-f-]{36})$/i);
   if (devicePath && request.method === "DELETE") {
     if (!consent || consent.status !== "enabled") {
       return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
