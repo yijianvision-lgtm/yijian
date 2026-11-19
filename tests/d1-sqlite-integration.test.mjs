@@ -120,6 +120,12 @@ const firstChange = db.prepare("SELECT sequence, record_id, operation FROM nebul
 assert.deepEqual(firstChange, { sequence: 1, record_id: "root", operation: "upsert" },
   "A successful record write and its monotonic change-feed row must commit together.");
 assert.equal(db.prepare("SELECT current_seq FROM nebula_sync_counters WHERE owner_id = ? AND record_type = 'graph'").get(ownerA).current_seq, 1);
+const firstPage = await repoA.listChanges("graph", { after: 0, limit: 1 });
+assert.deepEqual(firstPage.map(change => ({ sequence: change.sequence, recordId: change.recordId, operation: change.operation })),
+  [{ sequence: 1, recordId: "root", operation: "upsert" }]);
+assert.deepEqual(await repoA.listChanges("graph", { after: 1 }), [],
+  "A monotonic cursor must not replay already acknowledged change sequence numbers.");
+await assert.rejects(repoA.listChanges("graph", { after: -1 }), /Invalid change-feed cursor/);
 assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
 
 // Versioned record writes use create-only semantics followed by compare-and-swap.
