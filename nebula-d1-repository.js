@@ -95,6 +95,23 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       });
     },
 
+    async listChanges(recordType, { after = 0, limit = 50 } = {}) {
+      const type = assertRecordType(recordType);
+      assertConsentedCategory(type);
+      if (!Number.isSafeInteger(after) || after < 0) throw new TypeError("Invalid change-feed cursor.");
+      const boundedLimit = Math.max(1, Math.min(50, Number.isInteger(limit) ? limit : 50));
+      const result = await db.prepare(
+        "SELECT sequence, record_id, record_version, operation, created_at FROM nebula_sync_changes WHERE owner_id = ? AND record_type = ? AND sequence > ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) ORDER BY sequence LIMIT ?"
+      ).bind(ownerId, type, after, ownerId, type, boundedLimit).all();
+      return (result.results || []).map(row => Object.freeze({
+        sequence: Number(row.sequence),
+        recordId: row.record_id,
+        recordVersion: row.record_version,
+        operation: row.operation,
+        createdAt: row.created_at
+      }));
+    },
+
     async putRecord(recordType, recordId, payload, { expectedUpdatedAt = null } = {}) {
       const type = assertRecordType(recordType);
       const id = assertRecordId(recordId);
