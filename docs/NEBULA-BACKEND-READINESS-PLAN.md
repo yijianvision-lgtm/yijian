@@ -473,3 +473,14 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [ ] Not yet implemented: device registration/revocation API, authenticated change-feed read, monotonic acknowledgement endpoint, transactional record-mutation + change-log append, or watermark-based tombstone compaction.
 - [ ] Before compaction, define explicit policy for revoked devices and long-offline devices. Revocation must not be treated as proof that the device's local copy was erased; a revoked device must lose server access and must not silently re-register under the same identity.
 - [ ] Existing record and R2 tombstones remain uncompressed. Migration 0008 has not been applied to remote D1 and no Worker has been deployed.
+
+
+## 2026-11-19 follow-up: atomic mutation change feed (API groundwork)
+
+- [x] Record upsert/create and compare-and-swap update now execute as one D1 batch: the owner-scoped record mutation, per-owner/category monotonic sequence increment, and append-only upsert change row are committed atomically. A failed/no-op mutation does not advance the sequence or append a change.
+- [x] Owner-initiated record deletion also uses one D1 batch for the tombstone mutation, sequence increment, and append-only delete change row. This path remains available after consent pause/revocation, while its change-feed read remains consent-gated.
+- [x] Added authenticated GET /sync/changes?type=...&after=...&limit=..., ordered by the monotonic per-owner/category sequence. The endpoint rejects negative/malformed cursors, caps page size at 50, derives owner scope from verified server auth, and returns a next cursor.
+- [x] Added SQLite integration assertions for upsert/delete change rows, sequence progression, and cursor pagination; added Worker route coverage for authenticated change-feed shape and invalid cursors.
+- [ ] Device registration/revocation, per-device delivered watermark, acknowledgement endpoint, and device-specific feed delivery tracking remain unimplemented. The current feed cursor is a category-level monotonic sequence, not proof that a particular device received a page; clients must not submit acknowledgement watermarks yet.
+- [ ] Migration 0008 remains unapplied to remote D1. No Cloudflare Worker deployment, R2 activation, or production data operation occurred.
+- [ ] Tombstone compaction remains disabled; all record and object tombstones are retained.
