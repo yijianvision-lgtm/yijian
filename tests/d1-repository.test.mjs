@@ -4,6 +4,7 @@ import { createNebulaD1Repository } from "../nebula-d1-repository.js";
 
 class FakeD1 {
   calls = [];
+  async batch(statements) { return Promise.all(statements.map(statement => statement.run())); }
   prepare(sql) {
     const call = { sql, values: [] };
     this.calls.push(call);
@@ -36,9 +37,9 @@ assert.equal((await repoA.putRecord("graph", "node-1", { name: "A-owned", owner_
 assert.equal((await repoA.deleteRecord("graph", "node-1")).deleted, true);
 
 await assert.rejects(repoA.getRecord("sources", "source-1"), /does not cover this record category/);
-assert.equal(db.calls.length, 5, "A category without explicit consent must not reach D1.");
+assert.equal(db.calls.length, 9, "A category without explicit consent must not reach D1.");
 
-assert.equal(db.calls.length, 5);
+assert.equal(db.calls.length, 9);
 for (const [index, call] of db.calls.entries()) {
   assert.equal(call.values[index === 4 ? 4 : 0], ownerA,
     "Every query must bind the server-derived owner ID; tombstone writes bind its timestamp before owner scope.");
@@ -56,15 +57,15 @@ for (const call of db.calls.slice(0, 4)) {
 }
 assert.deepEqual(db.calls[0].values.slice(-2), [ownerA, "graph"]);
 assert.deepEqual(db.calls[3].values.slice(6, 8), [ownerA, "graph"]);
-assert.deepEqual(db.calls[4].values.slice(4), [ownerA, "graph", "node-1"]);
-assert.doesNotMatch(db.calls[4].sql, /nebula_sync_consents/,
+assert.deepEqual(db.calls[6].values.slice(4), [ownerA, "graph", "node-1"]);
+assert.doesNotMatch(db.calls[6].sql, /nebula_sync_consents/,
   "Owner-initiated record deletion must remain available after consent revocation.");
 await assert.rejects(repoA.putRecord("graph", "oversized", { data: "x".repeat(256 * 1024) }), /exceeds 256 KiB/);
 assert.match(db.calls[3].sql, /INSERT INTO nebula_records \(owner_id,/);
 assert.match(db.calls[3].sql, /NOT EXISTS \(SELECT 1 FROM nebula_records/);
 assert.match(db.calls[3].sql, /ON CONFLICT\(owner_id, record_type, record_id\) DO NOTHING/);
-assert.match(db.calls[4].sql, /UPDATE nebula_records SET payload_json = '\{\}'/);
-assert.match(db.calls[4].sql, /deleted_at = CASE WHEN updated_at >= \?/);
+assert.match(db.calls[6].sql, /UPDATE nebula_records SET payload_json = '\{\}'/);
+assert.match(db.calls[6].sql, /deleted_at = CASE WHEN updated_at >= \?/);
 assert.equal(db.calls[3].values[0], ownerA, "A client-supplied owner_id inside payload must not change the row owner.");
 
 assert.match(db.calls[3].sql, /nebula_sync_consents/);
