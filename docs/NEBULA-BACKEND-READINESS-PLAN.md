@@ -499,3 +499,11 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [ ] Device registration currently accepts a client-generated UUID as the device identifier. A separate device credential/key binding and recovery UX have not been implemented.
 - [ ] Tombstone compaction remains disabled. A policy for long-offline devices, revoked-device exclusion, and local-copy erasure is still required before any compaction.
 - [ ] Migration 0009 has not been applied to remote D1. No Worker deployment, R2 activation, or production data operation occurred.
+
+## 2026-11-20 follow-up: device API route allowlist correction
+
+- [x] Re-audited the actual Worker entrypoint after the device repository and handlers were added. Found that the outer `syncPath` allowlist still admitted only consent, records, changes, and object paths; therefore `/sync/devices`, `/sync/devices/{deviceId}`, and `/sync/acknowledgements` were rejected with 404 before reaching their handlers.
+- [x] Expanded the Worker allowlist for the exact device collection, UUID-shaped device resource path, and acknowledgement endpoint. Existing authentication, rate limiting, consent checks, and route-level validation remain in force.
+- [x] Added Worker API regression coverage for device registration, active-device listing, device-specific change-page request, initial acknowledgement, rejection of an unissued acknowledgement, revocation, and refusal to re-register a revoked ID.
+- [ ] CI for this correction is pending; do not treat the new Worker route tests as passing until the exact updated HEAD workflows complete.
+- [ ] Delivery/revocation and concurrent-ack race tests, cryptographic device credential binding, durable client-apply receipts, long-offline policy, and tombstone compaction remain open. No remote D1 migration, Cloudflare deployment, R2 activation, production data operation, or private-data upload occurred.
