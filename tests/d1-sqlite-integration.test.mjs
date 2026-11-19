@@ -117,7 +117,7 @@ const repoB = createNebulaD1Repository({
 
 assert.equal((await repoA.putRecord("graph", "root", { title: "A private node" })).changes, 1);
 const firstChange = db.prepare("SELECT sequence, record_id, operation FROM nebula_sync_changes WHERE owner_id = ? AND record_type = 'graph' ORDER BY sequence").get(ownerA);
-assert.deepEqual(firstChange, { sequence: 1, record_id: "root", operation: "upsert" },
+assert.deepEqual(firstChange && { ...firstChange }, { sequence: 1, record_id: "root", operation: "upsert" },
   "A successful record write and its monotonic change-feed row must commit together.");
 assert.equal(db.prepare("SELECT current_seq FROM nebula_sync_counters WHERE owner_id = ? AND record_type = 'graph'").get(ownerA).current_seq, 1);
 const firstPage = await repoA.listChanges("graph", { after: 0, limit: 1 });
