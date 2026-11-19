@@ -313,12 +313,9 @@ try {
   const listRecords = await call("/sync/records?type=graph");
   assert.equal(listRecords.status, 200);
   assert.equal((await listRecords.json()).records[0].recordId, "root-1");
-  const changePage = await call("/sync/changes?type=graph&after=0&limit=10&deviceId=123e4567-e89b-42d3-a456-426614174103");
-  assert.equal(changePage.status, 200);
-  const changePayload = await changePage.json();
-  assert.equal(changePayload.ok, true);
-  assert.ok(Array.isArray(changePayload.changes));
-  assert.ok(Number.isSafeInteger(changePayload.nextCursor));
+  const missingDeviceChangePage = await call("/sync/changes?type=graph&after=0&limit=10");
+  assert.equal(missingDeviceChangePage.status, 400,
+    "Change-feed delivery must require a registered device identifier.");
 
   const deviceId = "123e4567-e89b-42d3-a456-426614174104";
   const deviceEnv = { ...env, NEBULA_DB: deviceApiDb };
