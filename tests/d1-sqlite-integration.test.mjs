@@ -157,6 +157,7 @@ await assert.rejects(deviceRepo.recordIssuedChanges(testDeviceId, "graph", []),
 // Page boundaries remain monotonic when a new record is written between reads.
 const pageDeviceId = "123e4567-e89b-42d3-a456-426614174107";
 await deviceRepo.register(pageDeviceId);
+assert.equal(await deviceRepo.recordIssuedChanges(pageDeviceId, "graph", [1]), 1);
 await repoA.putRecord("graph", "page-two", { title: "Sequence two" });
 assert.equal(await deviceRepo.recordIssuedChanges(pageDeviceId, "graph", [2]), 1);
 await repoA.putRecord("graph", "page-three", { title: "Sequence three" });
