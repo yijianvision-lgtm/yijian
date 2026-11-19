@@ -200,6 +200,23 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
     return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
   }
 
+  if (path === "/sync/changes" && request.method === "GET") {
+    const type = url.searchParams.get("type");
+    if (!type) return jsonResponse({ error: "Missing record type." }, 400, cors);
+    const rawAfter = url.searchParams.get("after") || "0";
+    if (!/^(0|[1-9][0-9]*)$/.test(rawAfter) || !Number.isSafeInteger(Number(rawAfter))) {
+      return jsonResponse({ error: "Invalid change-feed cursor." }, 400, cors);
+    }
+    const repository = createNebulaD1Repository({ db: env.NEBULA_DB, authContext, syncConsent: consent });
+    const rawLimit = Number(url.searchParams.get("limit") || 50);
+    const changes = await repository.listChanges(type, { after: Number(rawAfter), limit: rawLimit });
+    return jsonResponse({
+      ok: true,
+      changes,
+      nextCursor: changes.length ? changes[changes.length - 1].sequence : Number(rawAfter)
+    }, 200, cors);
+  }
+
   if (path === "/sync/records") {
     const type = url.searchParams.get("type");
     if (!type) return jsonResponse({ error: "Missing record type." }, 400, cors);
