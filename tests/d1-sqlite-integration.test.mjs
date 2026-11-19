@@ -135,6 +135,8 @@ const testDeviceId = "123e4567-e89b-42d3-a456-426614174102";
 const registeredDevice = await deviceRepo.register(testDeviceId);
 assert.equal(registeredDevice.status, "active");
 assert.equal((await deviceRepo.listActive()).some(device => device.deviceId === testDeviceId), true);
+assert.equal(await deviceRepo.recordIssuedChanges(testDeviceId, "graph", []), 0,
+  "An active registered device may receive an empty page when no changes are pending.");
 assert.equal(await deviceRepo.recordIssuedChanges(testDeviceId, "graph", [1]), 1);
 assert.equal(await deviceRepo.recordIssuedChanges(testDeviceId, "graph", [1]), 1,
   "Replaying the same issued page must be idempotent.");
@@ -148,6 +150,9 @@ await assert.rejects(deviceRepo.register(testDeviceId), /cannot be re-registered
 await assert.rejects(deviceRepo.acknowledge(testDeviceId, "graph", 1),
   /exceeds contiguous changes issued/,
   "A revoked device cannot advance its acknowledgement.");
+await assert.rejects(deviceRepo.recordIssuedChanges(testDeviceId, "graph", []),
+  /Device is revoked/,
+  "An empty page must not bypass active-device validation.");
 await assert.rejects(repoA.listChanges("graph", { after: -1 }), /Invalid change-feed cursor/);
 assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
 
