@@ -116,6 +116,10 @@ const repoB = createNebulaD1Repository({
 });
 
 assert.equal((await repoA.putRecord("graph", "root", { title: "A private node" })).changes, 1);
+const firstChange = db.prepare("SELECT sequence, record_id, operation FROM nebula_sync_changes WHERE owner_id = ? AND record_type = 'graph' ORDER BY sequence").get(ownerA);
+assert.deepEqual(firstChange, { sequence: 1, record_id: "root", operation: "upsert" },
+  "A successful record write and its monotonic change-feed row must commit together.");
+assert.equal(db.prepare("SELECT current_seq FROM nebula_sync_counters WHERE owner_id = ? AND record_type = 'graph'").get(ownerA).current_seq, 1);
 assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
 
 // Versioned record writes use create-only semantics followed by compare-and-swap.
@@ -352,6 +356,9 @@ const recordRepoRevoked = createNebulaD1Repository({
 });
 await assert.rejects(recordRepoRevoked.getRecord("graph", recordDeleteId), /Cloud sync is not enabled/);
 assert.equal((await recordRepoRevoked.deleteRecord("graph", recordDeleteId)).deleted, true);
+const deletionChange = db.prepare("SELECT sequence, record_id, operation FROM nebula_sync_changes WHERE owner_id = ? AND record_type = 'graph' AND record_id = ? ORDER BY sequence DESC LIMIT 1").get(ownerA, recordDeleteId);
+assert.deepEqual(deletionChange, { sequence: 2, record_id: recordDeleteId, operation: "delete" },
+  "Owner deletion after consent revocation must still append a versioned tombstone change.");
 const revokedTombstone = db.prepare("SELECT deleted_at, payload_json FROM nebula_records WHERE owner_id = ? AND record_id = ?").get(ownerA, recordDeleteId);
 assert.ok(revokedTombstone.deleted_at);
 assert.equal(revokedTombstone.payload_json, "{}");
