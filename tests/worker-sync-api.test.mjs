@@ -163,6 +163,55 @@ async function call(path, { method = "GET", token = tokenA, body, contentType = 
   return worker.fetch(request, envOverride);
 }
 
+const deviceRows = new Map();
+const deviceAcks = new Map();
+const deviceApiDb = {
+  batch: statements => db.batch(statements),
+  prepare(sql) {
+    if (sql.startsWith("INSERT INTO nebula_sync_devices")) return {
+      bind(owner, id, at) { return { async run() {
+        const key = owner + "|" + id;
+        if (!deviceRows.has(key)) deviceRows.set(key, {
+          device_id: id, status: "active", registered_at: at, last_seen_at: at, revoked_at: null
+        });
+        return { meta: { changes: 1 } };
+      } }; }
+    };
+    if (sql.startsWith("SELECT device_id, status, registered_at")) return {
+      bind(owner, id) { return { async first() { return deviceRows.get(owner + "|" + id) || null; } }; }
+    };
+    if (sql.startsWith("SELECT device_id, registered_at, last_seen_at FROM nebula_sync_devices")) return {
+      bind(owner) { return { async all() {
+        return { results: [...deviceRows.entries()].filter(([key, row]) => key.startsWith(owner + "|") && row.status === "active").map(([, row]) => row) };
+      } }; }
+    };
+    if (sql.startsWith("UPDATE nebula_sync_devices SET status = 'revoked'")) return {
+      bind(at, _lastSeen, owner, id) { return { async run() {
+        const row = deviceRows.get(owner + "|" + id);
+        if (!row || row.status !== "active") return { meta: { changes: 0 } };
+        row.status = "revoked"; row.revoked_at = at; row.last_seen_at = at;
+        return { meta: { changes: 1 } };
+      } }; }
+    };
+    if (sql.startsWith("INSERT INTO nebula_sync_device_acks")) return {
+      bind(owner, id, type, sequence) { return { async run() {
+        const device = deviceRows.get(owner + "|" + id);
+        if (!device || device.status !== "active" || sequence > 0) return { meta: { changes: 0 } };
+        deviceAcks.set([owner, id, type].join("|"), sequence);
+        return { meta: { changes: 1 } };
+      } }; }
+    };
+    if (sql.startsWith("SELECT a.acknowledged_seq")) return {
+      bind(owner, id, type) { return { async first() {
+        const row = deviceRows.get(owner + "|" + id);
+        const key = [owner, id, type].join("|");
+        return row?.status === "active" && deviceAcks.has(key) ? { acknowledged_seq: deviceAcks.get(key) } : null;
+      } }; }
+    };
+    return db.prepare(sql);
+  }
+};
+
 try {
   const deniedShared = await call("/sync/consent", {
     token: "shared-secret", envOverride: {
@@ -264,6 +313,34 @@ try {
   assert.equal(changePayload.ok, true);
   assert.ok(Array.isArray(changePayload.changes));
   assert.ok(Number.isSafeInteger(changePayload.nextCursor));
+
+  const deviceId = "123e4567-e89b-42d3-a456-426614174104";
+  const deviceEnv = { ...env, NEBULA_DB: deviceApiDb };
+  const registerDevice = await call("/sync/devices", {
+    method: "POST", body: JSON.stringify({ deviceId }), envOverride: deviceEnv
+  });
+  assert.equal(registerDevice.status, 200, "Device registration route must pass the Worker route allowlist.");
+  assert.equal((await registerDevice.json()).device.status, "active");
+  const listDevices = await call("/sync/devices", { envOverride: deviceEnv });
+  assert.equal(listDevices.status, 200);
+  assert.equal((await listDevices.json()).devices.length, 1);
+  const deviceChangePage = await call("/sync/changes?type=graph&after=0&deviceId=" + deviceId, { envOverride: deviceEnv });
+  assert.equal(deviceChangePage.status, 200, "A registered device can request a delivered change page.");
+  const initialAck = await call("/sync/acknowledgements", {
+    method: "POST", body: JSON.stringify({ deviceId, recordType: "graph", sequence: 0 }), envOverride: deviceEnv
+  });
+  assert.equal(initialAck.status, 200, "Acknowledgement endpoint must be reachable through the Worker route allowlist.");
+  const unissuedAck = await call("/sync/acknowledgements", {
+    method: "POST", body: JSON.stringify({ deviceId, recordType: "graph", sequence: 1 }), envOverride: deviceEnv
+  });
+  assert.equal(unissuedAck.status, 409, "Worker must reject acknowledgement beyond the issued delivery ledger.");
+  const revokeDevice = await call("/sync/devices/" + deviceId, { method: "DELETE", envOverride: deviceEnv });
+  assert.equal(revokeDevice.status, 200);
+  const reRegisterRevoked = await call("/sync/devices", {
+    method: "POST", body: JSON.stringify({ deviceId }), envOverride: deviceEnv
+  });
+  assert.equal(reRegisterRevoked.status, 409, "A revoked device ID must not be reactivated through the API.");
+
   const invalidChangeCursor = await call("/sync/changes?type=graph&after=-1");
   assert.equal(invalidChangeCursor.status, 400, "Negative or malformed change-feed cursors must be rejected.");
 
