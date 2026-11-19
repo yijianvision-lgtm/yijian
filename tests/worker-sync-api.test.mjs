@@ -258,6 +258,14 @@ try {
   const listRecords = await call("/sync/records?type=graph");
   assert.equal(listRecords.status, 200);
   assert.equal((await listRecords.json()).records[0].recordId, "root-1");
+  const changePage = await call("/sync/changes?type=graph&after=0&limit=10");
+  assert.equal(changePage.status, 200);
+  const changePayload = await changePage.json();
+  assert.equal(changePayload.ok, true);
+  assert.ok(Array.isArray(changePayload.changes));
+  assert.ok(Number.isSafeInteger(changePayload.nextCursor));
+  const invalidChangeCursor = await call("/sync/changes?type=graph&after=-1");
+  assert.equal(invalidChangeCursor.status, 400, "Negative or malformed change-feed cursors must be rejected.");
 
   const deniedCategory = await call("/sync/records?type=private-notes");
   assert.equal(deniedCategory.status, 403, "Unconsented record categories must be rejected.");
