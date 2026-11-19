@@ -258,7 +258,7 @@ try {
   const listRecords = await call("/sync/records?type=graph");
   assert.equal(listRecords.status, 200);
   assert.equal((await listRecords.json()).records[0].recordId, "root-1");
-  const changePage = await call("/sync/changes?type=graph&after=0&limit=10");
+  const changePage = await call("/sync/changes?type=graph&after=0&limit=10&deviceId=123e4567-e89b-42d3-a456-426614174103");
   assert.equal(changePage.status, 200);
   const changePayload = await changePage.json();
   assert.equal(changePayload.ok, true);
