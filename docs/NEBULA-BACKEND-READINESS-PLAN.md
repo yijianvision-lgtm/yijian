@@ -484,3 +484,18 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [ ] Device registration/revocation, per-device delivered watermark, acknowledgement endpoint, and device-specific feed delivery tracking remain unimplemented. The current feed cursor is a category-level monotonic sequence, not proof that a particular device received a page; clients must not submit acknowledgement watermarks yet.
 - [ ] Migration 0008 remains unapplied to remote D1. No Cloudflare Worker deployment, R2 activation, or production data operation occurred.
 - [ ] Tombstone compaction remains disabled; all record and object tombstones are retained.
+
+
+## 2026-11-19 follow-up: per-device sync lifecycle and delivery ledger
+
+- [x] Added isolated migration `0009_device_delivery_ledger.sql`: per-owner/device/category issued-sequence rows reference retained device identities and the append-only change feed.
+- [x] Added `nebula-sync-device-repository.js`, scoped exclusively to a verified server-derived owner ID. It supports idempotent active-device registration, active-device listing, revocation, recording issued change pages, and monotonic acknowledgement checks.
+- [x] Device registration is idempotent for an active UUID, but a revoked UUID cannot be reactivated. Revoked devices are retained for audit and cannot acknowledge further changes.
+- [x] Change-feed delivery now requires a registered device ID and records the exact contiguous sequence page issued to that device before returning it. Replaying the same page is idempotent.
+- [x] Added `POST /sync/devices`, `GET /sync/devices`, `DELETE /sync/devices/{deviceId}`, and `POST /sync/acknowledgements`; acknowledgement is accepted only when every sequence since that device's previous watermark is present in its issued-delivery ledger and the device remains active.
+- [x] Added SQLite integration coverage for device registration/listing, issued delivery, acknowledgement, rejection of unissued sequence advancement, revocation, and refusal to re-register a revoked identity.
+- [ ] Protocol-level acknowledgement is a client assertion that it received the issued page; it is not cryptographic proof that the client durably applied the page. A stronger signed receipt or client-side durable apply protocol remains a design decision.
+- [ ] Race tests for concurrent revoke-vs-delivery, concurrent acknowledgement, and multi-page delivery under concurrent writes remain pending.
+- [ ] Device registration currently accepts a client-generated UUID as the device identifier. A separate device credential/key binding and recovery UX have not been implemented.
+- [ ] Tombstone compaction remains disabled. A policy for long-offline devices, revoked-device exclusion, and local-copy erasure is still required before any compaction.
+- [ ] Migration 0009 has not been applied to remote D1. No Worker deployment, R2 activation, or production data operation occurred.
