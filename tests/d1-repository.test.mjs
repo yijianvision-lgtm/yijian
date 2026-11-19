@@ -62,14 +62,15 @@ assert.match(db.calls[4].sql, /nebula_sync_counters/);
 assert.match(db.calls[5].sql, /nebula_sync_changes/);
 assert.match(db.calls[8].sql, /nebula_sync_counters/);
 assert.match(db.calls[9].sql, /nebula_sync_changes/);
-assert.doesNotMatch(db.calls[7].sql, /nebula_sync_consents/,
+assert.doesNotMatch(deleteMutation.sql, /nebula_sync_consents/,
   "Owner-initiated record deletion must remain available after consent revocation.");
 await assert.rejects(repoA.putRecord("graph", "oversized", { data: "x".repeat(256 * 1024) }), /exceeds 256 KiB/);
 assert.match(db.calls[3].sql, /INSERT INTO nebula_records \(owner_id,/);
 assert.match(db.calls[3].sql, /NOT EXISTS \(SELECT 1 FROM nebula_records/);
 assert.match(db.calls[3].sql, /ON CONFLICT\(owner_id, record_type, record_id\) DO NOTHING/);
-assert.match(db.calls[7].sql, /UPDATE nebula_records SET payload_json = '\{\}'/);
-assert.match(db.calls[7].sql, /deleted_at = CASE WHEN updated_at >= \?/);
+const deleteMutation = db.calls.find(call => call.sql.startsWith("UPDATE nebula_records SET payload_json = '{}'"));
+assert.ok(deleteMutation, "Owner deletion must use a tombstone mutation.");
+assert.match(deleteMutation.sql, /deleted_at = CASE WHEN updated_at >= \?/);
 assert.equal(db.calls[3].values[0], ownerA, "A client-supplied owner_id inside payload must not change the row owner.");
 
 assert.match(db.calls[3].sql, /nebula_sync_consents/);
