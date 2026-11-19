@@ -107,24 +107,29 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       const updatedAt = expectedUpdatedAt === null
         ? observedNow
         : new Date(Math.max(Date.parse(observedNow), Date.parse(expectedUpdatedAt) + 1)).toISOString();
-      let result;
-      if (expectedUpdatedAt === null) {
-        // A null base version is create-only. It must never silently replace an
-        // existing row whose version the client has not observed.
-        result = await db.prepare(
+
+      const mutation = expectedUpdatedAt === null
+        ? db.prepare(
           "INSERT INTO nebula_records (owner_id, record_type, record_id, payload_json, created_at, updated_at) SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?)) AND NOT EXISTS (SELECT 1 FROM nebula_records r WHERE r.owner_id = ? AND r.record_type = ? AND r.record_id = ?) ON CONFLICT(owner_id, record_type, record_id) DO NOTHING"
-        ).bind(ownerId, type, id, serialized, updatedAt, updatedAt, ownerId, type, ownerId, type, id).run();
-      } else {
-        // Updates are compare-and-swap: only the exact version previously read
-        // by this client may be replaced. A stale version yields a conflict.
-        result = await db.prepare(
+        ).bind(ownerId, type, id, serialized, updatedAt, updatedAt, ownerId, type, ownerId, type, id)
+        : db.prepare(
           "UPDATE nebula_records SET payload_json = ?, updated_at = ?, deleted_at = NULL WHERE owner_id = ? AND record_type = ? AND record_id = ? AND (updated_at = ? OR deleted_at = ?) AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?))"
-        ).bind(serialized, updatedAt, ownerId, type, id, expectedUpdatedAt, expectedUpdatedAt, ownerId, type).run();
+        ).bind(serialized, updatedAt, ownerId, type, id, expectedUpdatedAt, expectedUpdatedAt, ownerId, type);
+      const counter = db.prepare(
+        "INSERT INTO nebula_sync_counters (owner_id, record_type, current_seq) SELECT ?, ?, 1 WHERE changes() > 0 ON CONFLICT(owner_id, record_type) DO UPDATE SET current_seq = current_seq + 1"
+      ).bind(ownerId, type);
+      const change = db.prepare(
+        "INSERT INTO nebula_sync_changes (owner_id, record_type, sequence, record_id, record_version, operation, created_at) SELECT ?, ?, current_seq, ?, ?, 'upsert', ? FROM nebula_sync_counters WHERE owner_id = ? AND record_type = ? AND changes() > 0"
+      ).bind(ownerId, type, id, updatedAt, observedNow, ownerId, type);
+      if (typeof db.batch !== "function") throw new Error("Atomic D1 batch support is required for sync record mutations.");
+      const results = await db.batch([mutation, counter, change]);
+      const changes = Number(results?.[0]?.meta?.changes || 0);
+      if (changes > 0) {
+        const sequence = await db.prepare(
+          "SELECT current_seq FROM nebula_sync_counters WHERE owner_id = ? AND record_type = ? LIMIT 1"
+        ).bind(ownerId, type).first();
+        return Object.freeze({ ok: true, conflict: false, changes, updatedAt, sequence: Number(sequence?.current_seq || 0) });
       }
-      const changes = Number(result.meta?.changes || 0);
-      if (changes > 0) return Object.freeze({ ok: true, conflict: false, changes, updatedAt });
-      // Distinguish an actual stale/missing version from a concurrent consent
-      // revocation. Never report a conflict payload unless live consent remains.
       const liveConsent = await db.prepare(
         "SELECT 1 AS active FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = ?) LIMIT 1"
       ).bind(ownerId, type).first();
@@ -151,10 +156,26 @@ export function createNebulaD1Repository({ db, authContext, syncConsent, now = (
       // Owner-initiated deletion remains available after sync consent is
       // paused or revoked. The server-derived owner scope is still mandatory.
       const deletedAt = timestamp(now());
-      const result = await db.prepare(
+      const mutation = db.prepare(
         "UPDATE nebula_records SET payload_json = '{}', deleted_at = CASE WHEN updated_at >= ? THEN strftime('%Y-%m-%dT%H:%M:%fZ', updated_at, '+0.001 seconds') ELSE ? END, updated_at = CASE WHEN updated_at >= ? THEN strftime('%Y-%m-%dT%H:%M:%fZ', updated_at, '+0.001 seconds') ELSE ? END WHERE owner_id = ? AND record_type = ? AND record_id = ? AND deleted_at IS NULL"
-      ).bind(deletedAt, deletedAt, deletedAt, deletedAt, ownerId, type, id).run();
-      return Object.freeze({ deleted: Number(result.meta?.changes || 0) > 0, deletedAt });
+      ).bind(deletedAt, deletedAt, deletedAt, deletedAt, ownerId, type, id);
+      const counter = db.prepare(
+        "INSERT INTO nebula_sync_counters (owner_id, record_type, current_seq) SELECT ?, ?, 1 WHERE changes() > 0 ON CONFLICT(owner_id, record_type) DO UPDATE SET current_seq = current_seq + 1"
+      ).bind(ownerId, type);
+      const change = db.prepare(
+        "INSERT INTO nebula_sync_changes (owner_id, record_type, sequence, record_id, record_version, operation, created_at) SELECT ?, ?, current_seq, ?, (SELECT updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ?), 'delete', ? FROM nebula_sync_counters WHERE owner_id = ? AND record_type = ? AND changes() > 0"
+      ).bind(ownerId, type, id, ownerId, type, id, deletedAt, ownerId, type);
+      if (typeof db.batch !== "function") throw new Error("Atomic D1 batch support is required for sync record mutations.");
+      const results = await db.batch([mutation, counter, change]);
+      const deleted = Number(results?.[0]?.meta?.changes || 0) > 0;
+      if (!deleted) return Object.freeze({ deleted: false, deletedAt });
+      const row = await db.prepare(
+        "SELECT updated_at FROM nebula_records WHERE owner_id = ? AND record_type = ? AND record_id = ? LIMIT 1"
+      ).bind(ownerId, type, id).first();
+      const sequence = await db.prepare(
+        "SELECT current_seq FROM nebula_sync_counters WHERE owner_id = ? AND record_type = ? LIMIT 1"
+      ).bind(ownerId, type).first();
+      return Object.freeze({ deleted: true, deletedAt: row?.updated_at || deletedAt, sequence: Number(sequence?.current_seq || 0) });
     }
   });
 }
