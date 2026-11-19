@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { createNebulaD1Repository } from "../nebula-d1-repository.js";
+import { createNebulaSyncDeviceRepository } from "../nebula-sync-device-repository.js";
 import { createNebulaSyncConsentRepository } from "../nebula-sync-consent.js";
 import { reconcileNebulaR2UploadCleanup } from "../nebula-r2-cleanup.js";
 import { createNebulaR2Repository } from "../nebula-r2-repository.js";
@@ -34,6 +35,8 @@ const objectTombstoneMigration = await readFile(new URL("../migrations/0007_r2_o
 db.exec(objectTombstoneMigration);
 const deviceAckMigration = await readFile(new URL("../migrations/0008_device_sync_acknowledgements.sql", import.meta.url), "utf8");
 db.exec(deviceAckMigration);
+const deviceDeliveryMigration = await readFile(new URL("../migrations/0009_device_delivery_ledger.sql", import.meta.url), "utf8");
+db.exec(deviceDeliveryMigration);
 const deviceId = "123e4567-e89b-12d3-a456-426614174100";
 db.prepare("INSERT INTO nebula_sync_devices (owner_id, device_id, status, registered_at, last_seen_at) VALUES (?, ?, 'active', ?, ?)")
   .run(migrationOwner, deviceId, "2026-11-17T00:00:00.000Z", "2026-11-17T00:00:00.000Z");
@@ -125,6 +128,24 @@ assert.deepEqual(firstPage.map(change => ({ sequence: change.sequence, recordId:
   [{ sequence: 1, recordId: "root", operation: "upsert" }]);
 assert.deepEqual(await repoA.listChanges("graph", { after: 1 }), [],
   "A monotonic cursor must not replay already acknowledged change sequence numbers.");
+const deviceRepo = createNebulaSyncDeviceRepository({
+  db: d1, authContext: authA, now: () => "2026-11-19T00:00:00.000Z"
+});
+const testDeviceId = "123e4567-e89b-42d3-a456-426614174102";
+const registeredDevice = await deviceRepo.register(testDeviceId);
+assert.equal(registeredDevice.status, "active");
+assert.equal((await deviceRepo.listActive()).some(device => device.deviceId === testDeviceId), true);
+assert.equal(await deviceRepo.recordIssuedChanges(testDeviceId, "graph", [1]), 1);
+assert.equal((await deviceRepo.acknowledge(testDeviceId, "graph", 1)).acknowledgedSequence, 1);
+await assert.rejects(deviceRepo.acknowledge(testDeviceId, "graph", 2),
+  /contiguous issued change page/,
+  "A device cannot acknowledge a sequence that was never issued to it.");
+assert.equal((await deviceRepo.revoke(testDeviceId)).revoked, true);
+await assert.rejects(deviceRepo.register(testDeviceId), /cannot be re-registered/,
+  "A revoked device identity must not silently reactivate.");
+await assert.rejects(deviceRepo.acknowledge(testDeviceId, "graph", 1),
+  /contiguous issued change page/,
+  "A revoked device cannot advance its acknowledgement.");
 await assert.rejects(repoA.listChanges("graph", { after: -1 }), /Invalid change-feed cursor/);
 assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
 
