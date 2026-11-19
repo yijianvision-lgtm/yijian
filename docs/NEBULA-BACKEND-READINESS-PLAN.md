@@ -507,3 +507,10 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Added Worker API regression coverage for device registration, active-device listing, device-specific change-page request, initial acknowledgement, rejection of an unissued acknowledgement, revocation, and refusal to re-register a revoked ID.
 - [ ] CI for this correction is pending; do not treat the new Worker route tests as passing until the exact updated HEAD workflows complete.
 - [ ] Delivery/revocation and concurrent-ack race tests, cryptographic device credential binding, durable client-apply receipts, long-offline policy, and tombstone compaction remain open. No remote D1 migration, Cloudflare deployment, R2 activation, production data operation, or private-data upload occurred.
+
+## 2026-11-20 follow-up: empty change-page device validation
+
+- [x] Found an edge case in the delivery ledger: an empty change page returned before validating the device ID or active-device state. This allowed an arbitrary identifier to receive an empty feed response and let a revoked device pass the empty-page repository path.
+- [x] Empty-page delivery now validates UUID syntax and requires an active owner-scoped device before returning an empty result.
+- [x] Added SQLite integration assertions for an active device receiving an empty page and a revoked device being rejected; added Worker API coverage proving an invalid device ID is rejected even when the feed is empty.
+- [ ] CI for the route-allowlist and empty-page corrections is pending on the latest PR HEAD. No remote D1 migration, Cloudflare deployment, R2 activation, production data operation, or private-data upload occurred.
