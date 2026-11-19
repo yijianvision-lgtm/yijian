@@ -41,8 +41,8 @@ assert.equal(db.calls.length, 9, "A category without explicit consent must not r
 
 assert.equal(db.calls.length, 9);
 for (const [index, call] of db.calls.entries()) {
-  assert.equal(call.values[index === 4 ? 4 : 0], ownerA,
-    "Every query must bind the server-derived owner ID; tombstone writes bind its timestamp before owner scope.");
+  assert.ok(call.values.includes(ownerA),
+    "Every query and every statement in an atomic batch must bind the server-derived owner ID.");
   assert.match(call.sql, /owner_id/);
 }
 assert.match(db.calls[0].sql, /WHERE owner_id = \?/);
@@ -58,6 +58,10 @@ for (const call of db.calls.slice(0, 4)) {
 assert.deepEqual(db.calls[0].values.slice(-2), [ownerA, "graph"]);
 assert.deepEqual(db.calls[3].values.slice(6, 8), [ownerA, "graph"]);
 assert.deepEqual(db.calls[6].values.slice(4), [ownerA, "graph", "node-1"]);
+assert.match(db.calls[4].sql, /nebula_sync_counters/);
+assert.match(db.calls[5].sql, /nebula_sync_changes/);
+assert.match(db.calls[7].sql, /nebula_sync_counters/);
+assert.match(db.calls[8].sql, /nebula_sync_changes/);
 assert.doesNotMatch(db.calls[6].sql, /nebula_sync_consents/,
   "Owner-initiated record deletion must remain available after consent revocation.");
 await assert.rejects(repoA.putRecord("graph", "oversized", { data: "x".repeat(256 * 1024) }), /exceeds 256 KiB/);
