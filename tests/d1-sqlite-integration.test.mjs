@@ -357,8 +357,10 @@ const recordRepoRevoked = createNebulaD1Repository({
 await assert.rejects(recordRepoRevoked.getRecord("graph", recordDeleteId), /Cloud sync is not enabled/);
 assert.equal((await recordRepoRevoked.deleteRecord("graph", recordDeleteId)).deleted, true);
 const deletionChange = db.prepare("SELECT sequence, record_id, operation FROM nebula_sync_changes WHERE owner_id = ? AND record_type = 'graph' AND record_id = ? ORDER BY sequence DESC LIMIT 1").get(ownerA, recordDeleteId);
-assert.deepEqual(deletionChange, { sequence: 2, record_id: recordDeleteId, operation: "delete" },
-  "Owner deletion after consent revocation must still append a versioned tombstone change.");
+assert.equal(deletionChange.record_id, recordDeleteId);
+assert.equal(deletionChange.operation, "delete");
+assert.equal(deletionChange.sequence, db.prepare("SELECT current_seq FROM nebula_sync_counters WHERE owner_id = ? AND record_type = 'graph'").get(ownerA).current_seq,
+  "Owner deletion after consent revocation must append the latest monotonic tombstone change.");
 const revokedTombstone = db.prepare("SELECT deleted_at, payload_json FROM nebula_records WHERE owner_id = ? AND record_id = ?").get(ownerA, recordDeleteId);
 assert.ok(revokedTombstone.deleted_at);
 assert.equal(revokedTombstone.payload_json, "{}");
