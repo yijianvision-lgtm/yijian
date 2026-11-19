@@ -153,6 +153,43 @@ await assert.rejects(deviceRepo.acknowledge(testDeviceId, "graph", 1),
 await assert.rejects(deviceRepo.recordIssuedChanges(testDeviceId, "graph", []),
   /Device is revoked/,
   "An empty page must not bypass active-device validation.");
+
+// Page boundaries remain monotonic when a new record is written between reads.
+await repoA.putRecord("graph", "page-two", { title: "Sequence two" });
+assert.equal(await deviceRepo.recordIssuedChanges(testDeviceId, "graph", [2]), 1);
+await repoA.putRecord("graph", "page-three", { title: "Sequence three" });
+const secondPage = await repoA.listChanges("graph", { after: 2, limit: 1 });
+assert.deepEqual(secondPage.map(change => change.sequence), [3]);
+assert.equal(await deviceRepo.recordIssuedChanges(testDeviceId, "graph", [3]), 1);
+assert.equal((await deviceRepo.acknowledge(testDeviceId, "graph", 3)).acknowledgedSequence, 3);
+
+// Concurrent acknowledgements must converge monotonically regardless of arrival order.
+const concurrentAckDevice = "123e4567-e89b-42d3-a456-426614174105";
+await deviceRepo.register(concurrentAckDevice);
+await deviceRepo.recordIssuedChanges(concurrentAckDevice, "graph", [1, 2, 3]);
+const concurrentAcks = await Promise.all([
+  deviceRepo.acknowledge(concurrentAckDevice, "graph", 1),
+  deviceRepo.acknowledge(concurrentAckDevice, "graph", 3)
+]);
+assert.ok(concurrentAcks.every(result => result.acknowledgedSequence >= 1));
+assert.equal(db.prepare("SELECT acknowledged_seq FROM nebula_sync_device_acks WHERE owner_id = ? AND device_id = ? AND record_type = 'graph'")
+  .get(ownerA, concurrentAckDevice).acknowledged_seq, 3,
+  "Concurrent acknowledgements must never move the stored watermark backwards.");
+
+// Revocation racing with delivery may either win before issuance or follow a
+// completed issuance, but a revoked device must never acknowledge afterward.
+const revokeRaceDevice = "123e4567-e89b-42d3-a456-426614174106";
+await deviceRepo.register(revokeRaceDevice);
+const revokeDeliveryRace = await Promise.allSettled([
+  deviceRepo.recordIssuedChanges(revokeRaceDevice, "graph", [1, 2, 3]),
+  deviceRepo.revoke(revokeRaceDevice)
+]);
+assert.equal(revokeDeliveryRace[1].value.revoked, true);
+await assert.rejects(deviceRepo.acknowledge(revokeRaceDevice, "graph", 3),
+  /exceeds contiguous changes issued/);
+await assert.rejects(deviceRepo.recordIssuedChanges(revokeRaceDevice, "graph", [1]),
+  /Device is revoked/);
+
 await assert.rejects(repoA.listChanges("graph", { after: -1 }), /Invalid change-feed cursor/);
 assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
 
