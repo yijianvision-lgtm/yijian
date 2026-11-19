@@ -1,6 +1,7 @@
 import { authenticateNebulaRequest } from "./nebula-worker-auth.js";
 import { createNebulaSyncConsentRepository } from "./nebula-sync-consent.js";
 import { createNebulaD1Repository } from "./nebula-d1-repository.js";
+import { createNebulaSyncDeviceRepository } from "./nebula-sync-device-repository.js";
 import { createNebulaR2Repository } from "./nebula-r2-repository.js";
 import { reconcileNebulaR2UploadCleanup } from "./nebula-r2-cleanup.js";
 
@@ -193,6 +194,58 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
   }
 
   const consent = await consentRepository.getConsent();
+  const deviceRepository = createNebulaSyncDeviceRepository({ db: env.NEBULA_DB, authContext });
+
+  if (path === "/sync/devices") {
+    if (!consent || consent.status !== "enabled") {
+      return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
+    }
+    if (request.method === "GET") {
+      return jsonResponse({ ok: true, devices: await deviceRepository.listActive() }, 200, cors);
+    }
+    if (request.method === "POST") {
+      let body;
+      try { body = await request.json(); }
+      catch { return jsonResponse({ error: "A valid device registration is required." }, 400, cors); }
+      try {
+        const device = await deviceRepository.register(body.deviceId);
+        return jsonResponse({ ok: true, device }, 200, cors);
+      } catch (error) {
+        if (/Invalid device ID/.test(error?.message || "")) return jsonResponse({ error: "Invalid device ID." }, 400, cors);
+        if (/re-registered/.test(error?.message || "")) return jsonResponse({ error: "Revoked devices cannot be re-registered." }, 409, cors);
+        throw error;
+      }
+    }
+  }
+
+  const devicePath = path.match(/^\\/sync\\/devices\\/([0-9a-f-]{36})$/i);
+  if (devicePath && request.method === "DELETE") {
+    if (!consent || consent.status !== "enabled") {
+      return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
+    }
+    const result = await deviceRepository.revoke(devicePath[1]);
+    return jsonResponse({ ok: true, ...result }, 200, cors);
+  }
+
+  if (path === "/sync/acknowledgements" && request.method === "POST") {
+    if (!consent || consent.status !== "enabled") {
+      return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
+    }
+    let body;
+    try { body = await request.json(); }
+    catch { return jsonResponse({ error: "A valid acknowledgement is required." }, 400, cors); }
+    try {
+      const acknowledgement = await deviceRepository.acknowledge(body.deviceId, body.recordType, body.sequence);
+      return jsonResponse({ ok: true, acknowledgement }, 200, cors);
+    } catch (error) {
+      if (/Invalid device ID|Invalid record type|Invalid acknowledgement/.test(error?.message || "")) {
+        return jsonResponse({ error: "Invalid acknowledgement request." }, 400, cors);
+      }
+      if (/exceeds contiguous/.test(error?.message || "")) return jsonResponse({ error: "Acknowledgement is not backed by a contiguous issued change page." }, 409, cors);
+      throw error;
+    }
+  }
+
   const isOwnerInitiatedObjectDeletion = /^\/sync\/objects\/[0-9a-f-]{36}$/.test(path) && request.method === "DELETE";
   const isOwnerInitiatedRecordDeletion = path === "/sync/records" && request.method === "DELETE";
   if ((!consent || consent.status !== "enabled") &&
@@ -207,9 +260,12 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
     if (!/^(0|[1-9][0-9]*)$/.test(rawAfter) || !Number.isSafeInteger(Number(rawAfter))) {
       return jsonResponse({ error: "Invalid change-feed cursor." }, 400, cors);
     }
+    const deviceId = url.searchParams.get("deviceId");
+    if (!deviceId) return jsonResponse({ error: "A registered device ID is required for change delivery." }, 400, cors);
     const repository = createNebulaD1Repository({ db: env.NEBULA_DB, authContext, syncConsent: consent });
     const rawLimit = Number(url.searchParams.get("limit") || 50);
     const changes = await repository.listChanges(type, { after: Number(rawAfter), limit: rawLimit });
+    await deviceRepository.recordIssuedChanges(deviceId, type, changes.map(change => change.sequence));
     return jsonResponse({
       ok: true,
       changes,
