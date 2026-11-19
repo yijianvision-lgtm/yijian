@@ -155,13 +155,15 @@ await assert.rejects(deviceRepo.recordIssuedChanges(testDeviceId, "graph", []),
   "An empty page must not bypass active-device validation.");
 
 // Page boundaries remain monotonic when a new record is written between reads.
+const pageDeviceId = "123e4567-e89b-42d3-a456-426614174107";
+await deviceRepo.register(pageDeviceId);
 await repoA.putRecord("graph", "page-two", { title: "Sequence two" });
-assert.equal(await deviceRepo.recordIssuedChanges(testDeviceId, "graph", [2]), 1);
+assert.equal(await deviceRepo.recordIssuedChanges(pageDeviceId, "graph", [2]), 1);
 await repoA.putRecord("graph", "page-three", { title: "Sequence three" });
 const secondPage = await repoA.listChanges("graph", { after: 2, limit: 1 });
 assert.deepEqual(secondPage.map(change => change.sequence), [3]);
-assert.equal(await deviceRepo.recordIssuedChanges(testDeviceId, "graph", [3]), 1);
-assert.equal((await deviceRepo.acknowledge(testDeviceId, "graph", 3)).acknowledgedSequence, 3);
+assert.equal(await deviceRepo.recordIssuedChanges(pageDeviceId, "graph", [3]), 1);
+assert.equal((await deviceRepo.acknowledge(pageDeviceId, "graph", 3)).acknowledgedSequence, 3);
 
 // Concurrent acknowledgements must converge monotonically regardless of arrival order.
 const concurrentAckDevice = "123e4567-e89b-42d3-a456-426614174105";
