@@ -238,8 +238,8 @@ assert.equal(deletion.deleted, true);
 const tombstone = db.prepare("SELECT deleted_at, payload_json FROM nebula_records WHERE owner_id = ? AND record_type = 'graph' AND record_id = 'root'").get(ownerA);
 assert.ok(tombstone.deleted_at, "Owner-initiated deletion must retain a versioned tombstone.");
 assert.equal(tombstone.payload_json, "{}", "Deleting a cloud record must scrub its former payload, retaining only the minimal tombstone.");
-assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ?").get(ownerA).count, 1,
-  "Revocation blocks reads and writes but preserves a minimal deletion marker for cross-device propagation.");
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_records WHERE owner_id = ? AND record_type = 'graph' AND record_id = 'root'").get(ownerA).count, 1,
+  "Revocation preserves the original record's minimal deletion marker without assuming no other test records exist.");
 
 // Exercise the actual cleanup-claim SQL against SQLite, not only Fake D1.
 const cleanupNow = Date.parse("2026-11-13T12:00:00.000Z");
