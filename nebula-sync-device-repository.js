@@ -71,10 +71,14 @@ export function createNebulaSyncDeviceRepository({ db, authContext, now = () => 
       const statements = sequences.map(sequence => db.prepare(
         "INSERT INTO nebula_sync_device_deliveries (owner_id, device_id, record_type, sequence, issued_at) SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM nebula_sync_devices d WHERE d.owner_id = ? AND d.device_id = ? AND d.status = 'active') ON CONFLICT(owner_id, device_id, record_type, sequence) DO NOTHING"
       ).bind(ownerId, id, type, sequence, at, ownerId, id));
-      const results = await db.batch(statements);
-      const total = results.reduce((sum, result) => sum + Number(result?.meta?.changes || 0), 0);
-      if (total !== sequences.length) throw new Error("Device is revoked or change delivery could not be recorded.");
-      return total;
+      await db.batch(statements);
+      const issued = await db.prepare(
+        "SELECT COUNT(*) AS count FROM nebula_sync_device_deliveries x JOIN nebula_sync_devices d ON d.owner_id = x.owner_id AND d.device_id = x.device_id WHERE x.owner_id = ? AND x.device_id = ? AND x.record_type = ? AND x.sequence IN (${sequences.map(() => "?").join(",")}) AND d.status = 'active'"
+      ).bind(ownerId, id, type, ...sequences).first();
+      if (Number(issued?.count || 0) !== sequences.length) {
+        throw new Error("Device is revoked or change delivery could not be recorded.");
+      }
+      return sequences.length;
     },
 
     async acknowledge(deviceId, recordType, sequence) {
@@ -91,7 +95,7 @@ export function createNebulaSyncDeviceRepository({ db, authContext, now = () => 
         sequence, ownerId, id, type
       ).run();
       const row = await db.prepare(
-        "SELECT acknowledged_seq FROM nebula_sync_device_acks WHERE owner_id = ? AND device_id = ? AND record_type = ? LIMIT 1"
+        "SELECT a.acknowledged_seq FROM nebula_sync_device_acks a JOIN nebula_sync_devices d ON d.owner_id = a.owner_id AND d.device_id = a.device_id WHERE a.owner_id = ? AND a.device_id = ? AND a.record_type = ? AND d.status = 'active' LIMIT 1"
       ).bind(ownerId, id, type).first();
       const accepted = Boolean(row && Number(row.acknowledged_seq) >= sequence);
       if (!accepted) throw new Error("Acknowledgement exceeds contiguous changes issued to this active device.");
