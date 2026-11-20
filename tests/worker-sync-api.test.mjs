@@ -346,6 +346,16 @@ try {
     method: "POST", body: JSON.stringify({ deviceId }), envOverride: deviceEnv
   });
   assert.equal(reRegisterRevoked.status, 409, "A revoked device ID must not be reactivated through the API.");
+  const invalidSnapshotCreate = await call("/sync/snapshots", {
+    method: "POST", body: "{", envOverride: deviceEnv
+  });
+  assert.equal(invalidSnapshotCreate.status, 400,
+    "The bootstrap snapshot collection route must pass the Worker route allowlist.");
+  const invalidSnapshotComplete = await call("/sync/snapshots/123e4567-e89b-42d3-a456-426614174110/complete", {
+    method: "POST", body: "{", envOverride: deviceEnv
+  });
+  assert.equal(invalidSnapshotComplete.status, 400,
+    "The bootstrap snapshot completion route must pass the Worker route allowlist.");
 
   const invalidChangeCursor = await call("/sync/changes?type=graph&after=-1");
   assert.equal(invalidChangeCursor.status, 400, "Negative or malformed change-feed cursors must be rejected.");
