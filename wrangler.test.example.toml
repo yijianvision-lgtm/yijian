@@ -1,0 +1,27 @@
+name = "nebula-private-test"
+main = "deepseek-worker.js"
+compatibility_date = "2026-11-06"
+workers_dev = true
+
+# TEST ONLY. Replace every REPLACE_* value before use.
+[vars]
+DEEPSEEK_MODEL = "deepseek-v4-pro"
+NEBULA_AUTH_MODE = "clerk-jwt"
+NEBULA_JWT_ISSUER = "REPLACE_WITH_CLERK_TEST_ISSUER"
+NEBULA_JWT_AUDIENCE = "REPLACE_WITH_NEBULA_TEST_API_AUDIENCE"
+NEBULA_JWKS_URL = "REPLACE_WITH_CLERK_TEST_JWKS_URL"
+NEBULA_AUTHORIZED_PARTIES = '["REPLACE_WITH_TEST_APP_ORIGIN"]'
+
+[[d1_databases]]
+binding = "NEBULA_DB"
+database_name = "nebula-private-test"
+database_id = "REPLACE_WITH_TEST_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "NEBULA_BUCKET"
+bucket_name = "REPLACE_WITH_UNIQUE_TEST_R2_BUCKET_NAME"
+
+# Cron is enabled only in this isolated test Worker.
+[triggers]
+crons = ["*/15 * * * *"]
