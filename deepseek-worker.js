@@ -2,7 +2,7 @@ import { authenticateNebulaRequest } from "./nebula-worker-auth.js";
 import { createNebulaSyncConsentRepository } from "./nebula-sync-consent.js";
 import { createNebulaD1Repository } from "./nebula-d1-repository.js";
 import { createNebulaSyncDeviceRepository } from "./nebula-sync-device-repository.js";
-import { createNebulaSyncSnapshotRepository } from "./nebula-sync-snapshot-repository.js";
+import { createNebulaSyncSnapshotRepository, purgeExpiredNebulaSyncSnapshots } from "./nebula-sync-snapshot-repository.js";
 import { createNebulaR2Repository } from "./nebula-r2-repository.js";
 import { reconcileNebulaR2UploadCleanup } from "./nebula-r2-cleanup.js";
 
@@ -433,16 +433,20 @@ export default {
     // Never fall back to another environment or infer resource bindings.
     // Upload intents retain a one-hour grace; explicit delete intents are
     // eligible immediately and are distinguished by the cleanup ledger.
-    if (!env.NEBULA_DB || !env.NEBULA_BUCKET) {
-      console.warn(JSON.stringify({ event: "nebula_cleanup_skipped", reason: "missing_bindings" }));
+    if (!env.NEBULA_DB) {
+      console.warn(JSON.stringify({ event: "nebula_cleanup_skipped", reason: "missing_database_binding" }));
       return;
     }
     try {
-      const result = await reconcileNebulaR2UploadCleanup({
-        db: env.NEBULA_DB,
-        bucket: env.NEBULA_BUCKET,
-        limit: 50
-      });
+      const expiredSnapshots = await purgeExpiredNebulaSyncSnapshots({ db: env.NEBULA_DB, limit: 100 });
+      let result = { scanned: 0, outcomes: [] };
+      if (env.NEBULA_BUCKET && typeof env.NEBULA_BUCKET.delete === "function") {
+        result = await reconcileNebulaR2UploadCleanup({
+          db: env.NEBULA_DB,
+          bucket: env.NEBULA_BUCKET,
+          limit: 50
+        });
+      }
       const counts = Object.create(null);
       for (const outcome of result.outcomes) {
         counts[outcome.action] = (counts[outcome.action] || 0) + 1;
@@ -451,7 +455,8 @@ export default {
       // credentials, or raw exception messages.
       console.log(JSON.stringify({
         event: "nebula_cleanup_completed",
-        scanned: result.scanned,
+        expiredSnapshots,
+        r2Scanned: result.scanned,
         outcomes: counts
       }));
     } catch {
