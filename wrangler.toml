@@ -3,6 +3,10 @@ main = "deepseek-worker.js"
 compatibility_date = "2026-11-06"
 workers_dev = true
 
+# Run bounded cleanup for expired bootstrap snapshots and pending R2 intents.
+[triggers]
+crons = ["17 * * * *"]
+
 [vars]
 DEEPSEEK_MODEL = "deepseek-v4-pro"
 
