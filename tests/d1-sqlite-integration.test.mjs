@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { createNebulaD1Repository } from "../nebula-d1-repository.js";
 import { createNebulaSyncDeviceRepository } from "../nebula-sync-device-repository.js";
-import { createNebulaSyncSnapshotRepository } from "../nebula-sync-snapshot-repository.js";
+import { createNebulaSyncSnapshotRepository, purgeExpiredNebulaSyncSnapshots } from "../nebula-sync-snapshot-repository.js";
 import { createNebulaSyncConsentRepository } from "../nebula-sync-consent.js";
 import { reconcileNebulaR2UploadCleanup } from "../nebula-r2-cleanup.js";
 import { createNebulaR2Repository } from "../nebula-r2-repository.js";
@@ -249,6 +249,15 @@ assert.equal(await expiringSnapshotRepo.purgeExpired({ limit: 10 }), 2,
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_sync_snapshot_records WHERE owner_id = ? AND snapshot_id = ?")
   .get(ownerA, expiringSnapshotId).count, 0,
   "Purging a snapshot must cascade-delete its temporary record copies and page ledger.");
+const scheduledSnapshotId = "123e4567-e89b-42d3-a456-426614174112";
+await expiringSnapshotRepo.create({
+  snapshotId: scheduledSnapshotId, deviceId: snapshotDeviceId, recordType: "graph"
+});
+assert.equal(await purgeExpiredNebulaSyncSnapshots({
+  db: d1, now: () => "2026-11-14T00:00:00.000Z", limit: 10
+}), 1, "The privileged scheduled cleanup must purge expired snapshots across owners in bounded batches.");
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_sync_snapshots WHERE owner_id = ? AND snapshot_id = ?")
+  .get(ownerA, scheduledSnapshotId).count, 0);
 
 // Versioned record writes use create-only semantics followed by compare-and-swap.
 // A stale writer receives the current remote version and payload instead of
