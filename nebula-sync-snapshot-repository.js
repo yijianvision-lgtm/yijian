@@ -5,6 +5,17 @@ const RECORD_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
 const MAX_PAGE_SIZE = 50;
 const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** Privileged scheduled cleanup; deletes only expired temporary snapshot material. */
+export async function purgeExpiredNebulaSyncSnapshots({ db, now = () => new Date().toISOString(), limit = 100 } = {}) {
+  if (!db || typeof db.prepare !== "function") throw new TypeError("A D1 database binding is required.");
+  const at = assertTimestamp(now());
+  const boundedLimit = Number.isInteger(limit) ? Math.max(1, Math.min(500, limit)) : 100;
+  const result = await db.prepare(
+    "DELETE FROM nebula_sync_snapshots WHERE (owner_id, snapshot_id) IN (SELECT owner_id, snapshot_id FROM nebula_sync_snapshots WHERE expires_at <= ? ORDER BY expires_at LIMIT ?)"
+  ).bind(at, boundedLimit).run();
+  return Number(result?.meta?.changes || 0);
+}
+
 function assertUuid(value, pattern, label) {
   if (typeof value !== "string" || !pattern.test(value)) throw new TypeError("Invalid " + label + ".");
   return value.toLowerCase();
@@ -139,7 +150,7 @@ export function createNebulaSyncSnapshotRepository({ db, authContext, now = () =
         ).bind(at, ownerId, sid, did)
       ]);
       const row = await db.prepare(
-        "SELECT s.snapshot_seq, s.status, a.acknowledged_seq FROM nebula_sync_snapshots s LEFT JOIN nebula_sync_device_acks a ON a.owner_id = s.owner_id AND a.device_id = s.device_id AND a.record_type = s.record_type WHERE s.owner_id = ? AND s.snapshot_id = ? AND s.device_id = ? AND s.status = 'completed'"
+        "SELECT s.snapshot_seq, s.status, a.acknowledged_seq FROM nebula_sync_snapshots s JOIN nebula_sync_devices d ON d.owner_id = s.owner_id AND d.device_id = s.device_id AND d.status = 'active' LEFT JOIN nebula_sync_device_acks a ON a.owner_id = s.owner_id AND a.device_id = s.device_id AND a.record_type = s.record_type WHERE s.owner_id = ? AND s.snapshot_id = ? AND s.device_id = ? AND s.status = 'completed' AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = s.owner_id AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = s.record_type))"
       ).bind(ownerId, sid, did).first();
       if (!row) throw new Error("Snapshot cannot be completed until every page has been delivered to an active, consented device.");
       return Object.freeze({
