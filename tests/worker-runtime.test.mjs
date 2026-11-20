@@ -209,11 +209,16 @@ try {
   try {
     await worker.scheduled({}, {});
     assert.match(logLines.at(-1), /nebula_cleanup_skipped/);
-    const emptyDb = { prepare() { return { bind() { return { all: async () => ({ results: [] }) }; } }; } };
-    await worker.scheduled({}, { NEBULA_DB: emptyDb, NEBULA_BUCKET: { delete: async () => {} } });
+    const emptyDb = { prepare() { return { bind() { return {
+      all: async () => ({ results: [] }),
+      run: async () => ({ meta: { changes: 0 } })
+    }; } }; } };
+    await worker.scheduled({}, { NEBULA_DB: emptyDb });
     const completed = JSON.parse(logLines.at(-1));
     assert.equal(completed.event, "nebula_cleanup_completed");
-    assert.equal(completed.scanned, 0);
+    assert.equal(completed.expiredSnapshots, 0);
+    assert.equal(completed.r2Scanned, 0,
+      "Expired snapshot cleanup must still run when the optional R2 binding is unavailable.");
     assert.equal(Object.hasOwn(completed, "ownerId"), false);
     const brokenDb = { prepare() { throw new Error("sensitive SQL and binding details"); } };
     await assert.rejects(
