@@ -244,8 +244,8 @@ await expiringSnapshotRepo.create({
 assert.ok(db.prepare("SELECT COUNT(*) AS count FROM nebula_sync_snapshot_records WHERE owner_id = ? AND snapshot_id = ?")
   .get(ownerA, expiringSnapshotId).count > 0);
 snapshotClock += 25 * 60 * 60 * 1000;
-assert.equal(await expiringSnapshotRepo.purgeExpired({ limit: 10 }), 1,
-  "Expired bootstrap snapshots must be purged in bounded batches.");
+assert.equal(await expiringSnapshotRepo.purgeExpired({ limit: 10 }), 2,
+  "All expired bootstrap snapshots for the owner must be purged in bounded batches.");
 assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_sync_snapshot_records WHERE owner_id = ? AND snapshot_id = ?")
   .get(ownerA, expiringSnapshotId).count, 0,
   "Purging a snapshot must cascade-delete its temporary record copies and page ledger.");
