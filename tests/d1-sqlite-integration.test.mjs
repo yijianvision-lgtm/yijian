@@ -233,6 +233,22 @@ const purgedSnapshots = await snapshotRepo.purgeExpired({ limit: 10 });
 assert.equal(purgedSnapshots, 0, "A live snapshot must not be purged before its expiry.");
 assert.equal((await repoA.getRecord("graph", "root")).payload.title, "Root changed after snapshot",
   "The live record must reflect its post-snapshot mutation while the snapshot copy remains immutable.");
+let snapshotClock = Date.parse("2026-11-11T00:00:00.000Z");
+const expiringSnapshotRepo = createNebulaSyncSnapshotRepository({
+  db: d1, authContext: authA, now: () => new Date(snapshotClock).toISOString()
+});
+const expiringSnapshotId = "123e4567-e89b-42d3-a456-426614174111";
+await expiringSnapshotRepo.create({
+  snapshotId: expiringSnapshotId, deviceId: snapshotDeviceId, recordType: "graph"
+});
+assert.ok(db.prepare("SELECT COUNT(*) AS count FROM nebula_sync_snapshot_records WHERE owner_id = ? AND snapshot_id = ?")
+  .get(ownerA, expiringSnapshotId).count > 0);
+snapshotClock += 25 * 60 * 60 * 1000;
+assert.equal(await expiringSnapshotRepo.purgeExpired({ limit: 10 }), 1,
+  "Expired bootstrap snapshots must be purged in bounded batches.");
+assert.equal(db.prepare("SELECT COUNT(*) AS count FROM nebula_sync_snapshot_records WHERE owner_id = ? AND snapshot_id = ?")
+  .get(ownerA, expiringSnapshotId).count, 0,
+  "Purging a snapshot must cascade-delete its temporary record copies and page ledger.");
 
 // Versioned record writes use create-only semantics followed by compare-and-swap.
 // A stale writer receives the current remote version and payload instead of
