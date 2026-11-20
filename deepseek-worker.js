@@ -526,7 +526,7 @@ export default {
     }
     const syncObjectPath = url.pathname === "/sync/objects" || /^\/sync\/objects\/[0-9a-f-]{36}$/.test(url.pathname);
     const syncDevicePath = url.pathname === "/sync/devices" || /^\/sync\/devices\/[0-9a-f-]{36}$/i.test(url.pathname);
-    const syncSnapshotPath = url.pathname === "/sync/snapshots" || /^\/sync\/snapshots\/[0-9a-f-]{36}(?:\\/complete)?$/i.test(url.pathname);
+    const syncSnapshotPath = url.pathname === "/sync/snapshots" || /^\/sync\/snapshots\/[0-9a-f-]{36}(?:\/complete)?$/i.test(url.pathname);
     const syncPath = ["/sync/consent", "/sync/records", "/sync/changes", "/sync/acknowledgements"].includes(url.pathname) || syncDevicePath || syncSnapshotPath || syncObjectPath;
     const supportedPath = ["/analyze", "/coach", "/mnemonic", "/research", "/chat"].includes(url.pathname) || syncPath;
     if (!supportedPath) return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: cors });
