@@ -2,6 +2,7 @@ import { authenticateNebulaRequest } from "./nebula-worker-auth.js";
 import { createNebulaSyncConsentRepository } from "./nebula-sync-consent.js";
 import { createNebulaD1Repository } from "./nebula-d1-repository.js";
 import { createNebulaSyncDeviceRepository } from "./nebula-sync-device-repository.js";
+import { createNebulaSyncSnapshotRepository } from "./nebula-sync-snapshot-repository.js";
 import { createNebulaR2Repository } from "./nebula-r2-repository.js";
 import { reconcileNebulaR2UploadCleanup } from "./nebula-r2-cleanup.js";
 
@@ -195,6 +196,7 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
 
   const consent = await consentRepository.getConsent();
   const getDeviceRepository = () => createNebulaSyncDeviceRepository({ db: env.NEBULA_DB, authContext });
+  const getSnapshotRepository = () => createNebulaSyncSnapshotRepository({ db: env.NEBULA_DB, authContext });
 
   if (path === "/sync/devices") {
     const deviceRepository = getDeviceRepository();
@@ -256,6 +258,68 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
   if ((!consent || consent.status !== "enabled") &&
       !isOwnerInitiatedObjectDeletion && !isOwnerInitiatedRecordDeletion) {
     return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
+  }
+
+  if (path === "/sync/snapshots" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); }
+    catch { return jsonResponse({ error: "A valid bootstrap snapshot request is required." }, 400, cors); }
+    try {
+      await consentRepository.requireCategory(body.recordType);
+      const snapshot = await getSnapshotRepository().create({
+        snapshotId: crypto.randomUUID(), deviceId: body.deviceId, recordType: body.recordType
+      });
+      return jsonResponse({ ok: true, snapshot }, 201, cors);
+    } catch (error) {
+      if (/Invalid device ID|Invalid snapshot ID|Invalid record type/.test(error?.message || "")) {
+        return jsonResponse({ error: "Invalid bootstrap snapshot request." }, 400, cors);
+      }
+      if (/could not be created/.test(error?.message || "")) return jsonResponse({ error: "Device is revoked or snapshot consent is unavailable." }, 409, cors);
+      throw error;
+    }
+  }
+
+  const snapshotPathMatch = path.match(/^\\/sync\\/snapshots\\/([0-9a-f-]{36})(?:\\/(complete))?$/i);
+  if (snapshotPathMatch && request.method === "GET" && !snapshotPathMatch[2]) {
+    const deviceId = url.searchParams.get("deviceId");
+    const after = url.searchParams.get("after") || "";
+    const rawLimit = url.searchParams.get("limit") || "50";
+    if (!deviceId || !/^(?:[A-Za-z0-9._:-]{1,128})?$/.test(after) ||
+        !/^[0-9]+$/.test(rawLimit) || !Number.isSafeInteger(Number(rawLimit))) {
+      return jsonResponse({ error: "Invalid bootstrap snapshot page request." }, 400, cors);
+    }
+    try {
+      const page = await getSnapshotRepository().listPage({
+        snapshotId: snapshotPathMatch[1], deviceId, after, limit: Number(rawLimit)
+      });
+      return jsonResponse({ ok: true, ...page }, 200, cors);
+    } catch (error) {
+      if (/Invalid device ID|Invalid snapshot ID|Invalid snapshot cursor/.test(error?.message || "")) {
+        return jsonResponse({ error: "Invalid bootstrap snapshot page request." }, 400, cors);
+      }
+      if (/unavailable|revoked|consented|sequentially/.test(error?.message || "")) {
+        return jsonResponse({ error: "Snapshot is unavailable or the requested page is not the next page." }, 409, cors);
+      }
+      throw error;
+    }
+  }
+
+  if (snapshotPathMatch && snapshotPathMatch[2] === "complete" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); }
+    catch { return jsonResponse({ error: "A valid snapshot completion request is required." }, 400, cors); }
+    try {
+      const result = await getSnapshotRepository().complete({ snapshotId: snapshotPathMatch[1], deviceId: body.deviceId });
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    } catch (error) {
+      if (/Invalid device ID|Invalid snapshot ID/.test(error?.message || "")) {
+        return jsonResponse({ error: "Invalid snapshot completion request." }, 400, cors);
+      }
+      if (/cannot be completed/.test(error?.message || "")) {
+        return jsonResponse({ error: "Snapshot pages must be delivered before completion and acknowledgement." }, 409, cors);
+      }
+      throw error;
+    }
   }
 
   if (path === "/sync/changes" && request.method === "GET") {
@@ -462,7 +526,8 @@ export default {
     }
     const syncObjectPath = url.pathname === "/sync/objects" || /^\/sync\/objects\/[0-9a-f-]{36}$/.test(url.pathname);
     const syncDevicePath = url.pathname === "/sync/devices" || /^\/sync\/devices\/[0-9a-f-]{36}$/i.test(url.pathname);
-    const syncPath = ["/sync/consent", "/sync/records", "/sync/changes", "/sync/acknowledgements"].includes(url.pathname) || syncDevicePath || syncObjectPath;
+    const syncSnapshotPath = url.pathname === "/sync/snapshots" || /^\\/sync\\/snapshots\\/[0-9a-f-]{36}(?:\\/complete)?$/i.test(url.pathname);
+    const syncPath = ["/sync/consent", "/sync/records", "/sync/changes", "/sync/acknowledgements"].includes(url.pathname) || syncDevicePath || syncSnapshotPath || syncObjectPath;
     const supportedPath = ["/analyze", "/coach", "/mnemonic", "/research", "/chat"].includes(url.pathname) || syncPath;
     if (!supportedPath) return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: cors });
     if (syncPath && !["GET", "POST", "DELETE"].includes(request.method))
