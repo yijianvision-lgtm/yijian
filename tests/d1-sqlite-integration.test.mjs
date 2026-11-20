@@ -231,7 +231,8 @@ assert.deepEqual((await repoA.listChanges("graph", { after: completedSnapshot.ac
   "Changes committed after the snapshot watermark must be delivered as incremental changes.");
 const purgedSnapshots = await snapshotRepo.purgeExpired({ limit: 10 });
 assert.equal(purgedSnapshots, 0, "A live snapshot must not be purged before its expiry.");
-assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
+assert.equal((await repoA.getRecord("graph", "root")).payload.title, "Root changed after snapshot",
+  "The live record must reflect its post-snapshot mutation while the snapshot copy remains immutable.");
 
 // Versioned record writes use create-only semantics followed by compare-and-swap.
 // A stale writer receives the current remote version and payload instead of
