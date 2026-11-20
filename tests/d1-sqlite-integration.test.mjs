@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { createNebulaD1Repository } from "../nebula-d1-repository.js";
 import { createNebulaSyncDeviceRepository } from "../nebula-sync-device-repository.js";
+import { createNebulaSyncSnapshotRepository } from "../nebula-sync-snapshot-repository.js";
 import { createNebulaSyncConsentRepository } from "../nebula-sync-consent.js";
 import { reconcileNebulaR2UploadCleanup } from "../nebula-r2-cleanup.js";
 import { createNebulaR2Repository } from "../nebula-r2-repository.js";
@@ -37,6 +38,8 @@ const deviceAckMigration = await readFile(new URL("../migrations/0008_device_syn
 db.exec(deviceAckMigration);
 const deviceDeliveryMigration = await readFile(new URL("../migrations/0009_device_delivery_ledger.sql", import.meta.url), "utf8");
 db.exec(deviceDeliveryMigration);
+const snapshotMigration = await readFile(new URL("../migrations/0010_sync_bootstrap_snapshots.sql", import.meta.url), "utf8");
+db.exec(snapshotMigration);
 const deviceId = "123e4567-e89b-12d3-a456-426614174100";
 db.prepare("INSERT INTO nebula_sync_devices (owner_id, device_id, status, registered_at, last_seen_at) VALUES (?, ?, 'active', ?, ?)")
   .run(migrationOwner, deviceId, "2026-11-17T00:00:00.000Z", "2026-11-17T00:00:00.000Z");
@@ -194,6 +197,40 @@ await assert.rejects(deviceRepo.recordIssuedChanges(revokeRaceDevice, "graph", [
   /Device is revoked/);
 
 await assert.rejects(repoA.listChanges("graph", { after: -1 }), /Invalid change-feed cursor/);
+
+// A new device bootstraps from a stable snapshot and then resumes the change feed
+// strictly after the snapshot watermark, even while records mutate between pages.
+const snapshotDeviceId = "123e4567-e89b-42d3-a456-426614174108";
+const snapshotId = "123e4567-e89b-42d3-a456-426614174109";
+await deviceRepo.register(snapshotDeviceId);
+const snapshotRepo = createNebulaSyncSnapshotRepository({ db: d1, authContext: authA, now });
+const snapshot = await snapshotRepo.create({ snapshotId, deviceId: snapshotDeviceId, recordType: "graph" });
+assert.equal(snapshot.snapshotSequence, 3);
+await assert.rejects(snapshotRepo.complete({ snapshotId, deviceId: snapshotDeviceId }),
+  /cannot be completed/, "A device cannot acknowledge a snapshot before all pages are issued.");
+const snapshotPage1 = await snapshotRepo.listPage({ snapshotId, deviceId: snapshotDeviceId, after: "", limit: 2 });
+assert.equal(snapshotPage1.records.length, 2);
+assert.equal(snapshotPage1.hasMore, true);
+const snapshotReplay = await snapshotRepo.listPage({ snapshotId, deviceId: snapshotDeviceId, after: "", limit: 2 });
+assert.deepEqual(snapshotReplay.records, snapshotPage1.records, "Retrying a page cursor must replay the same immutable snapshot page.");
+await assert.rejects(snapshotRepo.listPage({ snapshotId, deviceId: snapshotDeviceId, after: "root", limit: 2 }),
+  /requested sequentially/, "A snapshot client cannot skip forward to an unissued page cursor.");
+const rootBeforeSnapshotUpdate = db.prepare("SELECT updated_at FROM nebula_records WHERE owner_id = ? AND record_type = 'graph' AND record_id = 'root'").get(ownerA).updated_at;
+await repoA.putRecord("graph", "root", { title: "Root changed after snapshot" }, { expectedUpdatedAt: rootBeforeSnapshotUpdate });
+const snapshotPage2 = await snapshotRepo.listPage({
+  snapshotId, deviceId: snapshotDeviceId, after: snapshotPage1.nextCursor, limit: 2
+});
+assert.equal(snapshotPage2.records.length, 1);
+assert.equal(snapshotPage2.records[0].recordId, "root");
+assert.equal(snapshotPage2.records[0].payload.title, "A private node",
+  "A concurrent update must not alter the immutable bootstrap snapshot.");
+assert.equal(snapshotPage2.complete, true);
+const completedSnapshot = await snapshotRepo.complete({ snapshotId, deviceId: snapshotDeviceId });
+assert.equal(completedSnapshot.acknowledgedSequence, 3);
+assert.deepEqual((await repoA.listChanges("graph", { after: completedSnapshot.acknowledgedSequence })).map(change => change.sequence), [4],
+  "Changes committed after the snapshot watermark must be delivered as incremental changes.");
+const purgedSnapshots = await snapshotRepo.purgeExpired({ limit: 10 });
+assert.equal(purgedSnapshots, 0, "A live snapshot must not be purged before its expiry.");
 assert.equal((await repoA.getRecord("graph", "root")).payload.title, "A private node");
 
 // Versioned record writes use create-only semantics followed by compare-and-swap.
