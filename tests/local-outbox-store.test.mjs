@@ -33,4 +33,7 @@ const reopenedStore = globalThis.NEBULA_LOCAL.getSyncOutboxStore();
 assert.deepEqual(await reopenedStore.list(), [item], "Outbox must survive module restart/reopen.");
 await reopenedStore.remove("durable-1");
 assert.deepEqual(await reopenedStore.list(), [], "Outbox deletion must persist.");
+
+// Run the local bootstrap snapshot integration suite in the same IndexedDB test job.
+await import("./local-snapshot-staging.test.mjs");
 console.log("NEBULA IndexedDB sync outbox persistence tests passed.");
