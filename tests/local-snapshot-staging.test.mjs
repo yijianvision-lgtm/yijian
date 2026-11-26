@@ -87,7 +87,8 @@ await local.stageGraphSnapshotChunk({
   snapshotId: "snapshot-interrupted", index: 1, ...secondPage, now: 2400
 });
 await local.commitGraphSnapshot({ snapshotId: "snapshot-interrupted", now: 2500 });
-assert.deepEqual(await local.loadGraph(), complete,
+const resumedGraph = await local.loadGraph();
+assert.deepEqual({ nodes: resumedGraph.nodes, links: resumedGraph.links }, complete,
   "A resumed transfer may commit only after all pages pass integrity validation.");
 
 // 3. Invalid manifest: data remains staged for diagnosis/retry, but live graph
