@@ -42,6 +42,10 @@ assert.deepEqual(await local.stageGraphSnapshotChunk({
 }), { staged: false, replayed: true, stagedChunks: 1 },
 "Replaying the exact same page must be idempotent.");
 await assert.rejects(local.stageGraphSnapshotChunk({
+  snapshotId: "snapshot-normal", index: 0,
+  nodes: [{ id: "new-root", title: "tampered replay" }], links: [], now: 1250
+}), /rejected|aborted/i, "A replay with different page contents must be rejected.");
+await assert.rejects(local.stageGraphSnapshotChunk({
   snapshotId: "snapshot-normal", index: 2, ...secondPage, now: 1300
 }), /rejected|aborted/i, "A client cannot skip a snapshot page.");
 await local.stageGraphSnapshotChunk({
@@ -114,7 +118,35 @@ assert.deepEqual(await local.abortGraphSnapshot("snapshot-invalid"),
   { aborted: false, snapshotId: "snapshot-invalid" },
   "Abort is idempotent when the staging session is already gone.");
 
-// 4. Expired sessions are cleaned during recovery; this does not touch the graph.
+// 4. Duplicate stable identities across pages fail closed even when the
+// manifest itself matches the duplicate payload.
+const stableBeforeDuplicate = await local.loadGraph();
+const duplicatePageA = { nodes: [{ id: "duplicate-node", title: "A" }], links: [] };
+const duplicatePageB = { nodes: [{ id: "duplicate-node", title: "B" }], links: [] };
+const duplicateManifest = await local.getGraphSnapshotChecksum(
+  [...duplicatePageA.nodes, ...duplicatePageB.nodes], []
+);
+await local.beginGraphSnapshot({
+  snapshotId: "snapshot-duplicate",
+  expectedChunks: 2,
+  expectedChecksum: duplicateManifest,
+  now: 3500
+});
+await local.stageGraphSnapshotChunk({
+  snapshotId: "snapshot-duplicate", index: 0, ...duplicatePageA, now: 3600
+});
+await local.stageGraphSnapshotChunk({
+  snapshotId: "snapshot-duplicate", index: 1, ...duplicatePageB, now: 3700
+});
+await assert.rejects(local.commitGraphSnapshot({
+  snapshotId: "snapshot-duplicate", now: 3800
+}), /duplicate node IDs/i);
+assert.deepEqual(await local.loadGraph(), stableBeforeDuplicate,
+  "Duplicate stable identities must never replace the current graph.");
+await local.abortGraphSnapshot("snapshot-duplicate");
+
+
+// 5. Expired sessions are cleaned during recovery; this does not touch the graph.
 await local.beginGraphSnapshot({
   snapshotId: "snapshot-expired",
   expectedChunks: 1,
