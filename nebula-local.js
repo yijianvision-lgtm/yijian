@@ -5,8 +5,10 @@
 const DB_MODE = new URL(import.meta.url).searchParams.get("env") || "production";
 const DB_ENVIRONMENT = DB_MODE === "preview" ? "preview" : "production";
 const DB_NAME = DB_ENVIRONMENT === "preview" ? "nebula_local_preview_v1" : "nebula_local_v2";
-// Previous schema DB_VERSION = 7; version 8 adds isolated sync snapshot staging stores.\nconst DB_VERSION = 8;
-const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence", "frameworkPlacements", "explorationPaths", "explorationSteps", "syncOutbox"];\nconst INTERNAL_SYNC_STORES = ["syncSnapshotSessions", "syncSnapshotChunks"];
+// Previous schema DB_VERSION = 7; version 8 adds isolated sync snapshot staging stores.
+const DB_VERSION = 8;
+const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence", "frameworkPlacements", "explorationPaths", "explorationSteps", "syncOutbox"];
+const INTERNAL_SYNC_STORES = ["syncSnapshotSessions", "syncSnapshotChunks"];
 
 function openDB() {
   return new Promise((resolve, reject) => {
