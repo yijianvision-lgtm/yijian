@@ -5,15 +5,15 @@
 const DB_MODE = new URL(import.meta.url).searchParams.get("env") || "production";
 const DB_ENVIRONMENT = DB_MODE === "preview" ? "preview" : "production";
 const DB_NAME = DB_ENVIRONMENT === "preview" ? "nebula_local_preview_v1" : "nebula_local_v2";
-const DB_VERSION = 8;
-const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence", "frameworkPlacements", "explorationPaths", "explorationSteps", "syncOutbox", "syncSnapshotSessions", "syncSnapshotChunks"];
+// Previous schema DB_VERSION = 7; version 8 adds isolated sync snapshot staging stores.\nconst DB_VERSION = 8;
+const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence", "frameworkPlacements", "explorationPaths", "explorationSteps", "syncOutbox"];\nconst INTERNAL_SYNC_STORES = ["syncSnapshotSessions", "syncSnapshotChunks"];
 
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      for (const name of STORES) if (!db.objectStoreNames.contains(name)) {
+      for (const name of [...STORES, ...INTERNAL_SYNC_STORES]) if (!db.objectStoreNames.contains(name)) {
         if (["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence","frameworkPlacements","explorationPaths","explorationSteps","syncOutbox","syncSnapshotSessions","syncSnapshotChunks"].includes(name)) db.createObjectStore(name, { keyPath: "id" });
         else db.createObjectStore(name);
       }
