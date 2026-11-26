@@ -2364,6 +2364,7 @@ Object.assign(NEBULA_LOCAL, {
   },
   async stageGraphSnapshotChunk({ snapshotId, index, nodes, links, now = Date.now() } = {}) {
     if (typeof snapshotId !== "string" || !snapshotId) throw new TypeError("Snapshot ID is required.");
+    if (!Number.isFinite(now)) throw new RangeError("Snapshot page timestamp must be finite.");
     if (!Number.isInteger(index) || index < 0) throw new RangeError("Chunk index must be non-negative.");
     validateSnapshotPart(nodes, links);
     const checksum = await snapshotHash({ nodes, links });
@@ -2403,6 +2404,7 @@ Object.assign(NEBULA_LOCAL, {
   },
   async commitGraphSnapshot({ snapshotId, now = Date.now() } = {}) {
     if (typeof snapshotId !== "string" || !snapshotId) throw new TypeError("Snapshot ID is required.");
+    if (!Number.isFinite(now)) throw new RangeError("Snapshot commit timestamp must be finite.");
     const db = await openDB();
     const staged = await snapshotRead(db, ["syncSnapshotSessions","syncSnapshotChunks"], tx => {
       let session, rows;
@@ -2447,7 +2449,7 @@ Object.assign(NEBULA_LOCAL, {
         current.onsuccess=()=>{
           const live=current.result;
           if(!live || live.status!=="staging" || live.expiresAt<=now ||
-             live.stagedChunks!==session.stagedChunks || live.expectedChecksum!==session.expectedChecksum) { tx.abort(); return; }
+             live.stagedChunks!==session.stagedChunks || live.expectedChunks!==session.expectedChunks || live.expectedChecksum!==session.expectedChecksum) { tx.abort(); return; }
           tx.objectStore("graph").put(graph,"main");
           sessions.delete(snapshotId);
           const chunksStore=tx.objectStore("syncSnapshotChunks");
