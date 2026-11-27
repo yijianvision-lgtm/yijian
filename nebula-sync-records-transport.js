@@ -100,12 +100,17 @@ export function createNebulaRecordsTransport({ baseUrl, fetchImpl = globalThis.f
     }
     return Object.freeze(result);
   }
-  async function completeSnapshot({ snapshotId, deviceId, token } = {}) {
+  async function completeSnapshot({ snapshotId, deviceId, appliedChecksum, token } = {}) {
+    if (typeof appliedChecksum !== "string" || !/^[a-f0-9]{64}$/.test(appliedChecksum)) {
+      throw new TypeError("A valid local graph application checksum is required before snapshot completion.");
+    }
     const result = await requestJson("/sync/snapshots/" + encodeURIComponent(snapshotId) + "/complete", {
-      method: "POST", token, body: { deviceId }
+      method: "POST", token, body: { deviceId, appliedChecksum }
     });
-    if (result.snapshotId !== snapshotId || result.completed !== true || !Number.isSafeInteger(result.snapshotSequence)) {
-      throw new Error("Remote snapshot completion response is malformed.");
+    if (result.snapshotId !== snapshotId || result.completed !== true ||
+        !Number.isSafeInteger(result.snapshotSequence) || result.appliedChecksum !== appliedChecksum ||
+        typeof result.appliedAt !== "string") {
+      throw new Error("Remote snapshot completion receipt is malformed.");
     }
     return Object.freeze(result);
   }

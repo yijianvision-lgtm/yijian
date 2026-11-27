@@ -163,6 +163,9 @@ assert.equal(retried.completed, true);
 assert.equal(retried.completed, true);
 assert.equal(retried.snapshotSequence, 17);
 assert.equal(completeCalls, 2);
+assert.ok(requests.filter(request => request.path.endsWith("/complete")).every(request =>
+  /^[a-f0-9]{64}$/.test(request.body?.appliedChecksum || "")),
+  "Every server completion must carry the local graph checksum receipt.");
 assert.equal((await local.loadMeta("nebulaSnapshotCompletionPending")).status, "completed");
 assert.ok(localGraph.nodes.some(node => node.id === "incremental-node"),
   "Changes after the snapshot watermark must be applied after bootstrap completion.");

@@ -49,6 +49,8 @@ const deviceDeliveryMigration = await readFile(new URL("../migrations/0009_devic
 db.exec(deviceDeliveryMigration);
 const snapshotMigration = await readFile(new URL("../migrations/0010_sync_bootstrap_snapshots.sql", import.meta.url), "utf8");
 db.exec(snapshotMigration);
+const snapshotReceiptMigration = await readFile(new URL("../migrations/0011_snapshot_apply_receipts.sql", import.meta.url), "utf8");
+db.exec(snapshotReceiptMigration);
 const deviceId = "123e4567-e89b-12d3-a456-426614174100";
 db.prepare("INSERT INTO nebula_sync_devices (owner_id, device_id, status, registered_at, last_seen_at) VALUES (?, ?, 'active', ?, ?)")
   .run(migrationOwner, deviceId, "2026-11-17T00:00:00.000Z", "2026-11-17T00:00:00.000Z");
@@ -220,7 +222,8 @@ assert.equal(snapshot.manifest.pageSize, 50);
 assert.equal(snapshot.manifest.pageCount, 1);
 assert.match(snapshot.manifest.recordsChecksum, /^[a-f0-9]{64}$/);
 assert.equal(snapshot.manifest.checksumAlgorithm, "sha-256-canonical-json-v1");
-await assert.rejects(snapshotRepo.complete({ snapshotId, deviceId: snapshotDeviceId }),
+const graphAppliedChecksum = "a".repeat(64);
+await assert.rejects(snapshotRepo.complete({ snapshotId, deviceId: snapshotDeviceId, appliedChecksum: graphAppliedChecksum }),
   /cannot be completed/, "A device cannot acknowledge a snapshot before all pages are issued.");
 const snapshotPage1 = await snapshotRepo.listPage({ snapshotId, deviceId: snapshotDeviceId, after: "", limit: 2 });
 assert.equal(snapshotPage1.records.length, 2);
@@ -241,8 +244,16 @@ assert.equal(snapshotPage2.records[0].payload.title, "A private node",
 assert.equal(snapshotPage2.complete, true);
 assert.equal(await checksumCanonical([...snapshotPage1.records, ...snapshotPage2.records]), snapshot.manifest.recordsChecksum,
   "The server manifest must authenticate the exact immutable records returned by the snapshot pages.");
-const completedSnapshot = await snapshotRepo.complete({ snapshotId, deviceId: snapshotDeviceId });
+const completedSnapshot = await snapshotRepo.complete({ snapshotId, deviceId: snapshotDeviceId, appliedChecksum: graphAppliedChecksum });
 assert.equal(completedSnapshot.acknowledgedSequence, 3);
+assert.equal(completedSnapshot.appliedChecksum, graphAppliedChecksum);
+assert.equal(completedSnapshot.appliedAt, now());
+assert.equal(db.prepare("SELECT applied_checksum FROM nebula_sync_snapshots WHERE owner_id = ? AND snapshot_id = ?").get(ownerA, snapshotId).applied_checksum, graphAppliedChecksum);
+const idempotentReceipt = await snapshotRepo.complete({ snapshotId, deviceId: snapshotDeviceId, appliedChecksum: graphAppliedChecksum });
+assert.equal(idempotentReceipt.appliedChecksum, graphAppliedChecksum);
+await assert.rejects(snapshotRepo.complete({ snapshotId, deviceId: snapshotDeviceId, appliedChecksum: "b".repeat(64) }),
+  /existing receipt cannot be replaced/,
+  "A completed snapshot's local application receipt must be immutable.");
 assert.deepEqual((await repoA.listChanges("graph", { after: completedSnapshot.acknowledgedSequence })).map(change => change.sequence), [4],
   "Changes committed after the snapshot watermark must be delivered as incremental changes.");
 const purgedSnapshots = await snapshotRepo.purgeExpired({ limit: 10 });

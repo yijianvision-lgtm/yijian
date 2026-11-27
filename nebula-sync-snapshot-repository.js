@@ -172,25 +172,29 @@ export function createNebulaSyncSnapshotRepository({ db, authContext, now = () =
       });
     },
 
-    async complete({ snapshotId, deviceId }) {
+    async complete({ snapshotId, deviceId, appliedChecksum }) {
       const sid = assertUuid(snapshotId, SNAPSHOT_ID_PATTERN, "snapshot ID");
       const did = assertUuid(deviceId, DEVICE_ID_PATTERN, "device ID");
+      if (typeof appliedChecksum !== "string" || !/^[a-f0-9]{64}$/.test(appliedChecksum)) {
+        throw new TypeError("A lowercase SHA-256 local application receipt is required.");
+      }
       const at = getNow();
       await db.batch([
         db.prepare(
-          "UPDATE nebula_sync_snapshots SET status = 'completed', completed_at = ? WHERE owner_id = ? AND snapshot_id = ? AND device_id = ? AND status IN ('active', 'completed') AND pages_complete = 1 AND expires_at > ? AND EXISTS (SELECT 1 FROM nebula_sync_devices d WHERE d.owner_id = ? AND d.device_id = ? AND d.status = 'active') AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = nebula_sync_snapshots.record_type))"
-        ).bind(at, ownerId, sid, did, at, ownerId, did, ownerId),
+          "UPDATE nebula_sync_snapshots SET status = 'completed', completed_at = COALESCE(completed_at, ?), applied_checksum = COALESCE(applied_checksum, ?), applied_at = COALESCE(applied_at, ?) WHERE owner_id = ? AND snapshot_id = ? AND device_id = ? AND status IN ('active', 'completed') AND pages_complete = 1 AND expires_at > ? AND (applied_checksum IS NULL OR applied_checksum = ?) AND EXISTS (SELECT 1 FROM nebula_sync_devices d WHERE d.owner_id = ? AND d.device_id = ? AND d.status = 'active') AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = ? AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = nebula_sync_snapshots.record_type))"
+        ).bind(at, appliedChecksum, at, ownerId, sid, did, at, appliedChecksum, ownerId, did, ownerId),
         db.prepare(
-          "INSERT INTO nebula_sync_device_acks (owner_id, device_id, record_type, acknowledged_seq, updated_at) SELECT s.owner_id, s.device_id, s.record_type, s.snapshot_seq, ? FROM nebula_sync_snapshots s WHERE s.owner_id = ? AND s.snapshot_id = ? AND s.device_id = ? AND s.status = 'completed' AND EXISTS (SELECT 1 FROM nebula_sync_devices d WHERE d.owner_id = s.owner_id AND d.device_id = s.device_id AND d.status = 'active') ON CONFLICT(owner_id, device_id, record_type) DO UPDATE SET acknowledged_seq = MAX(nebula_sync_device_acks.acknowledged_seq, excluded.acknowledged_seq), updated_at = excluded.updated_at"
-        ).bind(at, ownerId, sid, did)
+          "INSERT INTO nebula_sync_device_acks (owner_id, device_id, record_type, acknowledged_seq, updated_at) SELECT s.owner_id, s.device_id, s.record_type, s.snapshot_seq, ? FROM nebula_sync_snapshots s WHERE s.owner_id = ? AND s.snapshot_id = ? AND s.device_id = ? AND s.status = 'completed' AND s.applied_checksum = ? AND EXISTS (SELECT 1 FROM nebula_sync_devices d WHERE d.owner_id = s.owner_id AND d.device_id = s.device_id AND d.status = 'active') ON CONFLICT(owner_id, device_id, record_type) DO UPDATE SET acknowledged_seq = MAX(nebula_sync_device_acks.acknowledged_seq, excluded.acknowledged_seq), updated_at = excluded.updated_at"
+        ).bind(at, ownerId, sid, did, appliedChecksum)
       ]);
       const row = await db.prepare(
-        "SELECT s.snapshot_seq, s.status, a.acknowledged_seq FROM nebula_sync_snapshots s JOIN nebula_sync_devices d ON d.owner_id = s.owner_id AND d.device_id = s.device_id AND d.status = 'active' LEFT JOIN nebula_sync_device_acks a ON a.owner_id = s.owner_id AND a.device_id = s.device_id AND a.record_type = s.record_type WHERE s.owner_id = ? AND s.snapshot_id = ? AND s.device_id = ? AND s.status = 'completed' AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = s.owner_id AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = s.record_type))"
-      ).bind(ownerId, sid, did).first();
-      if (!row) throw new Error("Snapshot cannot be completed until every page has been delivered to an active, consented device.");
+        "SELECT s.snapshot_seq, s.status, s.applied_checksum, s.applied_at, a.acknowledged_seq FROM nebula_sync_snapshots s JOIN nebula_sync_devices d ON d.owner_id = s.owner_id AND d.device_id = s.device_id AND d.status = 'active' LEFT JOIN nebula_sync_device_acks a ON a.owner_id = s.owner_id AND a.device_id = s.device_id AND a.record_type = s.record_type WHERE s.owner_id = ? AND s.snapshot_id = ? AND s.device_id = ? AND s.status = 'completed' AND s.applied_checksum = ? AND EXISTS (SELECT 1 FROM nebula_sync_consents c WHERE c.owner_id = s.owner_id AND c.status = 'enabled' AND EXISTS (SELECT 1 FROM json_each(c.categories_json) j WHERE j.value = s.record_type))"
+      ).bind(ownerId, sid, did, appliedChecksum).first();
+      if (!row) throw new Error("Snapshot cannot be completed with this receipt until every page is delivered to an active, consented device; an existing receipt cannot be replaced.");
       return Object.freeze({
         snapshotId: sid, completed: true, snapshotSequence: Number(row.snapshot_seq),
-        acknowledgedSequence: Number(row.acknowledged_seq || 0)
+        acknowledgedSequence: Number(row.acknowledged_seq || 0),
+        appliedChecksum: row.applied_checksum, appliedAt: row.applied_at
       });
     },
 

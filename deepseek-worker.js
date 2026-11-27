@@ -309,7 +309,9 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
     try { body = await request.json(); }
     catch { return jsonResponse({ error: "A valid snapshot completion request is required." }, 400, cors); }
     try {
-      const result = await getSnapshotRepository().complete({ snapshotId: snapshotPathMatch[1], deviceId: body.deviceId });
+      const result = await getSnapshotRepository().complete({
+        snapshotId: snapshotPathMatch[1], deviceId: body.deviceId, appliedChecksum: body.appliedChecksum
+      });
       return jsonResponse({ ok: true, ...result }, 200, cors);
     } catch (error) {
       if (/Invalid device ID|Invalid snapshot ID/.test(error?.message || "")) {

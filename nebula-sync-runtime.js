@@ -84,7 +84,7 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
     if (pending.status !== "localCommitted") return { pending: true, reason: "snapshot-commit-state-unverified" };
     const token = await auth.getAccessToken();
     if (!token || !(await auth.canSyncCategory(pending.recordType))) return { pending: true, reason: "consent-or-session-unavailable" };
-    const completed = await send.completeSnapshot({ snapshotId: pending.snapshotId, deviceId: pending.deviceId, token });
+    const completed = await send.completeSnapshot({ snapshotId: pending.snapshotId, deviceId: pending.deviceId, appliedChecksum: pending.expectedChecksum, token });
     await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "completed", completedAt: Date.now() });
     const incremental = await syncGraphChanges({ after: completed.snapshotSequence, deviceId: pending.deviceId });
     return { pending: false, completed: true, recovered: true, snapshotSequence: completed.snapshotSequence, incremental };
@@ -197,7 +197,7 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
       try {
         token = await auth.getAccessToken();
         if (!token || !(await auth.canSyncCategory("graph"))) throw new Error("Graph sync consent or session is no longer active.");
-        const completed = await send.completeSnapshot({ snapshotId: snapshot.snapshotId, deviceId, token });
+        const completed = await send.completeSnapshot({ snapshotId: snapshot.snapshotId, deviceId, appliedChecksum: expectedChecksum, token });
         await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "completed", completedAt: Date.now() });
         const incremental = await syncGraphChanges({ after: completed.snapshotSequence, deviceId });
         return { ...committed, serverComplete: true, snapshotSequence: completed.snapshotSequence, manifest, incremental };
