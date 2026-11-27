@@ -55,7 +55,7 @@ const local = {
   },
   async abortGraphSnapshot(snapshotId) { staged.delete(snapshotId); return { aborted: true }; }
 };
-const deviceId = "123e4567-e89b-42d3-a456-426614174104";
+let deviceId = "123e4567-e89b-42d3-a456-426614174104";
 const fetchImpl = async (url, init = {}) => {
   const u = new URL(String(url));
   requests.push({ path: u.pathname, method: init.method || "GET", body: init.body ? JSON.parse(init.body) : null });
@@ -68,6 +68,7 @@ const fetchImpl = async (url, init = {}) => {
     return new Response(JSON.stringify({ consent }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (u.pathname === "/sync/devices" && init.method === "POST") {
+    deviceId = JSON.parse(init.body).deviceId;
     return new Response(JSON.stringify({ device: { deviceId, status: "active" } }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (u.pathname === "/sync/snapshots" && init.method === "POST") {
