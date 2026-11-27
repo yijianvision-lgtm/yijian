@@ -67,7 +67,7 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
   }
   async function retrySnapshotCompletion() {
     const pending = await local.loadMeta?.("nebulaSnapshotCompletionPending");
-    if (!pending) return { pending: false };
+    if (!pending || pending.status === "discarded") return { pending: false, discarded: pending?.status === "discarded" };
     if (pending.status === "completed") {
       const incremental = await syncGraphChanges({ after: pending.snapshotSequence, deviceId: pending.deviceId });
       return { pending: false, completed: true, recovered: true, incremental };
@@ -81,6 +81,7 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
       }
       await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "localCommitted" });
     }
+    if (pending.status !== "localCommitted") return { pending: true, reason: "snapshot-commit-state-unverified" };
     const token = await auth.getAccessToken();
     if (!token || !(await auth.canSyncCategory(pending.recordType))) return { pending: true, reason: "consent-or-session-unavailable" };
     const completed = await send.completeSnapshot({ snapshotId: pending.snapshotId, deviceId: pending.deviceId, token });
