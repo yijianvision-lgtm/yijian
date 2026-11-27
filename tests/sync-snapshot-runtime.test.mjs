@@ -137,5 +137,5 @@ assert.equal(retried.completed, true);
 assert.equal(retried.snapshotSequence, 17);
 assert.equal(completeCalls, 2);
 assert.equal((await local.loadMeta("nebulaSnapshotCompletionPending")).status, "completed");
-assert.ok(commitCalls >= 3);
+assert.equal(commitCalls, 2, "Only the deliberate failed commit and the later successful commit should execute.");
 console.log("NEBULA snapshot runtime integration tests passed.");
