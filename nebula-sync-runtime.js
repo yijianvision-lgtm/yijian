@@ -186,6 +186,11 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
         snapshotId: snapshot.snapshotId, deviceId, recordType: "graph",
         snapshotSequence: snapshot.snapshotSequence, expectedChecksum, status: "prepared", createdAt: Date.now()
       };
+      if (!(await auth.canSyncCategory("graph"))) throw new Error("Graph sync consent was revoked before local commit.");
+      token = await auth.getAccessToken();
+      if (!token) throw new Error("The signed-in session ended before local commit.");
+      const activeDevices = await send.listDevices({ token });
+      if (!activeDevices.some(device => device.deviceId === deviceId)) throw new Error("The sync device was revoked before local commit.");
       await local.saveMeta("nebulaSnapshotCompletionPending", pending);
       const committed = await local.commitGraphSnapshot({ snapshotId: snapshot.snapshotId });
       await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "localCommitted", committedAt: Date.now() });

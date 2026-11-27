@@ -313,6 +313,10 @@ try {
   const listRecords = await call("/sync/records?type=graph");
   assert.equal(listRecords.status, 200);
   assert.equal((await listRecords.json()).records[0].recordId, "root-1");
+  const readSingleRecord = await call("/sync/records?type=graph&id=root-1");
+  assert.equal(readSingleRecord.status, 200);
+  assert.equal((await readSingleRecord.json()).record.payload.title, "Knowledge graph v2",
+    "Incremental change delivery must be able to fetch the current owner-scoped record by stable ID.");
   const missingDeviceChangePage = await call("/sync/changes?type=graph&after=0&limit=10");
   assert.equal(missingDeviceChangePage.status, 400,
     "Change-feed delivery must require a registered device identifier.");

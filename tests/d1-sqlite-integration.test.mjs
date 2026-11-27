@@ -11,6 +11,15 @@ import { createNebulaR2Repository } from "../nebula-r2-repository.js";
 // Execute the actual Cloudflare D1 SQLite migrations and repository SQL against
 // Node's SQLite engine. This is stronger than the contract mocks, but is still
 // not a live Cloudflare D1 deployment test.
+async function checksumCanonical(value) {
+  const canonical = item => {
+    if (Array.isArray(item)) return "[" + item.map(canonical).join(",") + "]";
+    if (item && typeof item === "object") return "{" + Object.keys(item).sort().map(key => JSON.stringify(key) + ":" + canonical(item[key])).join(",") + "}";
+    return JSON.stringify(item);
+  };
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical(value)));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
 const db = new DatabaseSync(":memory:");
 const migrations = [
   "0001_owner_scoped_records.sql",
@@ -206,6 +215,11 @@ await deviceRepo.register(snapshotDeviceId);
 const snapshotRepo = createNebulaSyncSnapshotRepository({ db: d1, authContext: authA, now });
 const snapshot = await snapshotRepo.create({ snapshotId, deviceId: snapshotDeviceId, recordType: "graph" });
 assert.equal(snapshot.snapshotSequence, 3);
+assert.equal(snapshot.manifest.recordCount, 3);
+assert.equal(snapshot.manifest.pageSize, 50);
+assert.equal(snapshot.manifest.pageCount, 1);
+assert.match(snapshot.manifest.recordsChecksum, /^[a-f0-9]{64}$/);
+assert.equal(snapshot.manifest.checksumAlgorithm, "sha-256-canonical-json-v1");
 await assert.rejects(snapshotRepo.complete({ snapshotId, deviceId: snapshotDeviceId }),
   /cannot be completed/, "A device cannot acknowledge a snapshot before all pages are issued.");
 const snapshotPage1 = await snapshotRepo.listPage({ snapshotId, deviceId: snapshotDeviceId, after: "", limit: 2 });
@@ -225,6 +239,8 @@ assert.equal(snapshotPage2.records[0].recordId, "root");
 assert.equal(snapshotPage2.records[0].payload.title, "A private node",
   "A concurrent update must not alter the immutable bootstrap snapshot.");
 assert.equal(snapshotPage2.complete, true);
+assert.equal(await checksumCanonical([...snapshotPage1.records, ...snapshotPage2.records]), snapshot.manifest.recordsChecksum,
+  "The server manifest must authenticate the exact immutable records returned by the snapshot pages.");
 const completedSnapshot = await snapshotRepo.complete({ snapshotId, deviceId: snapshotDeviceId });
 assert.equal(completedSnapshot.acknowledgedSequence, 3);
 assert.deepEqual((await repoA.listChanges("graph", { after: completedSnapshot.acknowledgedSequence })).map(change => change.sequence), [4],

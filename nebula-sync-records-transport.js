@@ -64,6 +64,11 @@ export function createNebulaRecordsTransport({ baseUrl, fetchImpl = globalThis.f
     if (!response.ok) throw new Error("Remote snapshot operation failed with HTTP " + response.status + ".");
     return result;
   }
+  async function listDevices({ token } = {}) {
+    const result = await requestJson("/sync/devices", { token });
+    if (!Array.isArray(result.devices)) throw new Error("Remote device list is malformed.");
+    return result.devices;
+  }
   async function registerDevice({ deviceId, token } = {}) {
     const result = await requestJson("/sync/devices", { method: "POST", token, body: { deviceId } });
     if (result.device?.deviceId !== deviceId || result.device?.status !== "active") throw new Error("Remote device registration response is malformed.");
@@ -137,7 +142,7 @@ export function createNebulaRecordsTransport({ baseUrl, fetchImpl = globalThis.f
     return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
   }
   Object.defineProperties(send, {
-    listRecords: { value: listRecords }, registerDevice: { value: registerDevice },
+    listRecords: { value: listRecords }, registerDevice: { value: registerDevice }, listDevices: { value: listDevices },
     createSnapshot: { value: createSnapshot }, listSnapshotPage: { value: listSnapshotPage },
     completeSnapshot: { value: completeSnapshot }, listChanges: { value: listChanges },
     acknowledge: { value: acknowledge }, getRecord: { value: getRecord }, checksumSnapshotRecords: { value: checksumSnapshotRecords }
