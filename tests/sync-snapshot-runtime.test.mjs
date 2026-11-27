@@ -71,6 +71,9 @@ const fetchImpl = async (url, init = {}) => {
     deviceId = JSON.parse(init.body).deviceId;
     return new Response(JSON.stringify({ device: { deviceId, status: "active" } }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
+  if (u.pathname === "/sync/devices" && (init.method || "GET") === "GET") {
+    return new Response(JSON.stringify({ devices: [{ deviceId, status: "active" }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
   if (u.pathname === "/sync/snapshots" && init.method === "POST") {
     return new Response(JSON.stringify({ snapshot: {
       snapshotId: deviceId, deviceId, recordType: "graph", snapshotSequence: 17, status: "active",
