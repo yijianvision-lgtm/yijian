@@ -44,6 +44,8 @@ jobs:
         run: node tests/sync-records-transport.test.mjs
       - name: Test explicit sync runtime composition
         run: node tests/sync-runtime.test.mjs
+      - name: Test atomic graph bootstrap snapshot runtime
+        run: node tests/sync-snapshot-runtime.test.mjs
       - name: Test local graph conflict applier
         run: node tests/local-record-applier.test.mjs
       - name: Test durable IndexedDB outbox storage

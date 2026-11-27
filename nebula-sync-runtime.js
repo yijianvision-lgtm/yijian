@@ -67,7 +67,11 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
   }
   async function retrySnapshotCompletion() {
     const pending = await local.loadMeta?.("nebulaSnapshotCompletionPending");
-    if (!pending || pending.status === "completed") return { pending: false };
+    if (!pending) return { pending: false };
+    if (pending.status === "completed") {
+      const incremental = await syncGraphChanges({ after: pending.snapshotSequence, deviceId: pending.deviceId });
+      return { pending: false, completed: true, recovered: true, incremental };
+    }
     if (pending.status === "prepared") {
       const graph = await local.loadGraph();
       const checksum = graph ? await local.getGraphSnapshotChecksum(graph.nodes, graph.links) : null;
@@ -81,7 +85,8 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
     if (!token || !(await auth.canSyncCategory(pending.recordType))) return { pending: true, reason: "consent-or-session-unavailable" };
     const completed = await send.completeSnapshot({ snapshotId: pending.snapshotId, deviceId: pending.deviceId, token });
     await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "completed", completedAt: Date.now() });
-    return { pending: false, completed };
+    const incremental = await syncGraphChanges({ after: completed.snapshotSequence, deviceId: pending.deviceId });
+    return { pending: false, completed: true, recovered: true, snapshotSequence: completed.snapshotSequence, incremental };
   }
   async function syncGraphChanges({ after = 0, deviceId } = {}) {
     if (!Number.isSafeInteger(after) || after < 0) throw new RangeError("Invalid incremental sync watermark.");
@@ -133,6 +138,7 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
     }
     const retry = await retrySnapshotCompletion();
     if (retry.pending) return { committed: true, serverComplete: false, completionPending: true, retry };
+    if (retry.completed) return { committed: true, serverComplete: true, recoveredCompletion: true, retry };
     const deviceId = await getDeviceId();
     let token = await auth.getAccessToken();
     if (!token) throw new Error("A verified access token is required.");
