@@ -111,6 +111,18 @@ export function createNebulaRecordsTransport({ baseUrl, fetchImpl = globalThis.f
     if (!Array.isArray(result.changes) || !Number.isSafeInteger(result.nextCursor)) throw new Error("Remote change page is malformed.");
     return Object.freeze(result);
   }
+  async function getRecord({ category, recordId, token } = {}) {
+    if (typeof category !== "string" || !/^[a-z][a-z0-9_-]{0,63}$/.test(category)) throw new TypeError("Invalid record category.");
+    if (typeof recordId !== "string" || !/^[A-Za-z0-9._:-]{1,128}$/.test(recordId)) throw new TypeError("Invalid record ID.");
+    const query = new URLSearchParams({ type: category, id: recordId });
+    const result = await requestJson("/sync/records?" + query, { token });
+    const record = result.record;
+    if (!record || record.recordType !== category || record.recordId !== recordId ||
+        typeof record.deleted !== "boolean" || typeof record.updatedAt !== "string" ||
+        (!record.deleted && (!record.payload || typeof record.payload !== "object" || Array.isArray(record.payload))) ||
+        (record.deleted && record.payload !== null)) throw new Error("Remote record response is malformed.");
+    return Object.freeze(record);
+  }
   async function acknowledge({ deviceId, recordType, sequence, token } = {}) {
     return requestJson("/sync/acknowledgements", { method: "POST", token, body: { deviceId, recordType, sequence } });
   }
@@ -128,7 +140,7 @@ export function createNebulaRecordsTransport({ baseUrl, fetchImpl = globalThis.f
     listRecords: { value: listRecords }, registerDevice: { value: registerDevice },
     createSnapshot: { value: createSnapshot }, listSnapshotPage: { value: listSnapshotPage },
     completeSnapshot: { value: completeSnapshot }, listChanges: { value: listChanges },
-    acknowledge: { value: acknowledge }, checksumSnapshotRecords: { value: checksumSnapshotRecords }
+    acknowledge: { value: acknowledge }, getRecord: { value: getRecord }, checksumSnapshotRecords: { value: checksumSnapshotRecords }
   });
   return send;
 }

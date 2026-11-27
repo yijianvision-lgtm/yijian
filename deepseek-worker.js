@@ -357,6 +357,11 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
     if (request.method !== "DELETE") await consentRepository.requireCategory(type);
     const repository = createNebulaD1Repository({ db: env.NEBULA_DB, authContext, syncConsent: consent });
     if (request.method === "GET") {
+      const recordId = url.searchParams.get("id");
+      if (recordId !== null) {
+        const record = await repository.getRecord(type, recordId);
+        return jsonResponse({ ok: true, record }, 200, cors);
+      }
       const after = url.searchParams.get("after") || null;
       const rawLimit = Number(url.searchParams.get("limit") || 50);
       const records = await repository.listRecords(type, { after, limit: rawLimit });

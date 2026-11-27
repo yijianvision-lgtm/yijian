@@ -83,6 +83,48 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
     await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "completed", completedAt: Date.now() });
     return { pending: false, completed };
   }
+  async function syncGraphChanges({ after = 0, deviceId } = {}) {
+    if (!Number.isSafeInteger(after) || after < 0) throw new RangeError("Invalid incremental sync watermark.");
+    if (!(await auth.canSyncCategory("graph"))) throw new Error("Graph sync consent is not enabled.");
+    const resolvedDeviceId = deviceId || await getDeviceId();
+    let cursor = after, applied = 0, pages = 0;
+    while (true) {
+      const token = await auth.getAccessToken();
+      if (!token) throw new Error("A verified access token is required for incremental sync.");
+      const page = await send.listChanges({ category: "graph", after: cursor, deviceId: resolvedDeviceId, limit: 50, token });
+      if (!page.changes.length) {
+        if (page.nextCursor !== cursor) throw new Error("Empty change page advanced its cursor unexpectedly.");
+        break;
+      }
+      let expected = cursor + 1;
+      for (const change of page.changes) {
+        if (change.sequence !== expected || typeof change.recordId !== "string" ||
+            typeof change.recordVersion !== "string" || !["upsert", "delete"].includes(change.operation)) {
+          throw new Error("Incremental change page is not contiguous or contains invalid metadata.");
+        }
+        if (!(await auth.canSyncCategory("graph"))) throw new Error("Graph sync consent was revoked during incremental sync.");
+        const freshToken = await auth.getAccessToken();
+        if (!freshToken) throw new Error("The signed-in session ended during incremental sync.");
+        const record = await send.getRecord({ category: "graph", recordId: change.recordId, token: freshToken });
+        if (Date.parse(record.updatedAt) < Date.parse(change.recordVersion)) throw new Error("Fetched record version is older than its change-feed entry.");
+        await localApplier({
+          category: record.recordType, recordId: record.recordId,
+          payload: record.payload, version: record.updatedAt, deleted: record.deleted
+        });
+        expected += 1;
+        applied += 1;
+      }
+      const lastSequence = page.changes[page.changes.length - 1].sequence;
+      if (page.nextCursor !== lastSequence) throw new Error("Change-feed cursor does not match its final sequence.");
+      const ackToken = await auth.getAccessToken();
+      if (!ackToken || !(await auth.canSyncCategory("graph"))) throw new Error("Consent or session was revoked before change acknowledgement.");
+      await send.acknowledge({ deviceId: resolvedDeviceId, recordType: "graph", sequence: lastSequence, token: ackToken });
+      cursor = lastSequence;
+      pages += 1;
+      if (page.changes.length < 50) break;
+    }
+    return Object.freeze({ applied, pages, acknowledgedSequence: cursor });
+  }
   async function bootstrapGraphSnapshot() {
     await requireCategoryConsent("graph");
     if (typeof local.beginGraphSnapshot !== "function" || typeof local.stageGraphSnapshotChunk !== "function" ||
@@ -145,7 +187,8 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
         if (!token || !(await auth.canSyncCategory("graph"))) throw new Error("Graph sync consent or session is no longer active.");
         const completed = await send.completeSnapshot({ snapshotId: snapshot.snapshotId, deviceId, token });
         await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "completed", completedAt: Date.now() });
-        return { ...committed, serverComplete: true, snapshotSequence: completed.snapshotSequence, manifest };
+        const incremental = await syncGraphChanges({ after: completed.snapshotSequence, deviceId });
+        return { ...committed, serverComplete: true, snapshotSequence: completed.snapshotSequence, manifest, incremental };
       } catch (error) {
         return { ...committed, serverComplete: false, completionPending: true, snapshotSequence: snapshot.snapshotSequence, manifest, completionError: error.message };
       }
@@ -217,7 +260,7 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
       return queue.enqueueMany([buildNebulaGraphLinkDeleteOperation(sourceId, targetId)], { groupId });
     },
     listPending: () => queue.list(), resolveConflict: (id, resolution) => queue.resolveConflict(id, resolution),
-    previewCloudRecords, applyCloudRecord, bootstrapGraphSnapshot, retrySnapshotCompletion,
+    previewCloudRecords, applyCloudRecord, bootstrapGraphSnapshot, retrySnapshotCompletion, syncGraphChanges,
     drain: () => queue.drain(),
     async getStatus() {
       const [session, consent, pending] = await Promise.all([auth.getSession(), auth.getSyncConsent(), queue.list()]);
