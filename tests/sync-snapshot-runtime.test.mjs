@@ -21,6 +21,9 @@ const manifest = {
   recordsChecksum: await checksum(records), checksumAlgorithm: "sha-256-canonical-json-v1"
 };
 let failSecondPage = false, failCommit = false, failComplete = false;
+let includeIncrementalChange = true;
+const incrementalRecordId = createNebulaGraphNodeRecordId("incremental-node");
+let acknowledgedSequence = 0;
 let completeCalls = 0, commitCalls = 0;
 const requests = [];
 let localGraph = { nodes: [{ id: "old-graph" }], links: [] };
@@ -97,7 +100,28 @@ const fetchImpl = async (url, init = {}) => {
     return new Response(JSON.stringify({ snapshotId: deviceId, completed: true, snapshotSequence: 17 }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (u.pathname === "/sync/changes") {
-    return new Response(JSON.stringify({ changes: [], nextCursor: Number(u.searchParams.get("after")) }), { status: 200, headers: { "Content-Type": "application/json" } });
+    const after = Number(u.searchParams.get("after"));
+    const changes = includeIncrementalChange && after < 18 ? [{
+      sequence: 18, recordId: incrementalRecordId,
+      recordVersion: "2026-11-27T00:00:02.000Z", operation: "upsert",
+      createdAt: "2026-11-27T00:00:02.000Z"
+    }] : [];
+    return new Response(JSON.stringify({ changes, nextCursor: changes.length ? 18 : after }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  if (u.pathname === "/sync/records" && u.searchParams.has("id")) {
+    return new Response(JSON.stringify({ record: {
+      recordType: "graph", recordId: incrementalRecordId,
+      payload: { id: "incremental-node", title: "Arrived after bootstrap" },
+      deleted: false, createdAt: "2026-11-27T00:00:02.000Z",
+      updatedAt: "2026-11-27T00:00:02.000Z"
+    } }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  if (u.pathname === "/sync/acknowledgements" && init.method === "POST") {
+    const body = JSON.parse(init.body);
+    assert.ok(localGraph.nodes.some(node => node.id === "incremental-node"),
+      "A change sequence must not be acknowledged before its record is applied locally.");
+    acknowledgedSequence = body.sequence;
+    return new Response(JSON.stringify({ acknowledgedSequence }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   throw new Error("Unexpected request " + u.pathname);
 };
@@ -140,5 +164,9 @@ assert.equal(retried.completed, true);
 assert.equal(retried.snapshotSequence, 17);
 assert.equal(completeCalls, 2);
 assert.equal((await local.loadMeta("nebulaSnapshotCompletionPending")).status, "completed");
+assert.ok(localGraph.nodes.some(node => node.id === "incremental-node"),
+  "Changes after the snapshot watermark must be applied after bootstrap completion.");
+assert.equal(acknowledgedSequence, 18,
+  "The device acknowledgement must advance only after the incremental record is durably applied.");
 assert.equal(commitCalls, 2, "Only the deliberate failed commit and the later successful commit should execute.");
 console.log("NEBULA snapshot runtime integration tests passed.");
