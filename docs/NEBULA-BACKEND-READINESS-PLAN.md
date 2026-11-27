@@ -556,3 +556,14 @@ repository、consent ledger 与私有同步 API 已完成代码集成及模拟/S
 - [x] Exact validated code/test HEAD 700b5a54c529cda7cef072420a574e837746770e: NEBULA backend checks #45996728205 success; local backend validation #45996728331 success; client snapshot staging #45996728281 success; Jekyll site CI #45996728077 success.
 - [ ] Current runtime verifies the complete manifest before staging, so it temporarily buffers returned snapshot records and the reconstructed graph in memory. A future large-graph optimization should use page-level authenticated checksums and incremental reconstruction to reduce peak memory. No browser multi-device E2E, live Cloudflare D1 concurrency, device-key binding, cryptographic durable-apply receipt, remote deployment, or private-data upload has been performed. UI V42.8 remains unchanged.
 - [x] Follow-up incremental-feed test now proves a post-watermark graph node is fetched and applied before sequence 18 is acknowledged. Exact validated code/test HEAD `63bd5060d538333973cc434c5ee956791c34f1ec`: backend checks #45997261881, local backend validation #45997261874, client snapshot staging #45997261842, and Jekyll site CI #45997261837 all succeeded.
+
+
+## 2026-11-28 durable local snapshot application receipt tranche
+
+- [x] Added migration `0011_snapshot_apply_receipts.sql` with nullable `applied_checksum` and `applied_at` columns on owner-scoped bootstrap snapshot sessions.
+- [x] The client now sends its canonical local graph SHA-256 only after IndexedDB atomic commit; the Worker transport validates the digest and the server repository persists it with the completion transition and snapshot watermark acknowledgement.
+- [x] Server receipt is immutable: an identical completion retry is idempotent, while a different checksum for an already completed snapshot is rejected and cannot advance acknowledgement.
+- [x] The receipt is explicitly a durable client-reported checksum assertion, not cryptographic proof of local disk state. No device signing key or attested local-commit protocol is claimed.
+- [x] Updated runtime recovery to replay the exact persisted checksum and strengthened integration tests for receipt persistence, exact retry, checksum substitution rejection, and transport response validation.
+- [x] Exact validated code/test HEAD `27260cdade8187ade73cd933d090fbf047ad990c`: backend checks #46034112824 success; local backend validation #46034112959 success; client snapshot staging #46034112850 success; Jekyll site CI #46034112931 success.
+- [ ] Large-graph peak-memory optimization remains open. Runtime still buffers snapshot records and the reconstructed graph before local staging. A future authenticated streaming manifest/page digest protocol is needed before safely removing this buffer. Device-key binding, cryptographic apply attestation, real Cloudflare deployment and browser multi-device E2E remain unverified. UI V42.8 unchanged.
