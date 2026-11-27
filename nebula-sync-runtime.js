@@ -3,7 +3,50 @@ import { createNebulaSyncQueue } from "./nebula-sync-queue.js";
 import { createNebulaRecordsTransport } from "./nebula-sync-records-transport.js";
 import { createNebulaWorkerConsentStore } from "./nebula-worker-consent-store.js";
 import { createNebulaLocalRecordApplier } from "./nebula-local-record-applier.js";
-import { buildNebulaGraphNodeDeleteOperations, buildNebulaGraphLinkDeleteOperation } from "./nebula-graph-sync.js";
+import { buildNebulaGraphNodeDeleteOperations, buildNebulaGraphLinkDeleteOperation, parseNebulaGraphRecordId, getNebulaGraphLinkEndpoints } from "./nebula-graph-sync.js";
+
+function graphFromSnapshotRecords(records) {
+  const nodes = new Map(), links = new Map();
+  const linkKey = link => {
+    const [source, target] = getNebulaGraphLinkEndpoints(link);
+    return JSON.stringify([source, target]);
+  };
+  const ordered = [...records].sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt) || a.recordId.localeCompare(b.recordId));
+  for (const record of ordered) {
+    const element = parseNebulaGraphRecordId(record.recordId);
+    if (!element) {
+      if (record.deleted) { nodes.clear(); links.clear(); continue; }
+      if (!record.payload || !Array.isArray(record.payload.nodes) || !Array.isArray(record.payload.links))
+        throw new Error("A graph snapshot record has an unsupported payload shape.");
+      nodes.clear(); links.clear();
+      for (const node of record.payload.nodes) {
+        if (!node || node.id === undefined || node.id === null) throw new Error("A graph snapshot contains a node without a stable ID.");
+        nodes.set(String(node.id), node);
+      }
+      for (const link of record.payload.links) links.set(linkKey(link), link);
+      continue;
+    }
+    if (element.kind === "node") {
+      if (record.deleted) {
+        nodes.delete(element.nodeId);
+        for (const [key, link] of links) {
+          const [source, target] = getNebulaGraphLinkEndpoints(link);
+          if (source === element.nodeId || target === element.nodeId) links.delete(key);
+        }
+      } else {
+        if (!record.payload || String(record.payload.id) !== element.nodeId) throw new Error("A graph node record does not match its stable ID.");
+        nodes.set(element.nodeId, record.payload);
+      }
+    } else if (record.deleted) links.delete(JSON.stringify([element.sourceId, element.targetId]));
+    else {
+      const key = JSON.stringify([element.sourceId, element.targetId]);
+      if (linkKey(record.payload) !== key) throw new Error("A graph link record does not match its stable endpoints.");
+      links.set(key, record.payload);
+    }
+  }
+  return { nodes: [...nodes.values()], links: [...links.values()] };
+}
+
 export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchImpl = globalThis.fetch, applyRemote } = {}) {
   if (!local || typeof local.getSyncOutboxStore !== "function") throw new TypeError("NEBULA_LOCAL with a durable sync outbox is required.");
   if (!provider || typeof provider.getSession !== "function" || typeof provider.getAccessToken !== "function" || typeof provider.signIn !== "function" || typeof provider.signOut !== "function") throw new TypeError("A complete identity provider adapter is required.");
@@ -13,6 +56,108 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
   const localApplier = applyRemote || createNebulaLocalRecordApplier({ local });
   const queue = createNebulaSyncQueue({ store: local.getSyncOutboxStore(), auth, send, applyRemote: localApplier });
   const previewSnapshots = new Map();
+  async function getDeviceId() {
+    let deviceId = await local.loadMeta?.("nebulaSyncDeviceId");
+    if (typeof deviceId !== "string" || !/^[0-9a-f-]{36}$/i.test(deviceId)) {
+      deviceId = crypto.randomUUID();
+      if (typeof local.saveMeta !== "function") throw new Error("A durable local metadata store is required for device identity.");
+      await local.saveMeta("nebulaSyncDeviceId", deviceId);
+    }
+    return deviceId;
+  }
+  async function retrySnapshotCompletion() {
+    const pending = await local.loadMeta?.("nebulaSnapshotCompletionPending");
+    if (!pending || pending.status === "completed") return { pending: false };
+    if (pending.status === "prepared") {
+      const graph = await local.loadGraph();
+      const checksum = graph ? await local.getGraphSnapshotChecksum(graph.nodes, graph.links) : null;
+      if (checksum !== pending.expectedChecksum) {
+        await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "discarded" });
+        return { pending: false, discarded: true };
+      }
+      await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "localCommitted" });
+    }
+    const token = await auth.getAccessToken();
+    if (!token || !(await auth.canSyncCategory(pending.recordType))) return { pending: true, reason: "consent-or-session-unavailable" };
+    const completed = await send.completeSnapshot({ snapshotId: pending.snapshotId, deviceId: pending.deviceId, token });
+    await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "completed", completedAt: Date.now() });
+    return { pending: false, completed };
+  }
+  async function bootstrapGraphSnapshot() {
+    await requireCategoryConsent("graph");
+    if (typeof local.beginGraphSnapshot !== "function" || typeof local.stageGraphSnapshotChunk !== "function" ||
+        typeof local.getGraphSnapshotChecksum !== "function" || typeof local.commitGraphSnapshot !== "function") {
+      throw new Error("The local atomic graph snapshot API is unavailable.");
+    }
+    const retry = await retrySnapshotCompletion();
+    if (retry.pending) return { committed: true, serverComplete: false, completionPending: true, retry };
+    const deviceId = await getDeviceId();
+    let token = await auth.getAccessToken();
+    if (!token) throw new Error("A verified access token is required.");
+    await send.registerDevice({ deviceId, token });
+    const snapshot = await send.createSnapshot({ deviceId, recordType: "graph", token });
+    const manifest = snapshot.manifest;
+    const records = [];
+    let cursor = "", pages = 0;
+    try {
+      do {
+        if (!(await auth.canSyncCategory("graph"))) throw new Error("Graph sync consent was revoked during snapshot download.");
+        token = await auth.getAccessToken();
+        if (!token) throw new Error("The signed-in session ended during snapshot download.");
+        const page = await send.listSnapshotPage({ snapshotId: snapshot.snapshotId, deviceId, after: cursor, limit: manifest.pageSize, token });
+        if (page.recordType !== "graph" || page.snapshotSequence !== snapshot.snapshotSequence) throw new Error("Snapshot page watermark or category changed.");
+        records.push(...page.records);
+        pages += 1;
+        if (pages > manifest.pageCount) throw new Error("Snapshot returned more pages than its manifest.");
+        if (page.hasMore && (!page.nextCursor || page.nextCursor === cursor)) throw new Error("Snapshot cursor did not advance.");
+        cursor = page.nextCursor || "";
+        if (!page.hasMore && !page.complete) throw new Error("Snapshot final-page marker is inconsistent.");
+        if (page.hasMore && page.complete) throw new Error("Snapshot page prematurely claimed completion.");
+        if (!page.hasMore) break;
+      } while (true);
+      if (pages !== manifest.pageCount || records.length !== manifest.recordCount) throw new Error("Snapshot page count or record count differs from the trusted manifest.");
+      if (await send.checksumSnapshotRecords(records) !== manifest.recordsChecksum) throw new Error("Snapshot record checksum does not match the server manifest.");
+      const graph = graphFromSnapshotRecords(records);
+      const expectedChecksum = await local.getGraphSnapshotChecksum(graph.nodes, graph.links);
+      const chunks = Array.from({ length: manifest.pageCount }, (_, index) => {
+        const start = Math.floor(index * graph.nodes.length / manifest.pageCount);
+        const end = Math.floor((index + 1) * graph.nodes.length / manifest.pageCount);
+        const linkStart = Math.floor(index * graph.links.length / manifest.pageCount);
+        const linkEnd = Math.floor((index + 1) * graph.links.length / manifest.pageCount);
+        return { nodes: graph.nodes.slice(start, end), links: graph.links.slice(linkStart, linkEnd) };
+      });
+      await local.beginGraphSnapshot({
+        snapshotId: snapshot.snapshotId, expectedChunks: manifest.pageCount, expectedChecksum
+      });
+      for (let index = 0; index < chunks.length; index += 1) {
+        if (!(await auth.canSyncCategory("graph"))) throw new Error("Graph sync consent was revoked before local commit.");
+        await local.stageGraphSnapshotChunk({ snapshotId: snapshot.snapshotId, index, ...chunks[index] });
+      }
+      const pending = {
+        snapshotId: snapshot.snapshotId, deviceId, recordType: "graph",
+        snapshotSequence: snapshot.snapshotSequence, expectedChecksum, status: "prepared", createdAt: Date.now()
+      };
+      await local.saveMeta("nebulaSnapshotCompletionPending", pending);
+      const committed = await local.commitGraphSnapshot({ snapshotId: snapshot.snapshotId });
+      await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "localCommitted", committedAt: Date.now() });
+      try {
+        token = await auth.getAccessToken();
+        if (!token || !(await auth.canSyncCategory("graph"))) throw new Error("Graph sync consent or session is no longer active.");
+        const completed = await send.completeSnapshot({ snapshotId: snapshot.snapshotId, deviceId, token });
+        await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "completed", completedAt: Date.now() });
+        return { ...committed, serverComplete: true, snapshotSequence: completed.snapshotSequence, manifest };
+      } catch (error) {
+        return { ...committed, serverComplete: false, completionPending: true, snapshotSequence: snapshot.snapshotSequence, manifest, completionError: error.message };
+      }
+    } catch (error) {
+      await local.abortGraphSnapshot(snapshot.snapshotId).catch(() => {});
+      const pending = await local.loadMeta?.("nebulaSnapshotCompletionPending");
+      if (pending?.snapshotId === snapshot.snapshotId && pending.status === "prepared") {
+        await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "discarded" });
+      }
+      throw error;
+    }
+  }
   async function requireCategoryConsent(category) {
     if (!(await auth.canSyncCategory(category))) throw new Error("Explicit cloud-sync consent is not enabled for this category.");
   }
@@ -72,7 +217,7 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
       return queue.enqueueMany([buildNebulaGraphLinkDeleteOperation(sourceId, targetId)], { groupId });
     },
     listPending: () => queue.list(), resolveConflict: (id, resolution) => queue.resolveConflict(id, resolution),
-    previewCloudRecords, applyCloudRecord,
+    previewCloudRecords, applyCloudRecord, bootstrapGraphSnapshot, retrySnapshotCompletion,
     drain: () => queue.drain(),
     async getStatus() {
       const [session, consent, pending] = await Promise.all([auth.getSession(), auth.getSyncConsent(), queue.list()]);

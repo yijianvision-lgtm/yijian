@@ -5,6 +5,19 @@ const RECORD_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
 const MAX_PAGE_SIZE = 50;
 const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
 
+function canonicalJson(value) {
+  if (Array.isArray(value)) return "[" + value.map(canonicalJson).join(",") + "]";
+  if (value && typeof value === "object") {
+    return "{" + Object.keys(value).sort().map(key => JSON.stringify(key) + ":" + canonicalJson(value[key])).join(",") + "}";
+  }
+  return JSON.stringify(value);
+}
+async function snapshotRecordsChecksum(records) {
+  const bytes = new TextEncoder().encode(canonicalJson(records));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 /** Privileged scheduled cleanup; deletes only expired temporary snapshot material. */
 export async function purgeExpiredNebulaSyncSnapshots({ db, now = () => new Date().toISOString(), limit = 100 } = {}) {
   if (!db || typeof db.prepare !== "function") throw new TypeError("A D1 database binding is required.");
@@ -69,10 +82,32 @@ export function createNebulaSyncSnapshotRepository({ db, authContext, now = () =
         "SELECT snapshot_id, device_id, record_type, snapshot_seq, status, created_at, expires_at FROM nebula_sync_snapshots WHERE owner_id = ? AND snapshot_id = ? AND device_id = ? LIMIT 1"
       ).bind(ownerId, sid, did).first();
       if (!row) throw new Error("Snapshot could not be created for an active device with current category consent.");
+      const captured = await db.prepare(
+        "SELECT record_id, payload_json, created_at, updated_at, deleted_at FROM nebula_sync_snapshot_records WHERE owner_id = ? AND snapshot_id = ? ORDER BY record_id"
+      ).bind(ownerId, sid).all();
+      const records = (captured.results || []).map(item => {
+        let payload = null;
+        if (!item.deleted_at) {
+          try { payload = JSON.parse(item.payload_json); }
+          catch { throw new Error("Stored snapshot record is invalid JSON."); }
+        }
+        return Object.freeze({
+          recordType: row.record_type, recordId: item.record_id, payload,
+          deleted: Boolean(item.deleted_at), createdAt: item.created_at,
+          updatedAt: item.deleted_at || item.updated_at
+        });
+      });
+      const manifest = Object.freeze({
+        recordCount: records.length,
+        pageSize: MAX_PAGE_SIZE,
+        pageCount: Math.max(1, Math.ceil(records.length / MAX_PAGE_SIZE)),
+        recordsChecksum: await snapshotRecordsChecksum(records),
+        checksumAlgorithm: "sha-256-canonical-json-v1"
+      });
       return Object.freeze({
         snapshotId: row.snapshot_id, deviceId: row.device_id, recordType: row.record_type,
         snapshotSequence: Number(row.snapshot_seq), status: row.status,
-        createdAt: row.created_at, expiresAt: row.expires_at
+        createdAt: row.created_at, expiresAt: row.expires_at, manifest
       });
     },
 
