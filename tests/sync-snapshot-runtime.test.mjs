@@ -97,7 +97,10 @@ const fetchImpl = async (url, init = {}) => {
   if (u.pathname === "/sync/snapshots/" + deviceId + "/complete" && init.method === "POST") {
     completeCalls++;
     if (failComplete) return new Response(JSON.stringify({ error: "temporary" }), { status: 503, headers: { "Content-Type": "application/json" } });
-    return new Response(JSON.stringify({ snapshotId: deviceId, completed: true, snapshotSequence: 17 }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({
+      snapshotId: deviceId, completed: true, snapshotSequence: 17,
+      appliedChecksum: JSON.parse(init.body).appliedChecksum, appliedAt: "2026-11-27T00:00:03.000Z"
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   if (u.pathname === "/sync/changes") {
     const after = Number(u.searchParams.get("after"));

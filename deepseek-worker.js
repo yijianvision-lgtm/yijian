@@ -314,7 +314,7 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
       });
       return jsonResponse({ ok: true, ...result }, 200, cors);
     } catch (error) {
-      if (/Invalid device ID|Invalid snapshot ID/.test(error?.message || "")) {
+      if (/Invalid device ID|Invalid snapshot ID|local application receipt/.test(error?.message || "")) {
         return jsonResponse({ error: "Invalid snapshot completion request." }, 400, cors);
       }
       if (/cannot be completed/.test(error?.message || "")) {
