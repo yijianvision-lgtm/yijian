@@ -1,0 +1,31 @@
+name: NEBULA client snapshot staging
+
+on:
+  pull_request:
+    paths:
+      - "nebula-local.js"
+      - "tests/local-snapshot-staging.test.mjs"
+      - "tests/local-outbox-store.test.mjs"
+      - ".github/workflows/nebula-client-snapshot.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  indexeddb-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install IndexedDB test shim
+        run: npm install --no-save fake-indexeddb
+      - name: Check local data module syntax
+        run: node --input-type=module --check < nebula-local.js
+      - name: Run atomic snapshot staging tests
+        run: node tests/local-snapshot-staging.test.mjs
+      - name: Run durable IndexedDB outbox and snapshot regression suite
+        run: node tests/local-outbox-store.test.mjs

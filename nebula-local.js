@@ -5,16 +5,18 @@
 const DB_MODE = new URL(import.meta.url).searchParams.get("env") || "production";
 const DB_ENVIRONMENT = DB_MODE === "preview" ? "preview" : "production";
 const DB_NAME = DB_ENVIRONMENT === "preview" ? "nebula_local_preview_v1" : "nebula_local_v2";
-const DB_VERSION = 6;
-const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence", "frameworkPlacements", "explorationPaths", "explorationSteps"];
+// Previous schema DB_VERSION = 7; version 8 adds isolated sync snapshot staging stores.
+const DB_VERSION = 8;
+const STORES = ["graph", "references", "lectureSources", "aiConversations", "assets", "meta", "history", "sources", "nodeSourceLinks", "knowledgeVersions", "reviewProposals", "learningRecords", "researchSessions", "knowledgeRelations", "extractionBatches", "extractionItems", "filterCases", "filterDecisions", "frameworks", "frameworkVersions", "nodePositions", "relationEvidence", "frameworkPlacements", "explorationPaths", "explorationSteps", "syncOutbox"];
+const INTERNAL_SYNC_STORES = ["syncSnapshotSessions", "syncSnapshotChunks"];
 
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      for (const name of STORES) if (!db.objectStoreNames.contains(name)) {
-        if (["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence","frameworkPlacements","explorationPaths","explorationSteps"].includes(name)) db.createObjectStore(name, { keyPath: "id" });
+      for (const name of [...STORES, ...INTERNAL_SYNC_STORES]) if (!db.objectStoreNames.contains(name)) {
+        if (["references","lectureSources","aiConversations","assets","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence","frameworkPlacements","explorationPaths","explorationSteps","syncOutbox","syncSnapshotSessions","syncSnapshotChunks"].includes(name)) db.createObjectStore(name, { keyPath: "id" });
         else db.createObjectStore(name);
       }
     };
@@ -2235,5 +2237,262 @@ Object.assign(NEBULA_LOCAL, {
     if(!path) throw new Error("探索路径不存在。");
     const steps=await this.listExplorationSteps(pathId);
     return {path,steps,branchPoints:steps.map(s=>({stepId:s.id,nodeId:s.toNodeId,canFork:true}))};
+  }
+});
+
+
+/* Durable outbox adapter for the injected sync queue. This is local-only:
+ * opening or writing the outbox never initiates a cloud request.
+ */
+Object.assign(NEBULA_LOCAL, {
+  getSyncOutboxStore() {
+    return Object.freeze({
+      async list() {
+        return request("syncOutbox", "readonly", store => store.getAll());
+      },
+      async put(item) {
+        if (!item || typeof item.id !== "string" || !item.id) throw new TypeError("Outbox item ID is required.");
+        await request("syncOutbox", "readwrite", store => store.put(item));
+      },
+      async putMany(items) {
+        if (!Array.isArray(items) || items.length === 0) throw new TypeError("A non-empty outbox batch is required.");
+        const ids = items.map(item => item?.id);
+        if (ids.some(id => typeof id !== "string" || !id) || new Set(ids).size !== ids.length)
+          throw new TypeError("Outbox batch IDs must be unique non-empty strings.");
+        const db = await openDB();
+        await new Promise((resolve, reject) => {
+          let settled = false;
+          let tx;
+          const fail = error => {
+            if (settled) return;
+            settled = true;
+            try { db.close(); } catch {}
+            reject(error || new Error("Outbox batch transaction failed."));
+          };
+          try {
+            tx = db.transaction("syncOutbox", "readwrite");
+            const store = tx.objectStore("syncOutbox");
+            for (const item of items) store.add(item);
+            tx.oncomplete = () => {
+              if (settled) return;
+              settled = true;
+              db.close();
+              resolve();
+            };
+            tx.onerror = () => fail(tx.error);
+            tx.onabort = () => fail(tx.error || new Error("Outbox batch transaction aborted."));
+          } catch (error) { fail(error); }
+        });
+      },
+      async remove(id) {
+        await request("syncOutbox", "readwrite", store => store.delete(String(id)));
+      }
+    });
+  }
+});
+
+/* Client bootstrap snapshot staging: immutable pages, SHA-256 validation,
+ * and one IndexedDB transaction for the live graph replacement + stage cleanup.
+ */
+function snapshotCanonical(value) {
+  if (Array.isArray(value)) return value.map(snapshotCanonical);
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const key of Object.keys(value).sort()) out[key] = snapshotCanonical(value[key]);
+    return out;
+  }
+  if (typeof value === "number" && !Number.isFinite(value)) throw new TypeError("Snapshot contains a non-finite number.");
+  if (value === undefined || typeof value === "function" || typeof value === "symbol" || typeof value === "bigint")
+    throw new TypeError("Snapshot contains a non-JSON value.");
+  return value;
+}
+const snapshotJSON = value => JSON.stringify(snapshotCanonical(value));
+async function snapshotHash(value) {
+  if (!globalThis.crypto?.subtle) throw new Error("WebCrypto SHA-256 is required for snapshot integrity checks.");
+  const bytes = new TextEncoder().encode(typeof value === "string" ? value : snapshotJSON(value));
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+function validateSnapshotPart(nodes, links) {
+  if (!Array.isArray(nodes) || !Array.isArray(links)) throw new TypeError("Snapshot page requires nodes and links arrays.");
+  for (const node of nodes) {
+    if (!node || typeof node !== "object" || Array.isArray(node) || node.id == null || !String(node.id).trim())
+      throw new TypeError("Every snapshot node requires a stable non-empty ID.");
+    snapshotCanonical(node);
+  }
+  for (const link of links) {
+    if (!link || typeof link !== "object") throw new TypeError("Snapshot links must be objects.");
+    snapshotCanonical(link);
+  }
+}
+function snapshotRead(db, stores, schedule) {
+  return new Promise((resolve, reject) => {
+    let tx, getResult;
+    const fail = error => { try { db.close(); } catch {} reject(error || new Error("Snapshot read failed.")); };
+    try {
+      tx = db.transaction(stores, "readonly");
+      getResult = schedule(tx);
+      tx.oncomplete = () => { try { db.close(); } catch {} resolve(getResult()); };
+      tx.onerror = () => fail(tx.error);
+      tx.onabort = () => fail(tx.error);
+    } catch (error) { fail(error); }
+  });
+}
+Object.assign(NEBULA_LOCAL, {
+  async getGraphSnapshotChecksum(nodes, links) {
+    validateSnapshotPart(nodes, links);
+    return snapshotHash({ nodes, links });
+  },
+  async beginGraphSnapshot({ snapshotId, expectedChunks, expectedChecksum, now = Date.now(), ttlMs = 86400000 } = {}) {
+    if (typeof snapshotId !== "string" || !/^[A-Za-z0-9._:-]{1,128}$/.test(snapshotId)) throw new TypeError("Invalid snapshot ID.");
+    if (!Number.isInteger(expectedChunks) || expectedChunks < 1 || expectedChunks > 10000) throw new RangeError("expectedChunks must be between 1 and 10000.");
+    if (typeof expectedChecksum !== "string" || !/^[a-f0-9]{64}$/i.test(expectedChecksum)) throw new TypeError("A SHA-256 manifest checksum is required.");
+    if (!Number.isFinite(now) || !Number.isFinite(ttlMs) || ttlMs < 1000) throw new RangeError("Invalid snapshot time or TTL.");
+    const session = { id: snapshotId, status: "staging", expectedChunks, stagedChunks: 0, expectedChecksum: expectedChecksum.toLowerCase(), createdAt: now, expiresAt: now + ttlMs };
+    const db = await openDB();
+    await new Promise((resolve,reject) => {
+      let tx;
+      try {
+        tx = db.transaction("syncSnapshotSessions","readwrite");
+        tx.objectStore("syncSnapshotSessions").add(session);
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+        tx.onabort = () => { db.close(); reject(tx.error || new Error("Snapshot session creation aborted.")); };
+      } catch(error) { db.close(); reject(error); }
+    });
+    return { snapshotId, status: "staging", expectedChunks, stagedChunks: 0, expiresAt: session.expiresAt };
+  },
+  async stageGraphSnapshotChunk({ snapshotId, index, nodes, links, now = Date.now() } = {}) {
+    if (typeof snapshotId !== "string" || !snapshotId) throw new TypeError("Snapshot ID is required.");
+    if (!Number.isFinite(now)) throw new RangeError("Snapshot page timestamp must be finite.");
+    if (!Number.isInteger(index) || index < 0) throw new RangeError("Chunk index must be non-negative.");
+    validateSnapshotPart(nodes, links);
+    const checksum = await snapshotHash({ nodes, links });
+    const db = await openDB();
+    let outcome;
+    await new Promise((resolve,reject) => {
+      let tx;
+      const fail = error => { try { db.close(); } catch {} reject(error || new Error("Snapshot chunk staging failed.")); };
+      try {
+        tx = db.transaction(["syncSnapshotSessions","syncSnapshotChunks"],"readwrite");
+        const sessions = tx.objectStore("syncSnapshotSessions"), chunks = tx.objectStore("syncSnapshotChunks");
+        const req = sessions.get(snapshotId);
+        req.onsuccess = () => {
+          const session = req.result;
+          if (!session || session.status !== "staging" || session.expiresAt <= now) { tx.abort(); return; }
+          if (index < session.stagedChunks) {
+            const replay = chunks.get(snapshotId + ":" + index);
+            replay.onsuccess = () => {
+              if (!replay.result || replay.result.checksum !== checksum) { tx.abort(); return; }
+              outcome = { staged: false, replayed: true, stagedChunks: session.stagedChunks };
+            };
+            return;
+          }
+          if (index !== session.stagedChunks || index >= session.expectedChunks) { tx.abort(); return; }
+          chunks.add({ id: snapshotId + ":" + index, snapshotId, index, nodes, links, checksum });
+          session.stagedChunks++;
+          session.updatedAt = now;
+          sessions.put(session);
+          outcome = { staged: true, replayed: false, stagedChunks: session.stagedChunks };
+        };
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => fail(tx.error);
+        tx.onabort = () => fail(tx.error || new Error("Snapshot chunk rejected: expired session, skipped index, or changed replay."));
+      } catch(error) { fail(error); }
+    });
+    return outcome;
+  },
+  async commitGraphSnapshot({ snapshotId, now = Date.now() } = {}) {
+    if (typeof snapshotId !== "string" || !snapshotId) throw new TypeError("Snapshot ID is required.");
+    if (!Number.isFinite(now)) throw new RangeError("Snapshot commit timestamp must be finite.");
+    const db = await openDB();
+    const staged = await snapshotRead(db, ["syncSnapshotSessions","syncSnapshotChunks"], tx => {
+      let session, rows;
+      const a = tx.objectStore("syncSnapshotSessions").get(snapshotId);
+      const b = tx.objectStore("syncSnapshotChunks").getAll();
+      a.onsuccess = () => { session = a.result; };
+      b.onsuccess = () => { rows = (b.result || []).filter(x => x.snapshotId === snapshotId).sort((x,y) => x.index-y.index); };
+      return () => ({ session, rows: rows || [] });
+    });
+    const session = staged.session, chunks = staged.rows;
+    if (!session || session.status !== "staging") throw new Error("Snapshot session is missing or not staging.");
+    if (session.expiresAt <= now) throw new Error("Snapshot session expired.");
+    if (session.stagedChunks !== session.expectedChunks || chunks.length !== session.expectedChunks)
+      throw new Error("Snapshot incomplete; current graph remains untouched.");
+    const nodes=[], links=[], nodeIds=new Set(), linkKeys=new Set();
+    for(let i=0;i<chunks.length;i++) {
+      const page=chunks[i];
+      if(page.index!==i || page.id!==snapshotId+":"+i) throw new Error("Snapshot chunk sequence is corrupt.");
+      validateSnapshotPart(page.nodes,page.links);
+      if(await snapshotHash({nodes:page.nodes,links:page.links})!==page.checksum) throw new Error("Snapshot chunk checksum mismatch.");
+      for(const node of page.nodes) {
+        const id=String(node.id);
+        if(nodeIds.has(id)) throw new Error("Snapshot contains duplicate node IDs.");
+        nodeIds.add(id); nodes.push(node);
+      }
+      for(const link of page.links) {
+        const key=snapshotJSON(link);
+        if(linkKeys.has(key)) throw new Error("Snapshot contains duplicate links.");
+        linkKeys.add(key); links.push(link);
+      }
+    }
+    const checksum=await snapshotHash({nodes,links});
+    if(checksum!==session.expectedChecksum) throw new Error("Snapshot manifest checksum mismatch; current graph remains untouched.");
+    const graph={id:"main",nodes,links,savedAt:now,schema:2};
+    const commitDb=await openDB();
+    await new Promise((resolve,reject) => {
+      let tx;
+      const fail=error=>{try{commitDb.close();}catch{} reject(error||new Error("Snapshot commit failed."));};
+      try {
+        tx=commitDb.transaction(["graph","syncSnapshotSessions","syncSnapshotChunks"],"readwrite");
+        const sessions=tx.objectStore("syncSnapshotSessions"), current=sessions.get(snapshotId);
+        current.onsuccess=()=>{
+          const live=current.result;
+          if(!live || live.status!=="staging" || live.expiresAt<=now ||
+             live.stagedChunks!==session.stagedChunks || live.expectedChunks!==session.expectedChunks || live.expectedChecksum!==session.expectedChecksum) { tx.abort(); return; }
+          tx.objectStore("graph").put(graph,"main");
+          sessions.delete(snapshotId);
+          const chunksStore=tx.objectStore("syncSnapshotChunks");
+          for(let i=0;i<live.expectedChunks;i++) chunksStore.delete(snapshotId+":"+i);
+        };
+        tx.oncomplete=()=>{commitDb.close();resolve();};
+        tx.onerror=()=>fail(tx.error);
+        tx.onabort=()=>fail(tx.error||new Error("Snapshot changed before commit; current graph remains untouched."));
+      } catch(error) { fail(error); }
+    });
+    return {committed:true,snapshotId,nodeCount:nodes.length,linkCount:links.length,checksum,savedAt:now};
+  },
+  async abortGraphSnapshot(snapshotId) {
+    if(typeof snapshotId!=="string"||!snapshotId) throw new TypeError("Snapshot ID is required.");
+    const db=await openDB(); let aborted=false;
+    await new Promise((resolve,reject)=>{
+      let tx;
+      const fail=e=>{try{db.close();}catch{}reject(e);};
+      try {
+        tx=db.transaction(["syncSnapshotSessions","syncSnapshotChunks"],"readwrite");
+        const sessions=tx.objectStore("syncSnapshotSessions"), req=sessions.get(snapshotId);
+        req.onsuccess=()=>{
+          if(!req.result)return;
+          aborted=true; sessions.delete(snapshotId);
+          const cursor=tx.objectStore("syncSnapshotChunks").openCursor();
+          cursor.onsuccess=()=>{const c=cursor.result;if(!c)return;if(c.value.snapshotId===snapshotId)c.delete();c.continue();};
+        };
+        tx.oncomplete=()=>{db.close();resolve();};
+        tx.onerror=()=>fail(tx.error);
+        tx.onabort=()=>fail(tx.error||new Error("Snapshot cleanup aborted."));
+      } catch(e){fail(e);}
+    });
+    return {aborted,snapshotId};
+  },
+  async recoverGraphSnapshots({now=Date.now(),maxAgeMs=86400000}={}) {
+    if(!Number.isFinite(now)||!Number.isFinite(maxAgeMs)||maxAgeMs<1000) throw new RangeError("Invalid snapshot recovery bounds.");
+    const db=await openDB();
+    const sessions=await snapshotRead(db,["syncSnapshotSessions"],tx=>{
+      let rows=[];const req=tx.objectStore("syncSnapshotSessions").getAll();
+      req.onsuccess=()=>{rows=req.result||[];};return ()=>rows;
+    });
+    const expired=sessions.filter(x=>x.expiresAt<=now||x.createdAt+maxAgeMs<=now);
+    for(const row of expired) await this.abortGraphSnapshot(row.id);
+    return {pending:sessions.filter(x=>!expired.some(y=>y.id===x.id)).map(({id,stagedChunks,expectedChunks,createdAt,expiresAt,status})=>({snapshotId:id,stagedChunks,expectedChunks,createdAt,expiresAt,status})),cleaned:expired.length};
   }
 });

@@ -10,7 +10,7 @@ const preview = await readFile(new URL("../ui-preview-v1.html", import.meta.url)
 const currentPreview = await readFile(new URL("../ui-preview-v42-7.html", import.meta.url), "utf8");
 const performancePreview = await readFile(new URL("../ui-preview-v42-8.html", import.meta.url), "utf8");
 
-for (const store of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence","frameworkPlacements","explorationPaths","explorationSteps"]) {
+for (const store of ["graph","references","lectureSources","aiConversations","assets","meta","history","sources","nodeSourceLinks","knowledgeVersions","reviewProposals","learningRecords","researchSessions","knowledgeRelations","extractionBatches","extractionItems","filterCases","filterDecisions","frameworks","frameworkVersions","nodePositions","relationEvidence","frameworkPlacements","explorationPaths","explorationSteps","syncOutbox"]) {
   assert.match(local, new RegExp('"'+store+'"'), "Missing IndexedDB store: "+store);
 }
 for (const api of ["exportFullBackup","previewFullBackup","restoreFullBackup","saveSource","linkNodeSource","createProposal","applyProposal","saveNodeVersion","saveLearningRecord","saveResearchSession","saveKnowledgeRelation","analyzeConversation","chatLearningCoach","coachKnowledge","checkMnemonic","proposeCoachReview","proposeMnemonicReview","detectKnowledgeGaps","buildLearningQueue","searchResearch","fetchDeepSeekShare","createExtractionBatch","createExtractionItem","createExtractionFromParsedSource","analyzeFilterCaseDuplicates","recordFilterDuplicateDecision","suggestFilterCaseLocations","createFilterSuggestionProposal","applyFilterCaseProposal","createKnowledgeRelationProposal","createFilterRelationProposal","applyKnowledgeRelationProposal","recordFilterItemDisposition","finalizeFilterCase","createFrameworkFromCurrentGraph","syncFrameworkFromGraph","getFrameworkTree","getSpatialProjection","getMindContext","resolveExtractionEvidence","resolveNodeEvidence","resolveEvidenceLocator","analyzeFilterCaseWithAI","getFilterWorkbenchSnapshot","buildKnowledgeBrief","exportFrameworkMarkdown","createFilterCase","appendFilterDecision","createFramework","saveFrameworkVersion","saveNodePosition","createRelationEvidence","createFrameworkPlacement","listFrameworkPlacements","migrateLegacyFrameworkPlacements","createExplorationPath","appendExplorationStep","listExplorationPaths","listExplorationSteps","forkExplorationPath","getExplorationPathSnapshot"]) {
@@ -142,8 +142,9 @@ assert.ok(!performanceAnimateBody.includes("spheres.forEach("), "V42.8 animation
 
 console.log("NEBULA backend contract checks passed.");
 
-assert.match(local, /DB_VERSION = 6/);
+assert.match(local, /DB_VERSION = 7/);
 assert.match(local, /FILTER_TRANSITIONS/);
+assert.match(local, /getSyncOutboxStore/);
 
 assert.match(local, /buildReferenceExtractionCandidates/);
 assert.match(local, /saveReferenceBeforeExtraction/);

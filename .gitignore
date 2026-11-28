@@ -1,0 +1,7 @@
+# Local-only Cloudflare test configuration and secrets
+wrangler.test.toml
+.dev.vars*
+.env
+.env.*
+.wrangler/
+node_modules/

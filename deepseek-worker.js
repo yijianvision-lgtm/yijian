@@ -1,7 +1,10 @@
 import { authenticateNebulaRequest } from "./nebula-worker-auth.js";
 import { createNebulaSyncConsentRepository } from "./nebula-sync-consent.js";
 import { createNebulaD1Repository } from "./nebula-d1-repository.js";
+import { createNebulaSyncDeviceRepository } from "./nebula-sync-device-repository.js";
+import { createNebulaSyncSnapshotRepository, purgeExpiredNebulaSyncSnapshots } from "./nebula-sync-snapshot-repository.js";
 import { createNebulaR2Repository } from "./nebula-r2-repository.js";
+import { reconcileNebulaR2UploadCleanup } from "./nebula-r2-cleanup.js";
 
 /**
  * NEBULA × DeepSeek bridge — deploy as a Cloudflare Worker.
@@ -192,16 +195,175 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
   }
 
   const consent = await consentRepository.getConsent();
+  const getDeviceRepository = () => createNebulaSyncDeviceRepository({ db: env.NEBULA_DB, authContext });
+  const getSnapshotRepository = () => createNebulaSyncSnapshotRepository({ db: env.NEBULA_DB, authContext });
+
+  if (path === "/sync/devices") {
+    const deviceRepository = getDeviceRepository();
+    if (!consent || consent.status !== "enabled") {
+      return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
+    }
+    if (request.method === "GET") {
+      return jsonResponse({ ok: true, devices: await deviceRepository.listActive() }, 200, cors);
+    }
+    if (request.method === "POST") {
+      let body;
+      try { body = await request.json(); }
+      catch { return jsonResponse({ error: "A valid device registration is required." }, 400, cors); }
+      try {
+        const device = await deviceRepository.register(body.deviceId);
+        return jsonResponse({ ok: true, device }, 200, cors);
+      } catch (error) {
+        if (/Invalid device ID/.test(error?.message || "")) return jsonResponse({ error: "Invalid device ID." }, 400, cors);
+        if (/re-registered/.test(error?.message || "")) return jsonResponse({ error: "Revoked devices cannot be re-registered." }, 409, cors);
+        throw error;
+      }
+    }
+  }
+
+  const deviceIdPath = path.startsWith("/sync/devices/") ? path.slice("/sync/devices/".length) : "";
+  const devicePath = /^[0-9a-f-]{36}$/i.test(deviceIdPath) ? deviceIdPath : null;
+  if (devicePath && request.method === "DELETE") {
+    const deviceRepository = getDeviceRepository();
+    if (!consent || consent.status !== "enabled") {
+      return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
+    }
+    const result = await deviceRepository.revoke(devicePath);
+    return jsonResponse({ ok: true, ...result }, 200, cors);
+  }
+
+  if (path === "/sync/acknowledgements" && request.method === "POST") {
+    const deviceRepository = getDeviceRepository();
+    if (!consent || consent.status !== "enabled") {
+      return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
+    }
+    let body;
+    try { body = await request.json(); }
+    catch { return jsonResponse({ error: "A valid acknowledgement is required." }, 400, cors); }
+    try {
+      await consentRepository.requireCategory(body.recordType);
+      const acknowledgement = await deviceRepository.acknowledge(body.deviceId, body.recordType, body.sequence);
+      return jsonResponse({ ok: true, acknowledgement }, 200, cors);
+    } catch (error) {
+      if (/Invalid device ID|Invalid record type|Invalid acknowledgement/.test(error?.message || "")) {
+        return jsonResponse({ error: "Invalid acknowledgement request." }, 400, cors);
+      }
+      if (/exceeds contiguous/.test(error?.message || "")) return jsonResponse({ error: "Acknowledgement is not backed by a contiguous issued change page." }, 409, cors);
+      throw error;
+    }
+  }
+
   const isOwnerInitiatedObjectDeletion = /^\/sync\/objects\/[0-9a-f-]{36}$/.test(path) && request.method === "DELETE";
-  if ((!consent || consent.status !== "enabled") && !isOwnerInitiatedObjectDeletion) {
+  const isOwnerInitiatedRecordDeletion = path === "/sync/records" && request.method === "DELETE";
+  if ((!consent || consent.status !== "enabled") &&
+      !isOwnerInitiatedObjectDeletion && !isOwnerInitiatedRecordDeletion) {
     return jsonResponse({ error: "Cloud sync is not enabled for this account." }, 403, cors);
+  }
+
+  if (path === "/sync/snapshots" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); }
+    catch { return jsonResponse({ error: "A valid bootstrap snapshot request is required." }, 400, cors); }
+    try {
+      await consentRepository.requireCategory(body.recordType);
+      const snapshot = await getSnapshotRepository().create({
+        snapshotId: crypto.randomUUID(), deviceId: body.deviceId, recordType: body.recordType
+      });
+      return jsonResponse({ ok: true, snapshot }, 201, cors);
+    } catch (error) {
+      if (/Invalid device ID|Invalid snapshot ID|Invalid record type/.test(error?.message || "")) {
+        return jsonResponse({ error: "Invalid bootstrap snapshot request." }, 400, cors);
+      }
+      if (/could not be created/.test(error?.message || "")) return jsonResponse({ error: "Device is revoked or snapshot consent is unavailable." }, 409, cors);
+      throw error;
+    }
+  }
+
+  const snapshotPathMatch = path.match(/^\/sync\/snapshots\/([0-9a-f-]{36})(?:\/(complete))?$/i);
+  if (snapshotPathMatch && request.method === "GET" && !snapshotPathMatch[2]) {
+    const deviceId = url.searchParams.get("deviceId");
+    const after = url.searchParams.get("after") || "";
+    const rawLimit = url.searchParams.get("limit") || "50";
+    if (!deviceId || !/^(?:[A-Za-z0-9._:-]{1,128})?$/.test(after) ||
+        !/^[0-9]+$/.test(rawLimit) || !Number.isSafeInteger(Number(rawLimit))) {
+      return jsonResponse({ error: "Invalid bootstrap snapshot page request." }, 400, cors);
+    }
+    try {
+      const page = await getSnapshotRepository().listPage({
+        snapshotId: snapshotPathMatch[1], deviceId, after, limit: Number(rawLimit)
+      });
+      return jsonResponse({ ok: true, ...page }, 200, cors);
+    } catch (error) {
+      if (/Invalid device ID|Invalid snapshot ID|Invalid snapshot cursor/.test(error?.message || "")) {
+        return jsonResponse({ error: "Invalid bootstrap snapshot page request." }, 400, cors);
+      }
+      if (/unavailable|revoked|consented|sequentially/.test(error?.message || "")) {
+        return jsonResponse({ error: "Snapshot is unavailable or the requested page is not the next page." }, 409, cors);
+      }
+      throw error;
+    }
+  }
+
+  if (snapshotPathMatch && snapshotPathMatch[2] === "complete" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); }
+    catch { return jsonResponse({ error: "A valid snapshot completion request is required." }, 400, cors); }
+    try {
+      const result = await getSnapshotRepository().complete({
+        snapshotId: snapshotPathMatch[1], deviceId: body.deviceId, appliedChecksum: body.appliedChecksum
+      });
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    } catch (error) {
+      if (/Invalid device ID|Invalid snapshot ID|local application receipt/.test(error?.message || "")) {
+        return jsonResponse({ error: "Invalid snapshot completion request." }, 400, cors);
+      }
+      if (/cannot be completed/.test(error?.message || "")) {
+        return jsonResponse({ error: "Snapshot pages must be delivered before completion and acknowledgement." }, 409, cors);
+      }
+      throw error;
+    }
+  }
+
+  if (path === "/sync/changes" && request.method === "GET") {
+    const type = url.searchParams.get("type");
+    if (!type) return jsonResponse({ error: "Missing record type." }, 400, cors);
+    const rawAfter = url.searchParams.get("after") || "0";
+    if (!/^(0|[1-9][0-9]*)$/.test(rawAfter) || !Number.isSafeInteger(Number(rawAfter))) {
+      return jsonResponse({ error: "Invalid change-feed cursor." }, 400, cors);
+    }
+    const deviceId = url.searchParams.get("deviceId");
+    if (!deviceId) return jsonResponse({ error: "A registered device ID is required for change delivery." }, 400, cors);
+    const repository = createNebulaD1Repository({ db: env.NEBULA_DB, authContext, syncConsent: consent });
+    const rawLimit = Number(url.searchParams.get("limit") || 50);
+    const changes = await repository.listChanges(type, { after: Number(rawAfter), limit: rawLimit });
+    const deviceRepository = getDeviceRepository();
+    try {
+      await deviceRepository.recordIssuedChanges(deviceId, type, changes.map(change => change.sequence));
+    } catch (error) {
+      if (/Invalid device ID/.test(error?.message || "")) return jsonResponse({ error: "Invalid device ID." }, 400, cors);
+      if (/Device is revoked/.test(error?.message || "")) return jsonResponse({ error: "Device is revoked or not registered." }, 409, cors);
+      throw error;
+    }
+    return jsonResponse({
+      ok: true,
+      changes,
+      nextCursor: changes.length ? changes[changes.length - 1].sequence : Number(rawAfter)
+    }, 200, cors);
   }
 
   if (path === "/sync/records") {
     const type = url.searchParams.get("type");
     if (!type) return jsonResponse({ error: "Missing record type." }, 400, cors);
+    // Reads and writes re-check live consent at the D1 boundary. Owner-
+    // initiated deletion is intentionally available after pause/revocation.
+    if (request.method !== "DELETE") await consentRepository.requireCategory(type);
     const repository = createNebulaD1Repository({ db: env.NEBULA_DB, authContext, syncConsent: consent });
     if (request.method === "GET") {
+      const recordId = url.searchParams.get("id");
+      if (recordId !== null) {
+        const record = await repository.getRecord(type, recordId);
+        return jsonResponse({ ok: true, record }, 200, cors);
+      }
       const after = url.searchParams.get("after") || null;
       const rawLimit = Number(url.searchParams.get("limit") || 50);
       const records = await repository.listRecords(type, { after, limit: rawLimit });
@@ -214,8 +376,10 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
       if (body.recordType !== type || typeof body.recordId !== "string") {
         return jsonResponse({ error: "Record type or ID is invalid." }, 400, cors);
       }
-      const result = await repository.putRecord(type, body.recordId, body.payload);
-      return jsonResponse({ ok: true, ...result }, 200, cors);
+      const result = await repository.putRecord(type, body.recordId, body.payload, {
+        expectedUpdatedAt: body.baseVersion ?? null
+      });
+      return jsonResponse({ ok: true, ...result }, result.conflict ? 409 : 200, cors);
     }
     if (request.method === "DELETE") {
       const recordId = url.searchParams.get("id");
@@ -272,6 +436,44 @@ async function handleNebulaSyncRequest(request, env, authContext, cors, url) {
 }
 
 export default {
+  async scheduled(controller, env) {
+    // Never fall back to another environment or infer resource bindings.
+    // Upload intents retain a one-hour grace; explicit delete intents are
+    // eligible immediately and are distinguished by the cleanup ledger.
+    if (!env.NEBULA_DB) {
+      console.warn(JSON.stringify({ event: "nebula_cleanup_skipped", reason: "missing_database_binding" }));
+      return;
+    }
+    try {
+      const expiredSnapshots = await purgeExpiredNebulaSyncSnapshots({ db: env.NEBULA_DB, limit: 100 });
+      let result = { scanned: 0, outcomes: [] };
+      if (env.NEBULA_BUCKET && typeof env.NEBULA_BUCKET.delete === "function") {
+        result = await reconcileNebulaR2UploadCleanup({
+          db: env.NEBULA_DB,
+          bucket: env.NEBULA_BUCKET,
+          limit: 50
+        });
+      }
+      const counts = Object.create(null);
+      for (const outcome of result.outcomes) {
+        counts[outcome.action] = (counts[outcome.action] || 0) + 1;
+      }
+      // Aggregate counters only: never log owner IDs, object keys, payloads,
+      // credentials, or raw exception messages.
+      console.log(JSON.stringify({
+        event: "nebula_cleanup_completed",
+        expiredSnapshots,
+        r2Scanned: result.scanned,
+        outcomes: counts
+      }));
+    } catch {
+      console.error(JSON.stringify({ event: "nebula_cleanup_failed" }));
+      // Mark the scheduled invocation failed without exposing the underlying
+      // D1/R2 error text to logs or callers.
+      throw new Error("NEBULA scheduled cleanup failed.");
+    }
+  },
+
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
     const allowedOrigins = new Set([
@@ -332,17 +534,19 @@ export default {
           return content ? who+"：\n"+content : "";
         }).filter(Boolean).join("\n\n");
         return new Response(JSON.stringify({ ok:true, shareId, title:data.title || "DeepSeek 分享对话", messageCount:messages.length, transcript }), { headers:cors });
-      } catch(e) { return new Response(JSON.stringify({ error:String(e.message || e) }), { status:500, headers:cors }); }
+      } catch { return new Response(JSON.stringify({ error:"Share import failed. Please retry." }), { status:500, headers:cors }); }
     }
     const syncObjectPath = url.pathname === "/sync/objects" || /^\/sync\/objects\/[0-9a-f-]{36}$/.test(url.pathname);
-    const syncPath = ["/sync/consent", "/sync/records"].includes(url.pathname) || syncObjectPath;
+    const syncDevicePath = url.pathname === "/sync/devices" || /^\/sync\/devices\/[0-9a-f-]{36}$/i.test(url.pathname);
+    const syncSnapshotPath = url.pathname === "/sync/snapshots" || /^\/sync\/snapshots\/[0-9a-f-]{36}(?:\/complete)?$/i.test(url.pathname);
+    const syncPath = ["/sync/consent", "/sync/records", "/sync/changes", "/sync/acknowledgements"].includes(url.pathname) || syncDevicePath || syncSnapshotPath || syncObjectPath;
     const supportedPath = ["/analyze", "/coach", "/mnemonic", "/research", "/chat"].includes(url.pathname) || syncPath;
     if (!supportedPath) return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: cors });
     if (syncPath && !["GET", "POST", "DELETE"].includes(request.method))
       return new Response(JSON.stringify({ error: "Unsupported sync method" }), { status: 405, headers: cors });
     if (url.pathname === "/sync/consent" && request.method === "DELETE")
       return new Response(JSON.stringify({ error: "Use POST to pause or revoke consent." }), { status: 405, headers: cors });
-    if (url.pathname === "/sync/records" && request.method === "GET" && !url.searchParams.get("type"))
+    if ((url.pathname === "/sync/records" || url.pathname === "/sync/changes") && request.method === "GET" && !url.searchParams.get("type"))
       return new Response(JSON.stringify({ error: "Missing record type." }), { status: 400, headers: cors });
     if (url.pathname === "/research" && request.method !== "GET")
       return new Response(JSON.stringify({ error: "GET /research only" }), { status: 405, headers: cors });
@@ -357,10 +561,14 @@ export default {
     const rateLimitResponse = await checkRateLimit(request, env, cors);
     if (rateLimitResponse) return rateLimitResponse;
     if (request.method === "POST") {
-      const bounded = await limitRequestBody(request, 1024 * 1024);
+      // Private object uploads have a separate 10 MiB ceiling, matching the
+      // R2 repository limit. Other Worker POST routes remain capped at 1 MiB.
+      const maxBodyBytes = syncObjectPath ? 10 * 1024 * 1024 : 1024 * 1024;
+      const bounded = await limitRequestBody(request, maxBodyBytes);
       if (!bounded.request) {
         const timedOut = bounded.reason === "timeout";
-        return new Response(JSON.stringify({ error: timedOut ? "Request body timed out." : "Request body is invalid or exceeds the 1 MiB limit." }), { status: timedOut ? 408 : 413, headers: cors });
+        const limitLabel = syncObjectPath ? "10 MiB" : "1 MiB";
+        return new Response(JSON.stringify({ error: timedOut ? "Request body timed out." : "Request body is invalid or exceeds the " + limitLabel + " limit." }), { status: timedOut ? 408 : 413, headers: cors });
       }
       request = bounded.request;
     }
@@ -370,10 +578,19 @@ export default {
         return await handleNebulaSyncRequest(request, env, authContext, cors, url);
       } catch (error) {
         const message = String(error?.message || error);
-        const denied = /consent|not enabled|not authorized/i.test(message);
-        const badInput = error instanceof TypeError || error instanceof RangeError;
-        return new Response(JSON.stringify({ error: denied || badInput ? message : "Private sync operation failed." }), {
-          status: denied ? 403 : badInput ? 400 : 500, headers: cors
+        const denied = new Set([
+          "Cloud sync is not enabled for this account.",
+          "Cloud-sync consent does not cover this record category.",
+          "Active server-side cloud-sync consent is required for this category."
+        ]).has(message);
+        const clientInputMessage =
+          /^(Invalid record type|Invalid record ID|Invalid object category|Invalid object ID|Invalid data category|Record payload must be an object|Invalid object content type|Object body must be bytes or a readable stream|Object stream must yield Uint8Array chunks)\.$/.test(message) ||
+          /^(Record payload exceeds 256 KiB|Object exceeds the configured upload size limit)\.$/.test(message);
+        const clientSafeMessage = denied
+          ? "Cloud sync is not enabled or does not cover this category."
+          : clientInputMessage ? "Invalid private sync request." : "Private sync operation failed.";
+        return new Response(JSON.stringify({ error: clientSafeMessage }), {
+          status: denied ? 403 : clientInputMessage ? 400 : 500, headers: cors
         });
       }
     }
@@ -396,7 +613,7 @@ export default {
         }));
         return new Response(JSON.stringify({ ok: true, provider: "Crossref", items }), { headers: cors });
       } catch (e) {
-        return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers: cors });
+        return new Response(JSON.stringify({ error: "Research provider request failed. Please retry." }), { status: 502, headers: cors });
       }
     }
 
@@ -460,12 +677,12 @@ export default {
           reply = String(data.choices?.[0]?.message?.content || "").trim();
         }
         if (!upstream.ok)
-          return new Response(JSON.stringify({ error: data.error?.message || data.message || (provider + " chat request failed"), provider }), { status: 502, headers: cors });
+          return new Response(JSON.stringify({ error: provider + " chat request failed", provider }), { status: 502, headers: cors });
         if (!reply)
           return new Response(JSON.stringify({ error: "AI 没有返回可显示的回答，请重试。", provider }), { status: 502, headers: cors });
         return new Response(JSON.stringify({ ok: true, provider, reply, model: data.model || model, usage: data.usage || null }), { headers: cors });
       } catch (error) {
-        return new Response(JSON.stringify({ error: String(error.message || error) }), { status: 500, headers: cors });
+        return new Response(JSON.stringify({ error: "AI request failed. Please retry." }), { status: 500, headers: cors });
       }
     }
 
@@ -496,11 +713,11 @@ export default {
           })
         });
         const data = await readJsonLimited(upstream);
-        if (!upstream.ok) return new Response(JSON.stringify({ error: data.error?.message || "DeepSeek request failed" }), { status: 502, headers: cors });
+        if (!upstream.ok) return new Response(JSON.stringify({ error: "DeepSeek request failed. Please retry." }), { status: 502, headers: cors });
         const result = JSON.parse(data.choices?.[0]?.message?.content || "{}");
         return new Response(JSON.stringify({ ok: true, result, usage: data.usage || null }), { headers: cors });
       } catch (e) {
-        return new Response(JSON.stringify({ error: String(e.message || e) }), { status: 502, headers: cors });
+        return new Response(JSON.stringify({ error: "AI review request failed. Please retry." }), { status: 502, headers: cors });
       }
     }
     if (!env.DEEPSEEK_API_KEY)
@@ -533,13 +750,13 @@ export default {
         })
       });
       const data = await readJsonLimited(response);
-      if (!response.ok) return new Response(JSON.stringify({ error: data.error?.message || "DeepSeek API request failed", status:response.status }), { status:502, headers:cors });
+      if (!response.ok) return new Response(JSON.stringify({ error: "DeepSeek API request failed. Please retry.", status:response.status }), { status:502, headers:cors });
       const raw = data.choices?.[0]?.message?.content || "{}";
       let result;
       try { result = JSON.parse(raw); } catch { throw new Error("DeepSeek returned invalid JSON; please retry with a smaller export."); }
       return new Response(JSON.stringify({ ok:true, result, usage:data.usage || null }), { headers:cors });
     } catch (error) {
-      return new Response(JSON.stringify({ error:String(error.message || error) }), { status:500, headers:cors });
+      return new Response(JSON.stringify({ error:"Knowledge analysis failed. Please retry." }), { status:500, headers:cors });
     }
   }
 };
