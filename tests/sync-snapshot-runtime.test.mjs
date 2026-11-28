@@ -185,6 +185,7 @@ assert.equal(commitCalls, 2, "Only the deliberate failed commit and the later su
 // If IndexedDB commits but the follow-up metadata write fails, recovery must
 // compare the durable graph checksum and retain a retryable completion intent.
 const completeCallsBeforeRecovery = completeCalls;
+metadata.delete("nebulaSnapshotCompletionPending");
 failPostCommitMetaOnce = true;
 await assert.rejects(runtime.bootstrapGraphSnapshot(), /synthetic post-commit metadata write failure/);
 assert.equal(localGraph.nodes.length, 51, "The graph transaction must remain committed.");
