@@ -20,7 +20,7 @@ const manifest = {
   recordCount: records.length, pageSize: 50, pageCount: 2,
   recordsChecksum: await checksum(records), checksumAlgorithm: "sha-256-canonical-json-v1"
 };
-let failSecondPage = false, failCommit = false, failComplete = false;
+let failSecondPage = false, failCommit = false, failComplete = false, failPostCommitMetaOnce = false;
 let includeIncrementalChange = true;
 const incrementalRecordId = createNebulaGraphNodeRecordId("incremental-node");
 let acknowledgedSequence = 0;
@@ -33,7 +33,13 @@ const local = {
   async saveGraph(nodes, links) { localGraph = { nodes, links }; },
   async loadGraph() { return structuredClone(localGraph); },
   async loadMeta(key) { return metadata.get(key); },
-  async saveMeta(key, value) { metadata.set(key, structuredClone(value)); },
+  async saveMeta(key, value) {
+    if (key === "nebulaSnapshotCompletionPending" && value?.status === "localCommitted" && failPostCommitMetaOnce) {
+      failPostCommitMetaOnce = false;
+      throw new Error("synthetic post-commit metadata write failure");
+    }
+    metadata.set(key, structuredClone(value));
+  },
   getSyncOutboxStore() {
     return { async list(){return[];}, async put(){}, async putMany(){}, async remove(){} };
   },
@@ -175,4 +181,20 @@ assert.ok(localGraph.nodes.some(node => node.id === "incremental-node"),
 assert.equal(acknowledgedSequence, 18,
   "The device acknowledgement must advance only after the incremental record is durably applied.");
 assert.equal(commitCalls, 2, "Only the deliberate failed commit and the later successful commit should execute.");
+
+// If IndexedDB commits but the follow-up metadata write fails, recovery must
+// compare the durable graph checksum and retain a retryable completion intent.
+const completeCallsBeforeRecovery = completeCalls;
+failPostCommitMetaOnce = true;
+await assert.rejects(runtime.bootstrapGraphSnapshot(), /synthetic post-commit metadata write failure/);
+assert.equal(localGraph.nodes.length, 51, "The graph transaction must remain committed.");
+const recoveredIntent = await local.loadMeta("nebulaSnapshotCompletionPending");
+assert.equal(recoveredIntent.status, "localCommitted",
+  "A committed graph must not be mislabeled as a discarded snapshot.");
+assert.equal(completeCalls, completeCallsBeforeRecovery,
+  "The failed metadata write must not cause premature server completion.");
+const recoveredAfterMetaFailure = await runtime.retrySnapshotCompletion();
+assert.equal(recoveredAfterMetaFailure.completed, true);
+assert.equal(completeCalls, completeCallsBeforeRecovery + 1);
+
 console.log("NEBULA snapshot runtime integration tests passed.");
