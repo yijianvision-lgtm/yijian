@@ -208,7 +208,21 @@ export function createNebulaSyncRuntime({ local, provider, workerBaseUrl, fetchI
       await local.abortGraphSnapshot(snapshot.snapshotId).catch(() => {});
       const pending = await local.loadMeta?.("nebulaSnapshotCompletionPending");
       if (pending?.snapshotId === snapshot.snapshotId && pending.status === "prepared") {
-        await local.saveMeta("nebulaSnapshotCompletionPending", { ...pending, status: "discarded" });
+        // A crash or metadata-write failure can happen after the IndexedDB graph
+        // transaction committed. Preserve the completion intent when the durable
+        // graph already matches the prepared checksum; discard only an uncommitted
+        // staging attempt whose target graph is not present.
+        try {
+          const graph = await local.loadGraph();
+          const checksum = graph ? await local.getGraphSnapshotChecksum(graph.nodes, graph.links) : null;
+          const status = checksum === pending.expectedChecksum ? "localCommitted" : "discarded";
+          await local.saveMeta("nebulaSnapshotCompletionPending", {
+            ...pending, status,
+            ...(status === "localCommitted" ? { recoveredCommitAt: Date.now() } : {})
+          });
+        } catch {
+          // Keep the prepared intent for retrySnapshotCompletion() to verify later.
+        }
       }
       throw error;
     }
